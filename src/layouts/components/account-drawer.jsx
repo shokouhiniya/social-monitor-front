@@ -120,6 +120,9 @@ export function AccountDrawer({ data = [], sx, ...other }) {
         open={open}
         onClose={onClose}
         anchor="right"
+        ModalProps={{
+          container: () => null
+        }}
         slotProps={{
           backdrop: { invisible: true },
           paper: { sx: { width: 320 } },

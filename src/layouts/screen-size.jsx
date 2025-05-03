@@ -31,19 +31,19 @@ function ScreenSize({ children }) {
       sx={
         isDesktopSize && UI_CONFIG.mobileOnly
           ? {
-            height: '100dvh',
-            width: 500,
-            maxWidth: 550,
-            margin: '0 auto',
-            transform: 'translateZ(0px)',
-            overflow: 'hidden',
-            boxShadow: '0 0 16px rgba(0,0,0,0.1)',
-            bgcolor: 'background.default',
-          }
+              height: '100dvh',
+              width: 500,
+              maxWidth: 550,
+              margin: '0 auto',
+              transform: 'translateZ(0px)',
+              overflow: 'hidden',
+              boxShadow: '0 0 16px rgba(0,0,0,0.1)',
+              bgcolor: 'background.default',
+            }
           : {
-            bgcolor: 'background.default',
-            minHeight: '100vh',
-          }
+              bgcolor: 'background.default',
+              minHeight: '100vh',
+            }
       }
     >
       <Scrollbar
