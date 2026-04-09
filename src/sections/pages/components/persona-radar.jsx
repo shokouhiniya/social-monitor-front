@@ -1,52 +1,66 @@
 'use client';
 
-import Card from '@mui/material/Card';
-import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-import LinearProgress from '@mui/material/LinearProgress';
+import { useTheme } from '@mui/material/styles';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
+
+import { ChartCard } from '../../dashboard/components/chart-card';
 
 // ----------------------------------------------------------------------
 
 const DIMENSIONS = [
-  { key: 'aggressive_defensive', label: 'تهاجمی / تدافعی', leftLabel: 'تدافعی', rightLabel: 'تهاجمی' },
-  { key: 'producer_resharer', label: 'تولیدی / بازنشرکننده', leftLabel: 'بازنشر', rightLabel: 'تولیدی' },
-  { key: 'visual_textual', label: 'بصری / متنی', leftLabel: 'متنی', rightLabel: 'بصری' },
-  { key: 'formal_informal', label: 'رسمی / صمیمی', leftLabel: 'صمیمی', rightLabel: 'رسمی' },
-  { key: 'local_global', label: 'محلی / جهانی', leftLabel: 'محلی', rightLabel: 'جهانی' },
-  { key: 'interactive_oneway', label: 'تعاملی / یک‌طرفه', leftLabel: 'یک‌طرفه', rightLabel: 'تعاملی' },
+  { key: 'aggressive_defensive', label: 'تهاجمی' },
+  { key: 'producer_resharer', label: 'تولیدی' },
+  { key: 'visual_textual', label: 'بصری' },
+  { key: 'formal_informal', label: 'رسمی' },
+  { key: 'local_global', label: 'محلی' },
+  { key: 'interactive_oneway', label: 'تعاملی' },
 ];
 
-export function PersonaRadar({ data }) {
+function CustomTooltip({ active, payload }) {
+  if (!active || !payload?.[0]) return null;
+  const d = payload[0].payload;
   return (
-    <Card sx={{ p: 3 }}>
-      <Typography variant="subtitle2" sx={{ mb: 2 }}>
-        رادار شخصیت رسانه‌ای
-      </Typography>
+    <Box sx={{ bgcolor: 'background.paper', p: 1.5, borderRadius: 1, boxShadow: 3 }}>
+      <Box sx={{ fontWeight: 600, fontSize: 12 }}>{d.label}</Box>
+      <Box sx={{ fontSize: 11, color: 'text.secondary' }}>امتیاز: {d.value}</Box>
+    </Box>
+  );
+}
 
-      {DIMENSIONS.map((dim) => {
-        const value = data?.[dim.key] ?? 50;
-        return (
-          <Box key={dim.key} sx={{ mb: 2 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-              {dim.label}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="caption" sx={{ minWidth: 50, textAlign: 'right' }}>
-                {dim.leftLabel}
-              </Typography>
-              <LinearProgress
-                variant="determinate"
-                value={value}
-                sx={{ flex: 1, height: 8, borderRadius: 1 }}
-                color={value > 70 ? 'error' : value > 40 ? 'primary' : 'info'}
-              />
-              <Typography variant="caption" sx={{ minWidth: 50 }}>
-                {dim.rightLabel}
-              </Typography>
-            </Box>
-          </Box>
-        );
-      })}
-    </Card>
+export function PersonaRadar({ data }) {
+  const theme = useTheme();
+
+  const chartData = DIMENSIONS.map((dim) => ({
+    label: dim.label,
+    value: data?.[dim.key] ?? 50,
+    fullMark: 100,
+  }));
+
+  return (
+    <ChartCard
+      title="رادار شخصیت رسانه‌ای"
+      icon="solar:user-id-bold-duotone"
+      info="۶ بعد شخصیتی پیج: تهاجمی/تدافعی، تولیدی/بازنشر، بصری/متنی، رسمی/صمیمی، محلی/جهانی، تعاملی/یک‌طرفه"
+    >
+      <Box sx={{ height: 300 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart data={chartData} cx="50%" cy="50%" outerRadius="70%">
+            <PolarGrid stroke={theme.palette.divider} />
+            <PolarAngleAxis dataKey="label" tick={{ fontSize: 11, fill: theme.palette.text.primary }} />
+            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 9, fill: theme.palette.text.secondary }} />
+            <Tooltip content={<CustomTooltip />} />
+            <Radar
+              name="شخصیت"
+              dataKey="value"
+              stroke={theme.palette.primary.main}
+              fill={theme.palette.primary.main}
+              fillOpacity={0.25}
+              strokeWidth={2}
+            />
+          </RadarChart>
+        </ResponsiveContainer>
+      </Box>
+    </ChartCard>
   );
 }
