@@ -10,6 +10,8 @@ import { useMacroDashboard } from 'src/api/analytics';
 
 import { TrendingKeywords } from '../dashboard/components/trending-keywords';
 import { TopicGravity } from '../dashboard/components/topic-gravity';
+import { ReactionVelocity } from '../dashboard/components/reaction-velocity';
+import { GhostPages } from '../dashboard/components/ghost-pages';
 import { ReshareTree } from './components/reshare-tree';
 import { ClusterDistribution } from './components/cluster-distribution';
 
@@ -36,12 +38,20 @@ export function MacroView() {
           <ClusterDistribution data={macro?.cluster_distribution} loading={macroLoading} />
         </Grid>
 
+        <Grid size={{ xs: 12, md: 4 }}>
+          <ReactionVelocity />
+        </Grid>
+
         <Grid size={{ xs: 12, md: 8 }}>
           <TrendingKeywords data={keywords} loading={kwLoading} />
         </Grid>
 
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <ReshareTree data={reshares} loading={reshareLoading} />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6 }}>
+          <GhostPages />
         </Grid>
       </Grid>
     </DashboardContent>

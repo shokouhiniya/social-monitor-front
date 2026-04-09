@@ -34,3 +34,34 @@ export function useProfileDeepDive(pageId) {
     enabled: !!pageId,
   });
 }
+
+export function useNetworkPulse() {
+  return useQuery({
+    queryKey: ['analytics', 'network-pulse'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.networkPulse);
+      return res.data?.data;
+    },
+    refetchInterval: 60000, // refresh every minute
+  });
+}
+
+export function useReactionVelocity(days = 7) {
+  return useQuery({
+    queryKey: ['analytics', 'reaction-velocity', days],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.reactionVelocity, { params: { days } });
+      return res.data?.data;
+    },
+  });
+}
+
+export function useGhostPages() {
+  return useQuery({
+    queryKey: ['analytics', 'ghost-pages'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.ghostPages);
+      return res.data?.data;
+    },
+  });
+}

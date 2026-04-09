@@ -75,5 +75,19 @@ export const endpoints = {
     alignmentIndex: '/analytics/alignment-index',
     silenceRadar: '/analytics/silence-radar',
     profileDeepDive: (pageId) => `/analytics/profile/${pageId}`,
+    reactionVelocity: '/analytics/reaction-velocity',
+    networkPulse: '/analytics/network-pulse',
+    ghostPages: '/analytics/ghost-pages',
+  },
+  actionPlans: {
+    byPage: (pageId) => `/action-plans/page/${pageId}`,
+    detail: (id) => `/action-plans/${id}`,
+    create: '/action-plans',
+    update: (id) => `/action-plans/${id}`,
+  },
+  strategicAlerts: {
+    list: '/strategic-alerts',
+    create: '/strategic-alerts',
+    acknowledge: (id) => `/strategic-alerts/${id}/acknowledge`,
   },
 };

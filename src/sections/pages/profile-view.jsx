@@ -13,6 +13,10 @@ import { SentimentTimeline } from './components/sentiment-timeline';
 import { ProfileHeader } from './components/profile-header';
 import { PainPoints } from './components/pain-points';
 import { FieldNotes } from './components/field-notes';
+import { ContentHookAnalyzer } from './components/content-hook-analyzer';
+import { InteractionCopilot } from './components/interaction-copilot';
+import { ActionCards } from './components/action-cards';
+import { ComparisonSlider } from './components/comparison-slider';
 
 // ----------------------------------------------------------------------
 
@@ -44,6 +48,14 @@ export function PageProfileView({ id }) {
           <ProfileHeader page={data.page} />
         </Grid>
 
+        <Grid size={{ xs: 12, md: 4 }}>
+          <InteractionCopilot page={data.page} contentHooks={data.content_hooks} />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 8 }}>
+          <ActionCards pageId={id} />
+        </Grid>
+
         <Grid size={{ xs: 12, md: 5 }}>
           <PersonaRadar data={data.persona_radar} />
         </Grid>
@@ -60,6 +72,14 @@ export function PageProfileView({ id }) {
             influence={data.influence_score}
             consistency={data.consistency_rate}
           />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6 }}>
+          <ComparisonSlider currentData={data.page} previousData={data.page} />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6 }}>
+          <ContentHookAnalyzer data={data.content_hooks} />
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>

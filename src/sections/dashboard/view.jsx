@@ -7,12 +7,15 @@ import { DashboardContent } from 'src/layouts/dashboard';
 
 import { useMacroDashboard, useAlignmentIndex } from 'src/api/analytics';
 
+import { PulseStrip } from './components/pulse-strip';
 import { IdentityDistribution } from './components/identity-distribution';
 import { TrendingKeywords } from './components/trending-keywords';
 import { TopInfluencers } from './components/top-influencers';
 import { AlignmentIndex } from './components/alignment-index';
 import { TopicGravity } from './components/topic-gravity';
 import { GeoDistribution } from './components/geo-distribution';
+import { SilenceRadar } from './components/silence-radar';
+import { StrategicAlertsWidget } from './components/strategic-alerts-widget';
 
 // ----------------------------------------------------------------------
 
@@ -22,17 +25,27 @@ export function DashboardView() {
 
   return (
     <DashboardContent maxWidth="xl">
+      <PulseStrip />
+
       <Typography variant="h4" sx={{ mb: 3 }}>
         داشبورد کلان — مرکز هوش رسانه‌ای
       </Typography>
 
       <Grid container spacing={3}>
+        <Grid size={{ xs: 12 }}>
+          <StrategicAlertsWidget />
+        </Grid>
+
         <Grid size={{ xs: 12, md: 4 }}>
           <AlignmentIndex data={alignment} loading={alignmentLoading} />
         </Grid>
 
         <Grid size={{ xs: 12, md: 8 }}>
           <TopicGravity data={macro?.topic_gravity} loading={macroLoading} />
+        </Grid>
+
+        <Grid size={{ xs: 12 }}>
+          <SilenceRadar />
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>

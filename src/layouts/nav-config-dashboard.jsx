@@ -14,6 +14,7 @@ const ICONS = {
   user: icon('ic-user'),
   file: icon('ic-file'),
   blog: icon('ic-blog'),
+  lock: icon('ic-lock'),
 };
 
 // ----------------------------------------------------------------------
@@ -31,6 +32,11 @@ export const navData = [
         title: 'نمای ماکرو',
         path: paths.dashboard.macro,
         icon: ICONS.analytics,
+      },
+      {
+        title: 'هشدارهای استراتژیک',
+        path: paths.dashboard.alerts,
+        icon: ICONS.lock,
       },
     ],
   },
