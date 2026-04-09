@@ -65,3 +65,24 @@ export function useGhostPages() {
     },
   });
 }
+
+export function usePeriodicReport() {
+  return useQuery({
+    queryKey: ['analytics', 'periodic-report'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.periodicReport);
+      return res.data?.data;
+    },
+    refetchInterval: 6 * 60 * 60 * 1000, // refresh every 6 hours
+  });
+}
+
+export function useLatestPosts(limit = 10) {
+  return useQuery({
+    queryKey: ['analytics', 'latest-posts', limit],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.latestPosts, { params: { limit } });
+      return res.data?.data;
+    },
+  });
+}

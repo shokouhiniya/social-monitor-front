@@ -78,6 +78,8 @@ export const endpoints = {
     reactionVelocity: '/analytics/reaction-velocity',
     networkPulse: '/analytics/network-pulse',
     ghostPages: '/analytics/ghost-pages',
+    periodicReport: '/analytics/periodic-report',
+    latestPosts: '/analytics/latest-posts',
   },
   actionPlans: {
     byPage: (pageId) => `/action-plans/page/${pageId}`,

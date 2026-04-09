@@ -1,7 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
@@ -18,6 +16,8 @@ import { GeoBarChart } from './components/geo-bar-chart';
 import { TrendingKeywordsCloud } from './components/trending-keywords-cloud';
 import { TopInfluencersRank } from './components/top-influencers-rank';
 import { SilenceRadar } from './components/silence-radar';
+import { PeriodicReport } from './components/periodic-report';
+import { LatestPosts } from './components/latest-posts';
 
 // ----------------------------------------------------------------------
 
@@ -43,49 +43,65 @@ export function DashboardView() {
       </Box>
 
       <Grid container spacing={3}>
-        {/* Stat Cards Row */}
+        {/* Stat Cards Row — equal height */}
         <Grid size={{ xs: 6, md: 3 }}>
-          <StatCard
-            title="پیج‌های تحت پایش"
-            value={totalPages}
-            icon="solar:users-group-rounded-bold-duotone"
-            color="primary"
-            info="تعداد کل پیج‌هایی که در شبکه پایش قرار دارند"
-            trend={12}
-          />
+          <Box sx={{ height: '100%' }}>
+            <StatCard
+              title="پیج‌های تحت پایش"
+              value={totalPages}
+              icon="solar:users-group-rounded-bold-duotone"
+              color="primary"
+              info="تعداد کل پیج‌هایی که در شبکه پایش قرار دارند"
+              trend={12}
+            />
+          </Box>
         </Grid>
         <Grid size={{ xs: 6, md: 3 }}>
-          <StatCard
-            title="شاخص هم‌گرایی"
-            value={`${alignment?.alignment_index ?? 0}%`}
-            icon="solar:graph-new-bold-duotone"
-            color={alignment?.alignment_index > 50 ? 'success' : 'warning'}
-            info="میزان هم‌صدایی شبکه — چقدر پیج‌ها یک حرف واحد می‌زنند"
-            subtitle={alignment?.description}
-          />
+          <Box sx={{ height: '100%' }}>
+            <StatCard
+              title="شاخص هم‌گرایی"
+              value={`${alignment?.alignment_index ?? 0}%`}
+              icon="solar:graph-new-bold-duotone"
+              color={alignment?.alignment_index > 50 ? 'success' : 'warning'}
+              info="میزان هم‌صدایی شبکه — چقدر پیج‌ها یک حرف واحد می‌زنند"
+              subtitle={alignment?.description}
+            />
+          </Box>
         </Grid>
         <Grid size={{ xs: 6, md: 3 }}>
-          <StatCard
-            title="خوشه‌های فعال"
-            value={totalClusters}
-            icon="solar:atom-bold-duotone"
-            color="info"
-            info="تعداد خوشه‌های معنایی شناسایی‌شده در شبکه"
-          />
+          <Box sx={{ height: '100%' }}>
+            <StatCard
+              title="خوشه‌های فعال"
+              value={totalClusters}
+              icon="solar:atom-bold-duotone"
+              color="info"
+              info="تعداد خوشه‌های معنایی شناسایی‌شده در شبکه"
+            />
+          </Box>
         </Grid>
         <Grid size={{ xs: 6, md: 3 }}>
-          <StatCard
-            title="کلمات کلیدی ترند"
-            value={totalKeywords}
-            icon="solar:hashtag-bold-duotone"
-            color="secondary"
-            info="تعداد کلمات کلیدی پرتکرار در ۳۰ روز اخیر"
-          />
+          <Box sx={{ height: '100%' }}>
+            <StatCard
+              title="کلمات کلیدی ترند"
+              value={totalKeywords}
+              icon="solar:hashtag-bold-duotone"
+              color="secondary"
+              info="تعداد کلمات کلیدی پرتکرار در ۳۰ روز اخیر"
+            />
+          </Box>
         </Grid>
 
         {/* Strategic Alerts */}
         <Grid size={{ xs: 12 }}>
           <StrategicAlertsWidget />
+        </Grid>
+
+        {/* Periodic Report + Latest Posts */}
+        <Grid size={{ xs: 12, lg: 7 }}>
+          <PeriodicReport />
+        </Grid>
+        <Grid size={{ xs: 12, lg: 5 }}>
+          <LatestPosts />
         </Grid>
 
         {/* Topic Gravity + Identity Distribution */}

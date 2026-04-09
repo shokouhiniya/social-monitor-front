@@ -17,8 +17,9 @@ export function StatCard({ title, value, subtitle, icon, color = 'primary', info
     <Card
       sx={(theme) => ({
         p: 2.5,
-        background: `linear-gradient(135deg, ${alpha(theme.vars.palette[color].mainChannel, 0.12)} 0%, ${alpha(theme.vars.palette[color].lightChannel || theme.vars.palette[color].mainChannel, 0.06)} 100%)`,
-        border: `1px solid ${alpha(theme.vars.palette[color].mainChannel, 0.16)}`,
+        height: '100%',
+        background: `linear-gradient(135deg, ${alpha(theme.palette[color].main, 0.12)} 0%, ${alpha(theme.palette[color].light || theme.palette[color].main, 0.06)} 100%)`,
+        border: `1px solid ${alpha(theme.palette[color].main, 0.16)}`,
         position: 'relative',
         overflow: 'hidden',
       })}
@@ -31,7 +32,7 @@ export function StatCard({ title, value, subtitle, icon, color = 'primary', info
           width: 70,
           height: 70,
           borderRadius: '50%',
-          bgcolor: alpha(theme.vars.palette[color].mainChannel, 0.08),
+          bgcolor: alpha(theme.palette[color].main, 0.08),
         })}
       />
 
@@ -45,7 +46,7 @@ export function StatCard({ title, value, subtitle, icon, color = 'primary', info
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              bgcolor: alpha(theme.vars.palette[color].mainChannel, 0.16),
+              bgcolor: alpha(theme.palette[color].main, 0.16),
             })}
           >
             <Iconify icon={icon} width={26} sx={{ color: `${color}.main` }} />
