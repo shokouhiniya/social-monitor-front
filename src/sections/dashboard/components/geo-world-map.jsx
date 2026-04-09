@@ -46,8 +46,8 @@ const COUNTRY_FLAGS = {
 const MapChart = memo(function MapChart({ items, maxCount, total, theme }) {
   return (
     <ComposableMap
-      projection="geoMercator"
-      projectionConfig={{ scale: 120, center: [45, 25] }}
+      projection="geoNaturalEarth1"
+      projectionConfig={{ scale: 220, center: [50, 28] }}
       style={{ width: '100%', height: '100%' }}
     >
       <Geographies geography={GEO_URL}>
@@ -73,7 +73,7 @@ const MapChart = memo(function MapChart({ items, maxCount, total, theme }) {
         const coords = COUNTRY_COORDS[item.country];
         if (!coords) return null;
         const ratio = item.count / maxCount;
-        const r = 4 + ratio * 14;
+        const r = 5 + ratio * 18;
         const color = COUNTRY_COLORS[item.country] || theme.palette.primary.main;
 
         return (
@@ -117,7 +117,7 @@ export function GeoWorldMap({ data, loading }) {
       sx={{ height: '100%' }}
     >
       {/* Map */}
-      <Box sx={{ height: 380, direction: 'ltr' }}>
+      <Box sx={{ height: 440, direction: 'ltr' }}>
         <MapChart items={items} maxCount={maxCount} total={total} theme={theme} />
       </Box>
 
