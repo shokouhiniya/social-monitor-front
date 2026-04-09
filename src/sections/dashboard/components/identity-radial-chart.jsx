@@ -4,15 +4,15 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
-import LinearProgress from '@mui/material/LinearProgress';
 import { alpha, useTheme } from '@mui/material/styles';
+import { Treemap, ResponsiveContainer, Tooltip } from 'recharts';
 
 import { Iconify } from 'src/components/iconify';
 import { ChartCard } from './chart-card';
 
 // ----------------------------------------------------------------------
 
-const COLORS = ['#00A76F', '#8E33FF', '#00B8D9', '#FFAB00', '#FF5630', '#2065D1', '#FF6C40', '#36B37E', '#6554C0', '#FF8B00'];
+const COLORS = ['#00A76F', '#8E33FF', '#00B8D9', '#FFAB00', '#FF5630', '#2065D1', '#FF6C40', '#36B37E', '#6554C0', '#FF8B00', '#00C7B1', '#B76E00', '#5119B7', '#007867', '#B71D18'];
 
 const CATEGORY_LABELS = {
   news: 'خبری', activist: 'فعال', celebrity: 'سلبریتی', lifestyle: 'لایف‌استایل',
@@ -21,17 +21,35 @@ const CATEGORY_LABELS = {
   technology: 'تکنولوژی', culture: 'فرهنگی', sports: 'ورزشی', analyst: 'تحلیل‌گر', unknown: 'نامشخص',
 };
 
-const CATEGORY_ICONS = {
-  news: 'solar:document-text-bold-duotone', activist: 'solar:flag-bold-duotone',
-  celebrity: 'solar:star-bold-duotone', lifestyle: 'solar:heart-bold-duotone',
-  economy: 'solar:chart-bold-duotone', local_news: 'solar:map-point-bold-duotone',
-  politician: 'solar:buildings-bold-duotone', documentary: 'solar:videocamera-record-bold-duotone',
-  religious: 'solar:moon-bold-duotone', art: 'solar:palette-bold-duotone',
-  student: 'solar:square-academic-cap-bold-duotone', health: 'solar:health-bold-duotone',
-  technology: 'solar:cpu-bolt-bold-duotone', culture: 'solar:book-bold-duotone',
-  sports: 'solar:running-round-bold-duotone', analyst: 'solar:graph-bold-duotone',
-  unknown: 'solar:question-circle-bold-duotone',
-};
+function CustomTooltip({ active, payload }) {
+  if (!active || !payload?.[0]) return null;
+  const d = payload[0].payload;
+  return (
+    <Box sx={{ bgcolor: 'background.paper', p: 1.5, borderRadius: 1, boxShadow: 3, minWidth: 120 }}>
+      <Box sx={{ fontWeight: 700, mb: 0.5 }}>{d.label}</Box>
+      <Box sx={{ fontSize: 12, color: 'text.secondary' }}>{d.count} پیج ({d.percent}%)</Box>
+    </Box>
+  );
+}
+
+function CustomContent({ x, y, width, height, label, fill, percent }) {
+  if (width < 35 || height < 25) return null;
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} rx={8} fill={fill} opacity={0.9} stroke="rgba(255,255,255,0.15)" strokeWidth={2} />
+      {width > 55 && height > 35 && (
+        <>
+          <text x={x + width / 2} y={y + height / 2 - 6} textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize={width > 90 ? 13 : 11} fontWeight={700}>
+            {label}
+          </text>
+          <text x={x + width / 2} y={y + height / 2 + 12} textAnchor="middle" dominantBaseline="central" fill="rgba(255,255,255,0.7)" fontSize={10}>
+            {percent}%
+          </text>
+        </>
+      )}
+    </g>
+  );
+}
 
 export function IdentityRadialChart({ data, loading }) {
   const theme = useTheme();
@@ -39,7 +57,7 @@ export function IdentityRadialChart({ data, loading }) {
   if (loading) {
     return (
       <ChartCard title="دماسنج هویت" icon="solar:pie-chart-2-bold-duotone" info="ترکیب شبکه بر اساس نوع پیج‌ها">
-        <Box sx={{ height: 380, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress /></Box>
+        <Box sx={{ height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress /></Box>
       </ChartCard>
     );
   }
@@ -49,56 +67,43 @@ export function IdentityRadialChart({ data, loading }) {
     .sort((a, b) => b.count - a.count);
   const total = items.reduce((s, i) => s + i.count, 0);
 
+  const treemapData = items.map((item, idx) => ({
+    name: item.key,
+    label: item.label,
+    size: item.count,
+    count: item.count,
+    percent: total > 0 ? Math.round((item.count / total) * 100) : 0,
+    fill: COLORS[idx % COLORS.length],
+  }));
+
   return (
     <ChartCard
       title="دماسنج هویت"
       icon="solar:pie-chart-2-bold-duotone"
-      info="ترکیب شبکه: چند درصد پیج‌ها خبری، فعال، سلبریتی و... هستند"
+      info="ترکیب شبکه: هر بلوک یک دسته‌بندی است. اندازه بلوک = تعداد پیج‌ها"
     >
-      {/* Summary circle */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2.5 }}>
-        <Box
-          sx={(t) => ({
-            width: 100, height: 100, borderRadius: '50%',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            bgcolor: alpha(t.palette.primary.main, 0.08),
-            border: `3px solid ${alpha(t.palette.primary.main, 0.2)}`,
-          })}
-        >
-          <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', lineHeight: 1 }}>{total}</Typography>
-          <Typography variant="caption" color="text.secondary">پیج</Typography>
-        </Box>
+      <Box sx={{ height: 300, mb: 2 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <Treemap
+            data={treemapData}
+            dataKey="size"
+            nameKey="label"
+            content={<CustomContent />}
+          >
+            <Tooltip content={<CustomTooltip />} />
+          </Treemap>
+        </ResponsiveContainer>
       </Box>
 
-      {/* Category bars */}
-      <Stack spacing={1.25} sx={{ maxHeight: 260, overflow: 'auto' }}>
-        {items.map((item, idx) => {
-          const percent = total > 0 ? Math.round((item.count / total) * 100) : 0;
-          const color = COLORS[idx % COLORS.length];
-          const icon = CATEGORY_ICONS[item.key] || 'solar:question-circle-bold-duotone';
-
-          return (
-            <Box key={item.key}>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.25 }}>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <Iconify icon={icon} width={16} sx={{ color }} />
-                  <Typography variant="caption" sx={{ fontWeight: 500 }}>{item.label}</Typography>
-                </Stack>
-                <Typography variant="caption" sx={{ fontWeight: 700, color }}>{item.count} ({percent}%)</Typography>
-              </Stack>
-              <LinearProgress
-                variant="determinate"
-                value={percent}
-                sx={{
-                  height: 8, borderRadius: 1,
-                  bgcolor: alpha(color, 0.1),
-                  '& .MuiLinearProgress-bar': { bgcolor: color, borderRadius: 1 },
-                }}
-              />
-            </Box>
-          );
-        })}
-      </Stack>
+      {/* Legend */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+        {items.slice(0, 8).map((item, idx) => (
+          <Stack key={item.key} direction="row" alignItems="center" spacing={0.5}>
+            <Box sx={{ width: 10, height: 10, borderRadius: 0.5, bgcolor: COLORS[idx % COLORS.length], flexShrink: 0 }} />
+            <Typography variant="caption" color="text.secondary">{item.label} ({item.count})</Typography>
+          </Stack>
+        ))}
+      </Box>
     </ChartCard>
   );
 }
