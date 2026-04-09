@@ -59,10 +59,12 @@ export function DashboardView() {
         <Grid size={{ xs: 12, lg: 7 }}><PeriodicReport /></Grid>
         <Grid size={{ xs: 12, lg: 5 }}><LatestPosts /></Grid>
 
-        {/* Identity + Geo + Influencers — equal width, equal height */}
-        <Grid size={{ xs: 12, md: 4 }}><Box sx={{ height: '100%' }}><IdentityRadialChart data={macro?.identity_distribution} loading={macroLoading} /></Box></Grid>
-        <Grid size={{ xs: 12, md: 4 }}><Box sx={{ height: '100%' }}><GeoWorldMap data={macro?.geo_distribution} loading={macroLoading} /></Box></Grid>
-        <Grid size={{ xs: 12, md: 4 }}><Box sx={{ height: '100%' }}><TopInfluencersRank data={macro?.top_influencers} loading={macroLoading} /></Box></Grid>
+        {/* Identity + Influencers */}
+        <Grid size={{ xs: 12, md: 6 }}><Box sx={{ height: '100%' }}><IdentityRadialChart data={macro?.identity_distribution} loading={macroLoading} /></Box></Grid>
+        <Grid size={{ xs: 12, md: 6 }}><Box sx={{ height: '100%' }}><TopInfluencersRank data={macro?.top_influencers} loading={macroLoading} /></Box></Grid>
+
+        {/* Geo World Map — full width */}
+        <Grid size={{ xs: 12 }}><GeoWorldMap data={macro?.geo_distribution} loading={macroLoading} /></Grid>
 
         {/* Silence Radar */}
         <Grid size={{ xs: 12 }}><SilenceRadar /></Grid>

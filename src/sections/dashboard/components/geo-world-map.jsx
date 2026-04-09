@@ -117,7 +117,7 @@ export function GeoWorldMap({ data, loading }) {
       sx={{ height: '100%' }}
     >
       {/* Map */}
-      <Box sx={{ height: 260, direction: 'ltr' }}>
+      <Box sx={{ height: 380, direction: 'ltr' }}>
         <MapChart items={items} maxCount={maxCount} total={total} theme={theme} />
       </Box>
 
