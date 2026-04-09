@@ -11,7 +11,7 @@ import { PulseStrip } from './components/pulse-strip';
 import { StatCard } from './components/stat-card';
 import { StrategicAlertsWidget } from './components/strategic-alerts-widget';
 import { IdentityRadialChart } from './components/identity-radial-chart';
-import { GeoBarChart } from './components/geo-bar-chart';
+import { GeoWorldMap } from './components/geo-world-map';
 import { TopInfluencersRank } from './components/top-influencers-rank';
 import { SilenceRadar } from './components/silence-radar';
 import { PeriodicReport } from './components/periodic-report';
@@ -59,10 +59,10 @@ export function DashboardView() {
         <Grid size={{ xs: 12, lg: 7 }}><PeriodicReport /></Grid>
         <Grid size={{ xs: 12, lg: 5 }}><LatestPosts /></Grid>
 
-        {/* Identity + Geo + Influencers (dashboard-exclusive) */}
-        <Grid size={{ xs: 12, md: 4 }}><IdentityRadialChart data={macro?.identity_distribution} loading={macroLoading} /></Grid>
-        <Grid size={{ xs: 12, md: 5 }}><GeoBarChart data={macro?.geo_distribution} loading={macroLoading} /></Grid>
-        <Grid size={{ xs: 12, md: 3 }}><TopInfluencersRank data={macro?.top_influencers} loading={macroLoading} /></Grid>
+        {/* Identity + Geo + Influencers — equal width, equal height */}
+        <Grid size={{ xs: 12, md: 4 }}><Box sx={{ height: '100%' }}><IdentityRadialChart data={macro?.identity_distribution} loading={macroLoading} /></Box></Grid>
+        <Grid size={{ xs: 12, md: 4 }}><Box sx={{ height: '100%' }}><GeoWorldMap data={macro?.geo_distribution} loading={macroLoading} /></Box></Grid>
+        <Grid size={{ xs: 12, md: 4 }}><Box sx={{ height: '100%' }}><TopInfluencersRank data={macro?.top_influencers} loading={macroLoading} /></Box></Grid>
 
         {/* Silence Radar */}
         <Grid size={{ xs: 12 }}><SilenceRadar /></Grid>

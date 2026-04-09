@@ -56,8 +56,8 @@ export function IdentityRadialChart({ data, loading }) {
 
   if (loading) {
     return (
-      <ChartCard title="دماسنج هویت" icon="solar:pie-chart-2-bold-duotone" info="ترکیب شبکه بر اساس نوع پیج‌ها">
-        <Box sx={{ height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress /></Box>
+      <ChartCard title="دماسنج هویت" icon="solar:pie-chart-2-bold-duotone" info="ترکیب شبکه بر اساس نوع پیج‌ها" sx={{ height: '100%' }}>
+        <Box sx={{ height: 420, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress /></Box>
       </ChartCard>
     );
   }
@@ -81,6 +81,7 @@ export function IdentityRadialChart({ data, loading }) {
       title="دماسنج هویت"
       icon="solar:pie-chart-2-bold-duotone"
       info="ترکیب شبکه: هر بلوک یک دسته‌بندی است. اندازه بلوک = تعداد پیج‌ها"
+      sx={{ height: '100%' }}
     >
       <Box sx={{ height: 300, mb: 2 }}>
         <ResponsiveContainer width="100%" height="100%">

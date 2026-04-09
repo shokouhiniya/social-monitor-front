@@ -29,8 +29,8 @@ export function TopInfluencersRank({ data, loading }) {
 
   if (loading) {
     return (
-      <ChartCard title="رتبه‌بندی نفوذ" icon="solar:crown-bold-duotone" info="پیج‌هایی که بیشترین تاثیر را بر شبکه دارند">
-        <Box sx={{ height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress /></Box>
+      <ChartCard title="رتبه‌بندی نفوذ" icon="solar:crown-bold-duotone" info="پیج‌هایی که بیشترین تاثیر را بر شبکه دارند" sx={{ height: '100%' }}>
+        <Box sx={{ height: 420, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress /></Box>
       </ChartCard>
     );
   }
@@ -45,6 +45,7 @@ export function TopInfluencersRank({ data, loading }) {
       title="رتبه‌بندی نفوذ"
       icon="solar:crown-bold-duotone"
       info="پیج‌هایی با بیشترین ضریب نفوذ — بر اساس بازنشر، ارجاع و تعامل"
+      sx={{ height: '100%' }}
     >
       {/* Podium - Top 3 */}
       <Stack direction="row" alignItems="flex-end" justifyContent="center" spacing={1} sx={{ mb: 3, pt: 1 }}>
