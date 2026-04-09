@@ -11,19 +11,6 @@ const axiosInstance = axios.create({
   },
 });
 
-/**
- * Optional: Add token (if using auth)
- *
- axiosInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-*
-*/
-
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -40,9 +27,7 @@ export default axiosInstance;
 export const fetcher = async (args) => {
   try {
     const [url, config] = Array.isArray(args) ? args : [args, {}];
-
     const res = await axiosInstance.get(url, config);
-
     return res.data;
   } catch (error) {
     console.error('Fetcher failed:', error);
@@ -53,28 +38,42 @@ export const fetcher = async (args) => {
 // ----------------------------------------------------------------------
 
 export const endpoints = {
-  chat: '/api/chat',
-  kanban: '/api/kanban',
-  calendar: '/api/calendar',
   auth: {
-    me: '/api/auth/me',
-    signIn: '/api/auth/sign-in',
-    signUp: '/api/auth/sign-up',
+    me: '/auth/me',
+    signIn: '/auth/login',
+    signUp: '/auth/register',
   },
-  mail: {
-    list: '/api/mail/list',
-    details: '/api/mail/details',
-    labels: '/api/mail/labels',
+  pages: {
+    list: '/pages',
+    detail: (id) => `/pages/${id}`,
+    create: '/pages',
+    update: (id) => `/pages/${id}`,
+    delete: (id) => `/pages/${id}`,
+    categories: '/pages/analytics/categories',
+    clusters: '/pages/analytics/clusters',
+    countries: '/pages/analytics/countries',
+    topInfluencers: '/pages/analytics/top-influencers',
   },
-  post: {
-    list: '/api/post/list',
-    details: '/api/post/details',
-    latest: '/api/post/latest',
-    search: '/api/post/search',
+  posts: {
+    list: '/posts',
+    detail: (id) => `/posts/${id}`,
+    create: '/posts',
+    bulk: '/posts/bulk',
+    trendingKeywords: '/posts/analytics/trending-keywords',
+    sentimentTimeline: '/posts/analytics/sentiment-timeline',
+    topicGravity: '/posts/analytics/topic-gravity',
+    reshareTree: '/posts/analytics/reshare-tree',
   },
-  product: {
-    list: '/api/product/list',
-    details: '/api/product/details',
-    search: '/api/product/search',
+  fieldReports: {
+    list: '/field-reports',
+    detail: (id) => `/field-reports/${id}`,
+    create: '/field-reports',
+    updateStatus: (id) => `/field-reports/${id}/status`,
+  },
+  analytics: {
+    macroDashboard: '/analytics/macro-dashboard',
+    alignmentIndex: '/analytics/alignment-index',
+    silenceRadar: '/analytics/silence-radar',
+    profileDeepDive: (pageId) => `/analytics/profile/${pageId}`,
   },
 };
