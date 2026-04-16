@@ -96,7 +96,10 @@ export const endpoints = {
   },
   strategicAlerts: {
     list: '/strategic-alerts',
+    stats: '/strategic-alerts/stats',
+    grouped: '/strategic-alerts/grouped',
     create: '/strategic-alerts',
-    acknowledge: (id) => `/strategic-alerts/${id}/acknowledge`,
+    updateStatus: (id) => `/strategic-alerts/${id}/status`,
+    detail: (id) => `/strategic-alerts/${id}`,
   },
 };

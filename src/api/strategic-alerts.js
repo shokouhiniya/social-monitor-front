@@ -11,7 +11,29 @@ export function useStrategicAlerts() {
       const res = await axiosInstance.get(endpoints.strategicAlerts.list);
       return res.data?.data;
     },
-    refetchInterval: 30000, // refresh every 30 seconds
+    refetchInterval: 30000,
+  });
+}
+
+export function useAlertStats() {
+  return useQuery({
+    queryKey: ['strategic-alerts', 'stats'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.strategicAlerts.stats);
+      return res.data?.data;
+    },
+    refetchInterval: 30000,
+  });
+}
+
+export function useGroupedAlerts() {
+  return useQuery({
+    queryKey: ['strategic-alerts', 'grouped'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.strategicAlerts.grouped);
+      return res.data?.data;
+    },
+    refetchInterval: 30000,
   });
 }
 
@@ -26,11 +48,11 @@ export function useCreateStrategicAlert() {
   });
 }
 
-export function useAcknowledgeAlert() {
+export function useUpdateAlertStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id) => {
-      const res = await axiosInstance.patch(endpoints.strategicAlerts.acknowledge(id));
+    mutationFn: async ({ id, status, assigned_to }) => {
+      const res = await axiosInstance.patch(endpoints.strategicAlerts.updateStatus(id), { status, assigned_to });
       return res.data?.data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['strategic-alerts'] }),

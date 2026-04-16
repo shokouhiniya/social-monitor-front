@@ -17,7 +17,7 @@ import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { Iconify } from 'src/components/iconify';
-import { useStrategicAlerts, useCreateStrategicAlert, useAcknowledgeAlert } from 'src/api/strategic-alerts';
+import { useStrategicAlerts, useCreateStrategicAlert, useUpdateAlertStatus } from 'src/api/strategic-alerts';
 
 // ----------------------------------------------------------------------
 
@@ -34,7 +34,7 @@ export function StrategicAlertsWidget() {
 
   const { data: alerts, isLoading } = useStrategicAlerts();
   const createMutation = useCreateStrategicAlert();
-  const acknowledgeMutation = useAcknowledgeAlert();
+  const acknowledgeMutation = useUpdateAlertStatus();
 
   const items = alerts || [];
 
@@ -106,7 +106,7 @@ export function StrategicAlertsWidget() {
               </Box>
               <IconButton
                 size="small"
-                onClick={() => acknowledgeMutation.mutate(alert.id)}
+                onClick={() => acknowledgeMutation.mutate({ id: alert.id, status: 'acknowledged' })}
                 title="تایید و بستن"
               >
                 <Iconify icon="eva:checkmark-circle-2-fill" />
