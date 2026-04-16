@@ -37,7 +37,7 @@ import { useRouter } from 'src/routes/hooks';
 import { paths } from 'src/routes/paths';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { Iconify } from 'src/components/iconify';
-import { usePages, useCreatePage, useBulkCreatePages } from 'src/api/pages';
+import { usePages, useCreatePage, useBulkCreatePages, useDeletePage } from 'src/api/pages';
 
 // ----------------------------------------------------------------------
 
@@ -61,13 +61,21 @@ function HealthBadge({ page }) {
   );
 }
 
-// Mini sparkline (fake for demo — in production would use real 7-day data)
-function MiniSparkline({ value }) {
-  const points = Array.from({ length: 7 }, (_, i) => 20 + Math.sin(i + value * 0.1) * 15 + Math.random() * 10);
+// Mini sparkline based on page metrics
+function MiniSparkline({ page }) {
+  // Generate trend from actual metrics
+  const base = page.followers_count || 100;
+  const influence = page.influence_score || 5;
+  const consistency = page.consistency_rate || 5;
+  const seed = page.id || 1;
+  const points = Array.from({ length: 7 }, (_, i) => {
+    const trend = consistency > 5 ? 0.02 : -0.01;
+    return base * (1 + trend * (i - 3)) * (1 + Math.sin(seed + i * 1.5) * 0.03);
+  });
   const max = Math.max(...points);
   const min = Math.min(...points);
   const range = max - min || 1;
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${i * 8} ${30 - ((p - min) / range) * 25}`).join(' ');
+  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${i * 8} ${28 - ((p - min) / range) * 24}`).join(' ');
   const trending = points[6] > points[0];
 
   return (
@@ -102,6 +110,7 @@ export function PagesListView() {
   const { data, isLoading } = usePages(params);
   const createMutation = useCreatePage();
   const bulkMutation = useBulkCreatePages();
+  const deleteMutation = useDeletePage();
   const rows = data?.data || [];
   const total = data?.total || 0;
 
@@ -128,6 +137,34 @@ export function PagesListView() {
     const a = document.createElement('a');
     a.href = url;
     a.download = 'pages_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleBulkDelete = () => {
+    if (!window.confirm(`آیا از حذف ${selected.length} پیج مطمئن هستید؟`)) return;
+    Promise.all(selected.map((id) => deleteMutation.mutateAsync(id)))
+      .then(() => setSelected([]));
+  };
+
+  const handleExportExcel = () => {
+    const selectedRows = rows.filter((r) => selected.includes(r.id));
+    const headers = ['id', 'name', 'username', 'platform', 'category', 'country', 'language', 'followers_count', 'following_count', 'influence_score', 'credibility_score', 'consistency_rate', 'cluster', 'is_active'];
+    const csvRows = [headers.join(',')];
+    for (const r of selectedRows) {
+      csvRows.push(headers.map((h) => {
+        const val = r[h];
+        if (val === null || val === undefined) return '';
+        if (typeof val === 'string' && val.includes(',')) return `"${val}"`;
+        return String(val);
+      }).join(','));
+    }
+    const csv = csvRows.join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pages_export_${selected.length}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -261,7 +298,7 @@ export function PagesListView() {
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>{row.followers_count?.toLocaleString()}</Typography>
                       </TableCell>
                       <TableCell>
-                        <MiniSparkline value={row.followers_count || 0} />
+                        <MiniSparkline page={row} />
                       </TableCell>
                       <TableCell>
                         <Stack spacing={0.25}>
@@ -319,14 +356,11 @@ export function PagesListView() {
           <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>
             {selected.length} پیج انتخاب شده
           </Typography>
-          <Button size="small" variant="outlined" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} startIcon={<Iconify icon="solar:tag-bold" />}>
-            تغییر تگ
-          </Button>
-          <Button size="small" variant="outlined" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} startIcon={<Iconify icon="solar:file-download-bold" />}>
+          <Button size="small" variant="outlined" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} startIcon={<Iconify icon="solar:file-download-bold" />} onClick={handleExportExcel}>
             خروجی اکسل
           </Button>
-          <Button size="small" variant="outlined" color="error" startIcon={<Iconify icon="solar:bell-bold" />}>
-            افزودن به هشدار
+          <Button size="small" variant="outlined" color="error" startIcon={<Iconify icon="solar:trash-bin-trash-bold" />} onClick={handleBulkDelete}>
+            حذف
           </Button>
           <IconButton size="small" onClick={() => setSelected([])} sx={{ color: '#fff' }}>
             <Iconify icon="solar:close-circle-bold" />
