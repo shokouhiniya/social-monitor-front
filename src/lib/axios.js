@@ -69,6 +69,7 @@ export const endpoints = {
   },
   fieldReports: {
     list: '/field-reports',
+    stats: '/field-reports/stats',
     detail: (id) => `/field-reports/${id}`,
     create: '/field-reports',
     updateStatus: (id) => `/field-reports/${id}/status`,

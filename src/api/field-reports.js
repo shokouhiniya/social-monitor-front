@@ -24,3 +24,13 @@ export function useCreateFieldReport() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['field-reports'] }),
   });
 }
+
+export function useFieldReportStats() {
+  return useQuery({
+    queryKey: ['field-reports', 'stats'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.fieldReports.stats);
+      return res.data?.data;
+    },
+  });
+}
