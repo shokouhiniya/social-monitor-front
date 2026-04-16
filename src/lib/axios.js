@@ -50,6 +50,7 @@ export const endpoints = {
     create: '/pages',
     bulk: '/pages/bulk',
     fetch: (id) => `/pages/${id}/fetch`,
+    process: (id) => `/pages/${id}/process`,
     update: (id) => `/pages/${id}`,
     delete: (id) => `/pages/${id}`,
     categories: '/pages/analytics/categories',

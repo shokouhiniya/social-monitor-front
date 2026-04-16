@@ -90,3 +90,17 @@ export function useFetchPageData() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pages'] }),
   });
 }
+
+export function useProcessPageData() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const res = await axiosInstance.post(endpoints.pages.process(id));
+      return res.data?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pages'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
+    },
+  });
+}
