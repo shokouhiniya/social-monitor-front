@@ -94,6 +94,8 @@ export const endpoints = {
     keywordVelocity: '/analytics/keyword-velocity',
     sentimentInfluenceMatrix: '/analytics/sentiment-influence-matrix',
     narrativeBattle: '/analytics/narrative-battle',
+    generateAlerts: '/analytics/generate-alerts',
+    generateReport: '/analytics/generate-report',
   },
   actionPlans: {
     byPage: (pageId) => `/action-plans/page/${pageId}`,

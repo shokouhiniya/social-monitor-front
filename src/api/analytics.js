@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import axiosInstance, { endpoints } from 'src/lib/axios';
 
@@ -156,5 +156,27 @@ export function useNarrativeBattle() {
       const res = await axiosInstance.get(endpoints.analytics.narrativeBattle);
       return res.data?.data;
     },
+  });
+}
+
+export function useGenerateAlerts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await axiosInstance.post(endpoints.analytics.generateAlerts);
+      return res.data?.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['strategic-alerts'] }),
+  });
+}
+
+export function useGenerateReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await axiosInstance.post(endpoints.analytics.generateReport);
+      return res.data?.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['analytics'] }),
   });
 }

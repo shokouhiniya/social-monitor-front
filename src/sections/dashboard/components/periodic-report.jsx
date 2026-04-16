@@ -7,11 +7,12 @@ import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import { alpha } from '@mui/material/styles';
 
 import { Iconify } from 'src/components/iconify';
-import { usePeriodicReport } from 'src/api/analytics';
+import { usePeriodicReport, useGenerateReport } from 'src/api/analytics';
 
 // ----------------------------------------------------------------------
 
@@ -32,6 +33,7 @@ function formatJalaliDate(isoString) {
 
 export function PeriodicReport() {
   const { data, isLoading } = usePeriodicReport();
+  const generateMutation = useGenerateReport();
 
   if (isLoading) {
     return (
@@ -93,6 +95,15 @@ export function PeriodicReport() {
         </Stack>
 
         <Stack alignItems="flex-end" spacing={0.5}>
+          <Button
+            size="small" variant="outlined" color="info"
+            startIcon={generateMutation.isPending ? <CircularProgress size={14} /> : <Iconify icon="solar:cpu-bolt-bold" />}
+            onClick={() => generateMutation.mutate()}
+            disabled={generateMutation.isPending}
+            sx={{ fontSize: 11 }}
+          >
+            {generateMutation.isPending ? 'تولید...' : 'تولید با AI'}
+          </Button>
           <Chip
             label={data.sentiment_label}
             size="small"

@@ -144,7 +144,9 @@ export function NarrativeTimeline({ posts, fieldReports }) {
       </Box>
 
       {/* Post Detail Dialog */}
-      <Dialog open={!!selectedPost} onClose={() => setSelectedPost(null)} maxWidth="sm" fullWidth>
+      <Dialog open={!!selectedPost} onClose={() => setSelectedPost(null)} maxWidth="sm" fullWidth
+        PaperProps={{ sx: { borderRadius: 2, overflow: 'hidden' } }}
+      >
         {selectedPost && (
           <>
             <DialogTitle sx={{ pb: 1 }}>جزئیات پست</DialogTitle>

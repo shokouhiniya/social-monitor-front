@@ -29,6 +29,7 @@ import { DashboardContent } from 'src/layouts/dashboard';
 import { Iconify } from 'src/components/iconify';
 import { StatCard } from '../dashboard/components/stat-card';
 import { useAlertStats, useGroupedAlerts, useCreateStrategicAlert, useUpdateAlertStatus } from 'src/api/strategic-alerts';
+import { useGenerateAlerts } from 'src/api/analytics';
 
 // ----------------------------------------------------------------------
 
@@ -48,6 +49,7 @@ export function AlertsView() {
   const { data: grouped, isLoading: groupedLoading } = useGroupedAlerts();
   const createMutation = useCreateStrategicAlert();
   const updateStatusMutation = useUpdateAlertStatus();
+  const generateMutation = useGenerateAlerts();
 
   const groups = grouped || [];
   const filteredGroups = filter === 'all' ? groups : groups.filter((g) => g.group_key === filter);
@@ -65,9 +67,18 @@ export function AlertsView() {
           <Typography variant="h4" sx={{ fontWeight: 700 }}>اتاق فرمان عملیاتی</Typography>
           <Typography variant="body2" color="text.secondary">مدیریت هشدارها، تخصیص مسئولیت و پیگیری اقدامات</Typography>
         </Box>
-        <Button variant="contained" startIcon={<Iconify icon="solar:add-circle-bold" />} onClick={() => setOpen(true)}>
-          هشدار جدید
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" color="warning"
+            startIcon={generateMutation.isPending ? <CircularProgress size={16} /> : <Iconify icon="solar:cpu-bolt-bold-duotone" />}
+            onClick={() => generateMutation.mutate()}
+            disabled={generateMutation.isPending}
+          >
+            {generateMutation.isPending ? 'در حال تولید...' : 'تولید هشدار با AI'}
+          </Button>
+          <Button variant="contained" startIcon={<Iconify icon="solar:add-circle-bold" />} onClick={() => setOpen(true)}>
+            هشدار جدید
+          </Button>
+        </Stack>
       </Stack>
 
       {/* Stats Row */}
