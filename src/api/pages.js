@@ -87,7 +87,10 @@ export function useFetchPageData() {
       const res = await axiosInstance.post(endpoints.pages.fetch(id));
       return res.data?.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pages'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pages'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
+    },
   });
 }
 
@@ -101,6 +104,7 @@ export function useProcessPageData() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pages'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
     },
   });
 }
