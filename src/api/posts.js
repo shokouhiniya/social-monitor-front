@@ -55,3 +55,23 @@ export function useReshareTree(days = 7) {
     },
   });
 }
+
+export function usePostsFeed(params) {
+  return useQuery({
+    queryKey: ['posts', 'feed', params],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.posts.feed, { params });
+      return res.data?.data;
+    },
+  });
+}
+
+export function useTopicClusters() {
+  return useQuery({
+    queryKey: ['posts', 'topic-clusters'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.posts.topicClusters);
+      return res.data?.data;
+    },
+  });
+}

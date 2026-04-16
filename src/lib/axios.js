@@ -56,6 +56,8 @@ export const endpoints = {
   },
   posts: {
     list: '/posts',
+    feed: '/posts/feed',
+    topicClusters: '/posts/topic-clusters',
     detail: (id) => `/posts/${id}`,
     create: '/posts',
     bulk: '/posts/bulk',
