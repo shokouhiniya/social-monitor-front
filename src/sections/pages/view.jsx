@@ -37,7 +37,7 @@ import { useRouter } from 'src/routes/hooks';
 import { paths } from 'src/routes/paths';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { Iconify } from 'src/components/iconify';
-import { usePages, useCreatePage } from 'src/api/pages';
+import { usePages, useCreatePage, useBulkCreatePages, useFetchPageData } from 'src/api/pages';
 
 // ----------------------------------------------------------------------
 
@@ -85,6 +85,8 @@ export function PagesListView() {
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [selected, setSelected] = useState([]);
   const [openAdd, setOpenAdd] = useState(false);
+  const [openImport, setOpenImport] = useState(false);
+  const [importPreview, setImportPreview] = useState([]);
   const [openFilter, setOpenFilter] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [filterCluster, setFilterCluster] = useState('');
@@ -99,6 +101,8 @@ export function PagesListView() {
 
   const { data, isLoading } = usePages(params);
   const createMutation = useCreatePage();
+  const bulkMutation = useBulkCreatePages();
+  const fetchMutation = useFetchPageData();
   const rows = data?.data || [];
   const total = data?.total || 0;
 
@@ -116,6 +120,45 @@ export function PagesListView() {
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 
+  const handleDownloadTemplate = () => {
+    const header = 'name,username,platform,category,country,language';
+    const example = 'نمونه پیج,sample_page,instagram,news,ایران,فارسی';
+    const csv = `${header}\n${example}`;
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pages_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result;
+      if (typeof text !== 'string') return;
+      const lines = text.split('\n').filter(Boolean);
+      const headers = lines[0].split(',').map((h) => h.trim());
+      const rows = lines.slice(1).map((line) => {
+        const vals = line.split(',').map((v) => v.trim());
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
+        return obj;
+      }).filter((r) => r.name);
+      setImportPreview(rows);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleBulkImport = () => {
+    bulkMutation.mutate(importPreview, {
+      onSuccess: () => { setOpenImport(false); setImportPreview([]); },
+    });
+  };
+
   return (
     <DashboardContent maxWidth="xl">
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
@@ -126,6 +169,12 @@ export function PagesListView() {
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" startIcon={<Iconify icon="solar:filter-bold" />} onClick={() => setOpenFilter(true)}>
             فیلتر پیشرفته
+          </Button>
+          <Button variant="outlined" startIcon={<Iconify icon="solar:file-download-bold" />} onClick={handleDownloadTemplate}>
+            دانلود قالب اکسل
+          </Button>
+          <Button variant="outlined" color="info" startIcon={<Iconify icon="solar:upload-bold" />} onClick={() => setOpenImport(true)}>
+            ایمپورت اکسل
           </Button>
           <Button variant="contained" startIcon={<Iconify icon="solar:add-circle-bold" />} onClick={() => setOpenAdd(true)}>
             افزودن پیج
@@ -234,6 +283,14 @@ export function PagesListView() {
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Stack direction="row" spacing={0.5}>
+                          <Tooltip title="واکشی دیتا" arrow>
+                            <IconButton size="small" onClick={() => fetchMutation.mutate(row.id)}
+                              disabled={fetchMutation.isPending}
+                              sx={(theme) => ({ color: fetchMutation.isPending ? 'text.disabled' : 'info.main' })}
+                            >
+                              <Iconify icon="solar:cloud-download-bold-duotone" width={20} />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title="مشاهده پروفایل" arrow>
                             <IconButton size="small" onClick={() => router.push(paths.dashboard.pages.profile(row.id))}>
                               <Iconify icon="solar:eye-bold" width={18} />
@@ -335,6 +392,72 @@ export function PagesListView() {
           <Button variant="contained" fullWidth onClick={() => setOpenFilter(false)}>اعمال فیلتر</Button>
         </Box>
       </Drawer>
+
+      {/* Import Excel Dialog */}
+      <Dialog open={openImport} onClose={() => { setOpenImport(false); setImportPreview([]); }} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Iconify icon="solar:upload-bold-duotone" width={24} sx={{ color: 'info.main' }} />
+            <span>ایمپورت پیج‌ها از فایل CSV</span>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          {importPreview.length === 0 ? (
+            <Box sx={{ py: 4, textAlign: 'center' }}>
+              <Iconify icon="solar:file-bold-duotone" width={48} sx={{ color: 'text.disabled', mb: 2 }} />
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                فایل CSV خود را انتخاب کنید. ابتدا قالب را دانلود و پر کنید.
+              </Typography>
+              <Button variant="outlined" component="label" startIcon={<Iconify icon="solar:upload-bold" />}>
+                انتخاب فایل
+                <input type="file" accept=".csv" hidden onChange={handleFileUpload} />
+              </Button>
+            </Box>
+          ) : (
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                پیش‌نمایش ({importPreview.length} پیج)
+              </Typography>
+              <TableContainer sx={{ maxHeight: 400 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>#</TableCell>
+                      <TableCell>نام</TableCell>
+                      <TableCell>یوزرنیم</TableCell>
+                      <TableCell>پلتفرم</TableCell>
+                      <TableCell>دسته‌بندی</TableCell>
+                      <TableCell>کشور</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {importPreview.map((row, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell>{idx + 1}</TableCell>
+                        <TableCell>{row.name}</TableCell>
+                        <TableCell>@{row.username}</TableCell>
+                        <TableCell>{row.platform}</TableCell>
+                        <TableCell>{CATEGORY_LABELS[row.category] || row.category}</TableCell>
+                        <TableCell>{row.country}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setOpenImport(false); setImportPreview([]); }}>انصراف</Button>
+          {importPreview.length > 0 && (
+            <Button variant="contained" onClick={handleBulkImport} disabled={bulkMutation.isPending}
+              startIcon={bulkMutation.isPending ? <CircularProgress size={16} /> : <Iconify icon="solar:check-circle-bold" />}
+            >
+              تایید و افزودن {importPreview.length} پیج
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
     </DashboardContent>
   );
 }

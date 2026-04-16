@@ -48,6 +48,8 @@ export const endpoints = {
     detail: (id) => `/pages/${id}`,
     related: (id) => `/pages/${id}/related`,
     create: '/pages',
+    bulk: '/pages/bulk',
+    fetch: (id) => `/pages/${id}/fetch`,
     update: (id) => `/pages/${id}`,
     delete: (id) => `/pages/${id}`,
     categories: '/pages/analytics/categories',

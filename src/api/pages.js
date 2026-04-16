@@ -68,3 +68,25 @@ export function useRelatedPages(id) {
     enabled: !!id,
   });
 }
+
+export function useBulkCreatePages() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (pages) => {
+      const res = await axiosInstance.post(endpoints.pages.bulk, pages);
+      return res.data?.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pages'] }),
+  });
+}
+
+export function useFetchPageData() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const res = await axiosInstance.post(endpoints.pages.fetch(id));
+      return res.data?.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pages'] }),
+  });
+}
