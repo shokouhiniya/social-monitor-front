@@ -33,53 +33,76 @@ export function DashboardView() {
 
   return (
     <DashboardContent maxWidth="xl">
-      {/* Crisis Corridor - floating sidebar */}
-      <CrisisCorridor />
-
-      {/* Header: AI Synthesizer */}
+      {/* 1. AI Synthesizer — headline */}
       <AiSynthesizer />
 
-      <Box sx={{ mt: 3, mb: 1 }}>
+      {/* 2. Periodic Report */}
+      <Box sx={{ mt: 3 }}>
         <PeriodicReport />
       </Box>
 
-      {/* Row 1: Pulse Strip */}
+      {/* 3. Pulse Strip */}
       <Box sx={{ mt: 3 }}>
         <PulseStrip />
       </Box>
 
-      {/* Row 2: Stat Cards */}
-      <Grid container spacing={3} sx={{ mt: 0.5 }}>
-        <Grid size={{ xs: 6, md: 3 }}><Box sx={{ height: '100%' }}>
+      {/* 4. Stat Cards — all in one grid */}
+      <Grid container spacing={3} sx={{ mt: 1 }}>
+        <Grid size={{ xs: 6, md: 3 }}>
           <StatCard title="پیج‌های تحت پایش" value={totalPages} icon="solar:users-group-rounded-bold-duotone" color="primary" info="تعداد کل پیج‌هایی که در شبکه پایش قرار دارند" trend={12} />
-        </Box></Grid>
-        <Grid size={{ xs: 6, md: 3 }}><Box sx={{ height: '100%' }}>
+        </Grid>
+        <Grid size={{ xs: 6, md: 3 }}>
           <StatCard title="شاخص هم‌گرایی" value={`${alignment?.alignment_index ?? 0}%`} icon="solar:graph-new-bold-duotone" color={alignment?.alignment_index > 50 ? 'success' : 'warning'} info="میزان هم‌صدایی شبکه" subtitle={alignment?.description} />
-        </Box></Grid>
-        <Grid size={{ xs: 6, md: 3 }}><Box sx={{ height: '100%' }}>
+        </Grid>
+        <Grid size={{ xs: 6, md: 3 }}>
           <StatCard title="خوشه‌های فعال" value={totalClusters} icon="solar:atom-bold-duotone" color="info" info="تعداد خوشه‌های معنایی شناسایی‌شده" />
-        </Box></Grid>
-        <Grid size={{ xs: 6, md: 3 }}><Box sx={{ height: '100%' }}>
+        </Grid>
+        <Grid size={{ xs: 6, md: 3 }}>
           <StatCard title="بیشترین نفوذ" value={topInfluencer?.name || '—'} icon="solar:crown-bold-duotone" color="secondary" info={`امتیاز: ${topInfluencer?.influence_score?.toFixed(1) || '—'}`} subtitle={topInfluencer?.platform} />
-        </Box></Grid>
-      </Grid>
+        </Grid>
 
-      <Grid container spacing={3} sx={{ mt: 0 }}>
-        {/* Row 3: Identity + Topic Gravity + Alerts */}
-        <Grid size={{ xs: 12, md: 4 }}><IdentityRadialChart data={macro?.identity_distribution} loading={macroLoading} /></Grid>
-        <Grid size={{ xs: 12, md: 4 }}><TopicGravityChart data={macro?.topic_gravity} loading={macroLoading} /></Grid>
-        <Grid size={{ xs: 12, md: 4 }}><StrategicAlertsWidget /></Grid>
+        {/* 5. Alerts + Crisis Corridor */}
+        <Grid size={{ xs: 12, md: 8 }}>
+          <StrategicAlertsWidget />
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <CrisisCorridor />
+        </Grid>
 
-        {/* Row 4: Silence Radar (circular) */}
-        <Grid size={{ xs: 12 }}><SilenceRadar /></Grid>
+        {/* 6. Identity + Topic Gravity — side by side */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <IdentityRadialChart data={macro?.identity_distribution} loading={macroLoading} />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TopicGravityChart data={macro?.topic_gravity} loading={macroLoading} />
+        </Grid>
 
-        {/* Row 5: Geo + Influencers + Narrative + High Impact */}
-        <Grid size={{ xs: 12, lg: 6 }}><GeoWorldMap data={macro?.geo_distribution} loading={macroLoading} /></Grid>
-        <Grid size={{ xs: 12, lg: 3 }}><Box sx={{ height: '100%' }}><TopInfluencersRank data={macro?.top_influencers} loading={macroLoading} /></Box></Grid>
-        <Grid size={{ xs: 12, lg: 3 }}><Box sx={{ height: '100%' }}><NarrativeHealthGauge /></Box></Grid>
+        {/* 7. Silence Radar — full width */}
+        <Grid size={{ xs: 12 }}>
+          <SilenceRadar />
+        </Grid>
 
-        {/* Row 6: High Impact Feed */}
-        <Grid size={{ xs: 12 }}><HighImpactFeed /></Grid>
+        {/* 8. Geo Map — full width */}
+        <Grid size={{ xs: 12 }}>
+          <GeoWorldMap data={macro?.geo_distribution} loading={macroLoading} />
+        </Grid>
+
+        {/* 9. Influencers + Narrative Health + High Impact */}
+        <Grid size={{ xs: 12, md: 4 }}>
+          <Box sx={{ height: '100%' }}>
+            <TopInfluencersRank data={macro?.top_influencers} loading={macroLoading} />
+          </Box>
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <Box sx={{ height: '100%' }}>
+            <NarrativeHealthGauge />
+          </Box>
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <Box sx={{ height: '100%' }}>
+            <HighImpactFeed />
+          </Box>
+        </Grid>
       </Grid>
     </DashboardContent>
   );
