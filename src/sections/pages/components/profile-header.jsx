@@ -11,7 +11,9 @@ import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Tooltip from '@mui/material/Tooltip';
-import { alpha } from '@mui/material/styles';
+import IconButton from '@mui/material/IconButton';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 
 import { Iconify } from 'src/components/iconify';
 import { useFetchPageData, useProcessPageData } from 'src/api/pages';
@@ -21,21 +23,21 @@ import { useFetchPageData, useProcessPageData } from 'src/api/pages';
 export function ProfileHeader({ page }) {
   const fetchMutation = useFetchPageData();
   const processMutation = useProcessPageData();
-  const [fetched, setFetched] = useState(false);
+  const [fetchDone, setFetchDone] = useState(false);
+  const [processDone, setProcessDone] = useState(false);
+  const [fetchMenuAnchor, setFetchMenuAnchor] = useState(null);
+  const [processMenuAnchor, setProcessMenuAnchor] = useState(null);
 
   if (!page) return null;
 
-  const hasBio = !!page.bio;
-  const hasAnalysis = !!page.persona_radar && !!page.cluster;
-
   const handleFetch = () => {
-    fetchMutation.mutate(page.id, {
-      onSuccess: () => setFetched(true),
-    });
+    setFetchMenuAnchor(null);
+    fetchMutation.mutate(page.id, { onSuccess: () => setFetchDone(true) });
   };
 
   const handleProcess = () => {
-    processMutation.mutate(page.id);
+    setProcessMenuAnchor(null);
+    processMutation.mutate(page.id, { onSuccess: () => setProcessDone(true) });
   };
 
   return (
@@ -55,13 +57,9 @@ export function ProfileHeader({ page }) {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             @{page.username} • {page.platform}
           </Typography>
-
           {page.bio && (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1, maxWidth: 500 }}>
-              {page.bio}
-            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1, maxWidth: 500 }}>{page.bio}</Typography>
           )}
-
           <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
             {page.category && <Chip label={page.category} size="small" color="primary" variant="outlined" />}
             {page.country && <Chip label={page.country} size="small" variant="outlined" />}
@@ -83,67 +81,62 @@ export function ProfileHeader({ page }) {
         </Stack>
 
         {/* Action Buttons */}
-        <Stack spacing={1}>
-          {!hasAnalysis || !fetched ? (
-            <>
-              {/* Fetch Button */}
-              <Tooltip title="واکشی اطلاعات پروفایل از اینستاگرام" arrow>
-                <Button
-                  variant={fetched ? 'outlined' : 'contained'}
-                  color="info"
-                  startIcon={fetchMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:cloud-download-bold-duotone" />}
-                  onClick={handleFetch}
-                  disabled={fetchMutation.isPending}
-                  size="small"
-                >
-                  {fetchMutation.isPending ? 'در حال واکشی...' : fetched ? 'واکشی مجدد' : 'بارگیری'}
-                </Button>
-              </Tooltip>
-
-              {/* Process Button — shows after fetch */}
-              {(fetched || hasBio) && (
-                <Tooltip title="ارسال به هوش مصنوعی برای تحلیل و ساخت پروفایل هوشمند" arrow>
-                  <Button
-                    variant="contained"
-                    color="warning"
-                    startIcon={processMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:cpu-bolt-bold-duotone" />}
-                    onClick={handleProcess}
-                    disabled={processMutation.isPending}
-                    size="small"
-                  >
-                    {processMutation.isPending ? 'در حال پردازش...' : 'پردازش هوشمند'}
-                  </Button>
-                </Tooltip>
-              )}
-            </>
+        <Stack spacing={1} alignItems="flex-end">
+          {/* Fetch */}
+          {!fetchDone && !fetchMutation.isSuccess ? (
+            <Button
+              variant="contained" color="info" size="small"
+              startIcon={fetchMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:cloud-download-bold-duotone" />}
+              onClick={handleFetch}
+              disabled={fetchMutation.isPending}
+            >
+              {fetchMutation.isPending ? 'در حال واکشی...' : 'بارگیری'}
+            </Button>
           ) : (
-            <Stack spacing={1}>
-              <Tooltip title="واکشی مجدد اطلاعات" arrow>
-                <Button variant="outlined" color="info" size="small" startIcon={<Iconify icon="solar:cloud-download-bold-duotone" />}
-                  onClick={handleFetch} disabled={fetchMutation.isPending}
-                >
-                  {fetchMutation.isPending ? 'واکشی...' : 'بارگیری مجدد'}
-                </Button>
-              </Tooltip>
-              <Tooltip title="پردازش مجدد با هوش مصنوعی" arrow>
-                <Button variant="outlined" color="warning" size="small" startIcon={<Iconify icon="solar:cpu-bolt-bold-duotone" />}
-                  onClick={handleProcess} disabled={processMutation.isPending}
-                >
-                  {processMutation.isPending ? 'پردازش...' : 'پردازش مجدد'}
-                </Button>
-              </Tooltip>
+            <Stack direction="row" alignItems="center" spacing={0.5}>
+              <Chip label="✓ واکشی شد" size="small" color="success" variant="outlined" sx={{ fontSize: 11 }} />
+              <IconButton size="small" onClick={(e) => setFetchMenuAnchor(e.currentTarget)}>
+                <Iconify icon="solar:menu-dots-bold" width={18} />
+              </IconButton>
+              <Menu anchorEl={fetchMenuAnchor} open={Boolean(fetchMenuAnchor)} onClose={() => setFetchMenuAnchor(null)}>
+                <MenuItem onClick={handleFetch} sx={{ fontSize: 13 }}>
+                  <Iconify icon="solar:cloud-download-bold" width={16} sx={{ mr: 1 }} />
+                  بارگیری مجدد
+                </MenuItem>
+              </Menu>
             </Stack>
           )}
 
-          {/* Status indicators */}
-          {fetchMutation.isSuccess && (
-            <Chip label="✓ واکشی شد" size="small" color="success" variant="outlined" sx={{ fontSize: 10 }} />
+          {/* Process — only show after fetch */}
+          {(fetchDone || fetchMutation.isSuccess || page.bio) && (
+            !processDone && !processMutation.isSuccess ? (
+              <Button
+                variant="contained" color="warning" size="small"
+                startIcon={processMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:cpu-bolt-bold-duotone" />}
+                onClick={handleProcess}
+                disabled={processMutation.isPending}
+              >
+                {processMutation.isPending ? 'در حال پردازش...' : 'پردازش هوشمند'}
+              </Button>
+            ) : (
+              <Stack direction="row" alignItems="center" spacing={0.5}>
+                <Chip label="✓ پردازش شد" size="small" color="warning" variant="outlined" sx={{ fontSize: 11 }} />
+                <IconButton size="small" onClick={(e) => setProcessMenuAnchor(e.currentTarget)}>
+                  <Iconify icon="solar:menu-dots-bold" width={18} />
+                </IconButton>
+                <Menu anchorEl={processMenuAnchor} open={Boolean(processMenuAnchor)} onClose={() => setProcessMenuAnchor(null)}>
+                  <MenuItem onClick={handleProcess} sx={{ fontSize: 13 }}>
+                    <Iconify icon="solar:cpu-bolt-bold" width={16} sx={{ mr: 1 }} />
+                    پردازش مجدد
+                  </MenuItem>
+                </Menu>
+              </Stack>
+            )
           )}
-          {processMutation.isSuccess && (
-            <Chip label="✓ پردازش شد" size="small" color="warning" variant="outlined" sx={{ fontSize: 10 }} />
-          )}
+
+          {/* Error */}
           {(fetchMutation.isError || processMutation.isError) && (
-            <Chip label="✗ خطا" size="small" color="error" variant="outlined" sx={{ fontSize: 10 }} />
+            <Chip label="✗ خطا — دوباره تلاش کنید" size="small" color="error" variant="outlined" sx={{ fontSize: 10 }} />
           )}
         </Stack>
       </Stack>
