@@ -84,6 +84,9 @@ export const endpoints = {
     narrativeHealth: '/analytics/narrative-health',
     crisisCorridor: '/analytics/crisis-corridor',
     aiSynthesizer: '/analytics/ai-synthesizer',
+    keywordVelocity: '/analytics/keyword-velocity',
+    sentimentInfluenceMatrix: '/analytics/sentiment-influence-matrix',
+    narrativeBattle: '/analytics/narrative-battle',
   },
   actionPlans: {
     byPage: (pageId) => `/action-plans/page/${pageId}`,

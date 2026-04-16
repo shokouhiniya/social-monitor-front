@@ -34,6 +34,7 @@ import { paths } from 'src/routes/paths';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { Iconify } from 'src/components/iconify';
 import { usePages, useCreatePage } from 'src/api/pages';
+import { GhostPagesCard } from '../macro/components/ghost-pages-card';
 
 // ----------------------------------------------------------------------
 
@@ -89,6 +90,10 @@ export function PagesListView() {
           افزودن پیج
         </Button>
       </Stack>
+
+      <Box sx={{ mb: 3 }}>
+        <GhostPagesCard />
+      </Box>
 
       <Card>
         <Box sx={{ p: 2 }}>

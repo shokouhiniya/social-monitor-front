@@ -128,3 +128,33 @@ export function useAiSynthesizer() {
     refetchInterval: 300000,
   });
 }
+
+export function useKeywordVelocity() {
+  return useQuery({
+    queryKey: ['analytics', 'keyword-velocity'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.keywordVelocity);
+      return res.data?.data;
+    },
+  });
+}
+
+export function useSentimentInfluenceMatrix() {
+  return useQuery({
+    queryKey: ['analytics', 'sentiment-influence-matrix'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.sentimentInfluenceMatrix);
+      return res.data?.data;
+    },
+  });
+}
+
+export function useNarrativeBattle() {
+  return useQuery({
+    queryKey: ['analytics', 'narrative-battle'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.narrativeBattle);
+      return res.data?.data;
+    },
+  });
+}
