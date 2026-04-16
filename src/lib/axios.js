@@ -80,6 +80,10 @@ export const endpoints = {
     ghostPages: '/analytics/ghost-pages',
     periodicReport: '/analytics/periodic-report',
     latestPosts: '/analytics/latest-posts',
+    highImpactPosts: '/analytics/high-impact-posts',
+    narrativeHealth: '/analytics/narrative-health',
+    crisisCorridor: '/analytics/crisis-corridor',
+    aiSynthesizer: '/analytics/ai-synthesizer',
   },
   actionPlans: {
     byPage: (pageId) => `/action-plans/page/${pageId}`,

@@ -10,9 +10,8 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import LinearProgress from '@mui/material/LinearProgress';
-import Tooltip from '@mui/material/Tooltip';
-import IconButton from '@mui/material/IconButton';
-import { alpha } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
 import { Iconify } from 'src/components/iconify';
 import { ChartCard } from './chart-card';
@@ -24,7 +23,21 @@ import axiosInstance, { endpoints } from 'src/lib/axios';
 
 const DEFAULT_TOPICS = 'غزه,اقتصاد غزه,انتخابات آمریکا,تغییرات اقلیمی,هوش مصنوعی,بحران انسانی یمن,حقوق بشر,تحریم‌ها,جنگ لبنان,مهاجرت';
 
+function CustomTooltip({ active, payload }) {
+  if (!active || !payload?.[0]) return null;
+  const d = payload[0].payload;
+  return (
+    <Box sx={{ bgcolor: 'background.paper', p: 1.5, borderRadius: 1, boxShadow: 3 }}>
+      <Box sx={{ fontWeight: 600, fontSize: 12 }}>{d.topic}</Box>
+      <Box sx={{ fontSize: 11, color: d.covered ? 'success.main' : 'error.main' }}>
+        {d.covered ? '✓ پوشش داده شده' : '✗ سکوت'}
+      </Box>
+    </Box>
+  );
+}
+
 export function SilenceRadar() {
+  const theme = useTheme();
   const [topicsInput, setTopicsInput] = useState(DEFAULT_TOPICS);
   const [result, setResult] = useState(null);
 
@@ -36,7 +49,6 @@ export function SilenceRadar() {
     onSuccess: (data) => setResult(data),
   });
 
-  // Auto-analyze on mount with default topics
   useEffect(() => {
     const topics = DEFAULT_TOPICS.split(',').map((t) => t.trim()).filter(Boolean);
     mutation.mutate(topics);
@@ -49,15 +61,22 @@ export function SilenceRadar() {
   };
 
   const coverageRate = result?.coverage_rate ?? 0;
-  const coverageColor = coverageRate > 70 ? 'success' : coverageRate > 40 ? 'warning' : 'error';
+
+  // Build radar data
+  const radarData = result?.global_topics?.map((topic) => ({
+    topic,
+    covered: result.covered_topics?.includes(topic),
+    value: result.covered_topics?.includes(topic) ? 100 : 20,
+    fullMark: 100,
+  })) || [];
 
   return (
     <ChartCard
       title="رادار سکوت"
       icon="solar:eye-bold-duotone"
-      info="مقایسه موضوعات داغ جهانی با پوشش شبکه ما. شکاف‌ها = موضوعاتی که شبکه نسبت به آن‌ها سکوت کرده"
+      info="دایره بیرونی = موضوعات داغ جهانی. لکه رنگی = پوشش شبکه ما. هر چقدر لکه به لبه نزدیک‌تر باشد، شبکه به‌روزتر است."
     >
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 2 }}>
         <TextField
           fullWidth size="small"
           placeholder="موضوعات داغ جهانی (با کاما جدا کنید)..."
@@ -69,69 +88,81 @@ export function SilenceRadar() {
           startIcon={mutation.isPending ? <CircularProgress size={16} /> : <Iconify icon="solar:magnifer-bold" />}
           sx={{ minWidth: 120, whiteSpace: 'nowrap' }}
         >
-          تحلیل شکاف
+          تحلیل
         </Button>
       </Stack>
 
       {result && (
-        <Box>
-          {/* Coverage meter */}
-          <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2.5 }}>
-            <Box sx={{ flex: 1 }}>
-              <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>نرخ پوشش شبکه</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: `${coverageColor}.main` }}>{coverageRate}%</Typography>
-              </Stack>
-              <LinearProgress
-                variant="determinate" value={coverageRate}
-                color={coverageColor}
-                sx={{ height: 10, borderRadius: 1 }}
-              />
-            </Box>
-            <Tooltip title="تعداد شکاف‌های شناسایی‌شده" arrow>
-              <Chip
-                label={`${result.silence_gaps?.length || 0} شکاف`}
-                color={result.silence_gaps?.length > 3 ? 'error' : 'warning'}
-                size="small"
-                icon={<Iconify icon="solar:danger-triangle-bold" width={14} />}
-              />
-            </Tooltip>
-          </Stack>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems="center">
+          {/* Circular Radar */}
+          <Box sx={{ width: 320, height: 280, direction: 'ltr', flexShrink: 0 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+                <PolarGrid stroke={alpha(theme.palette.text.primary, 0.1)} />
+                <PolarAngleAxis
+                  dataKey="topic"
+                  tick={{ fontSize: 10, fill: theme.palette.text.secondary }}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Radar
+                  name="پوشش"
+                  dataKey="value"
+                  stroke={theme.palette.primary.main}
+                  fill={theme.palette.primary.main}
+                  fillOpacity={0.25}
+                  strokeWidth={2}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </Box>
 
-          {/* Gaps */}
-          {result.silence_gaps?.length > 0 && (
-            <Box sx={(theme) => ({ p: 2, borderRadius: 1.5, bgcolor: alpha(theme.palette.error.main, 0.04), border: `1px solid ${alpha(theme.palette.error.main, 0.12)}`, mb: 2 })}>
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-                <Iconify icon="solar:shield-warning-bold-duotone" width={18} sx={{ color: 'error.main' }} />
-                <Typography variant="caption" sx={{ fontWeight: 600, color: 'error.main' }}>
-                  موضوعات بدون پوشش — نیاز به اقدام فوری
-                </Typography>
-              </Stack>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                {result.silence_gaps.map((gap) => (
-                  <Chip key={gap} label={gap} size="small" color="error" variant="outlined" icon={<Iconify icon="solar:close-circle-bold" width={14} />} />
-                ))}
+          {/* Details */}
+          <Box sx={{ flex: 1 }}>
+            <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
+              <Box sx={{ flex: 1 }}>
+                <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>نرخ پوشش</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: coverageRate > 70 ? 'success.main' : coverageRate > 40 ? 'warning.main' : 'error.main' }}>
+                    {coverageRate}%
+                  </Typography>
+                </Stack>
+                <LinearProgress
+                  variant="determinate" value={coverageRate}
+                  color={coverageRate > 70 ? 'success' : coverageRate > 40 ? 'warning' : 'error'}
+                  sx={{ height: 8, borderRadius: 1 }}
+                />
               </Box>
-            </Box>
-          )}
+            </Stack>
 
-          {/* Covered */}
-          {result.covered_topics?.length > 0 && (
-            <Box sx={(theme) => ({ p: 2, borderRadius: 1.5, bgcolor: alpha(theme.palette.success.main, 0.04), border: `1px solid ${alpha(theme.palette.success.main, 0.12)}` })}>
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-                <Iconify icon="solar:check-circle-bold-duotone" width={18} sx={{ color: 'success.main' }} />
-                <Typography variant="caption" sx={{ fontWeight: 600, color: 'success.main' }}>
-                  موضوعات پوشش داده شده
-                </Typography>
-              </Stack>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                {result.covered_topics.map((topic) => (
-                  <Chip key={topic} label={topic} size="small" color="success" variant="outlined" icon={<Iconify icon="solar:check-circle-bold" width={14} />} />
-                ))}
+            {result.silence_gaps?.length > 0 && (
+              <Box sx={(t) => ({ p: 1.5, borderRadius: 1.5, bgcolor: alpha(t.palette.error.main, 0.04), border: `1px solid ${alpha(t.palette.error.main, 0.12)}`, mb: 1.5 })}>
+                <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 0.75 }}>
+                  <Iconify icon="solar:shield-warning-bold-duotone" width={16} sx={{ color: 'error.main' }} />
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'error.main' }}>سکوت</Typography>
+                </Stack>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {result.silence_gaps.map((gap) => (
+                    <Chip key={gap} label={gap} size="small" color="error" variant="outlined" sx={{ fontSize: 10 }} />
+                  ))}
+                </Box>
               </Box>
-            </Box>
-          )}
-        </Box>
+            )}
+
+            {result.covered_topics?.length > 0 && (
+              <Box sx={(t) => ({ p: 1.5, borderRadius: 1.5, bgcolor: alpha(t.palette.success.main, 0.04), border: `1px solid ${alpha(t.palette.success.main, 0.12)}` })}>
+                <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 0.75 }}>
+                  <Iconify icon="solar:check-circle-bold-duotone" width={16} sx={{ color: 'success.main' }} />
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'success.main' }}>پوشش</Typography>
+                </Stack>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {result.covered_topics.map((topic) => (
+                    <Chip key={topic} label={topic} size="small" color="success" variant="outlined" sx={{ fontSize: 10 }} />
+                  ))}
+                </Box>
+              </Box>
+            )}
+          </Box>
+        </Stack>
       )}
     </ChartCard>
   );

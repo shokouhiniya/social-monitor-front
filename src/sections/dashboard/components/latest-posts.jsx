@@ -62,9 +62,9 @@ export function LatestPosts() {
                 })}
               >
                 <Stack direction="row" alignItems="flex-start" spacing={1.5}>
-                  <Avatar src={post.page?.profile_image_url} sx={{ width: 32, height: 32, mt: 0.25 }}>
+                  {/* <Avatar src={post.page?.profile_image_url} sx={{ width: 32, height: 32, mt: 0.25 }}>
                     {post.page?.name?.[0]}
-                  </Avatar>
+                  </Avatar> */}
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
                       <Typography variant="caption" sx={{ fontWeight: 600 }}>

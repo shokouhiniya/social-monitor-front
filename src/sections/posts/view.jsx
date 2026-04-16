@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
+import Grid from '@mui/material/Grid';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -20,6 +21,8 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { Iconify } from 'src/components/iconify';
 import { usePosts } from 'src/api/posts';
+import { HighImpactFeed } from '../dashboard/components/high-impact-feed';
+import { LatestPosts } from '../dashboard/components/latest-posts';
 
 // ----------------------------------------------------------------------
 
@@ -46,9 +49,13 @@ export function PostsListView() {
 
   return (
     <DashboardContent maxWidth="xl">
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        پست‌ها
-      </Typography>
+      <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>پست‌ها</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>مدیریت و تحلیل پست‌های شبکه پایش</Typography>
+
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid size={{ xs: 12, md: 6 }}><HighImpactFeed /></Grid>
+        <Grid size={{ xs: 12, md: 6 }}><LatestPosts /></Grid>
+      </Grid>
 
       <Card>
         <Box sx={{ p: 2 }}>

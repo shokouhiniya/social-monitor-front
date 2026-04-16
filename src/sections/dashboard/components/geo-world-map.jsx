@@ -47,7 +47,7 @@ const MapChart = memo(function MapChart({ items, maxCount, total, theme }) {
   return (
     <ComposableMap
       projection="geoNaturalEarth1"
-      projectionConfig={{ scale: 220, center: [50, 28] }}
+      projectionConfig={{ scale: 320, center: [30, 18] }}
       style={{ width: '100%', height: '100%' }}
     >
       <Geographies geography={GEO_URL}>

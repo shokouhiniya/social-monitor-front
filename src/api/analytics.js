@@ -86,3 +86,45 @@ export function useLatestPosts(limit = 10) {
     },
   });
 }
+
+export function useHighImpactPosts(limit = 5) {
+  return useQuery({
+    queryKey: ['analytics', 'high-impact-posts', limit],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.highImpactPosts, { params: { limit } });
+      return res.data?.data;
+    },
+  });
+}
+
+export function useNarrativeHealth() {
+  return useQuery({
+    queryKey: ['analytics', 'narrative-health'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.narrativeHealth);
+      return res.data?.data;
+    },
+  });
+}
+
+export function useCrisisCorridor() {
+  return useQuery({
+    queryKey: ['analytics', 'crisis-corridor'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.crisisCorridor);
+      return res.data?.data;
+    },
+    refetchInterval: 60000,
+  });
+}
+
+export function useAiSynthesizer() {
+  return useQuery({
+    queryKey: ['analytics', 'ai-synthesizer'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.aiSynthesizer);
+      return res.data?.data;
+    },
+    refetchInterval: 300000,
+  });
+}
