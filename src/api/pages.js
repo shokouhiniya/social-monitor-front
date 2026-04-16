@@ -57,3 +57,14 @@ export function useDeletePage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pages'] }),
   });
 }
+
+export function useRelatedPages(id) {
+  return useQuery({
+    queryKey: ['pages', id, 'related'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.pages.related(id));
+      return res.data?.data;
+    },
+    enabled: !!id,
+  });
+}

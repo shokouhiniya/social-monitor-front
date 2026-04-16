@@ -7,6 +7,7 @@ import Box from '@mui/material/Box';
 
 import { DashboardContent } from 'src/layouts/dashboard';
 import { useProfileDeepDive } from 'src/api/analytics';
+import { useRelatedPages } from 'src/api/pages';
 
 import { ProfileStatCard } from './components/profile-stat-card';
 import { CriticalRedlines } from './components/critical-redlines';
@@ -18,11 +19,14 @@ import { ActionCards } from './components/action-cards';
 import { ContentHookAnalyzer } from './components/content-hook-analyzer';
 import { InsightPanel } from './components/insight-panel';
 import { NarrativeTimeline } from './components/narrative-timeline';
+import { NetworkCircle } from './components/network-circle';
+import { InteractionLedger } from './components/interaction-ledger';
 
 // ----------------------------------------------------------------------
 
 export function PageProfileView({ id }) {
   const { data, isLoading } = useProfileDeepDive(id);
+  const { data: relatedPages } = useRelatedPages(id);
 
   if (isLoading) {
     return (
@@ -97,6 +101,14 @@ export function PageProfileView({ id }) {
         {/* Content Hook Analyzer */}
         <Grid size={{ xs: 12, md: 6 }}>
           <ContentHookAnalyzer data={data.content_hooks} />
+        </Grid>
+
+        {/* Network Circle + Interaction Ledger */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <NetworkCircle page={pg} relatedPages={relatedPages} />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <InteractionLedger pageId={id} />
         </Grid>
 
         {/* Unified Narrative Timeline */}

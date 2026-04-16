@@ -46,6 +46,7 @@ export const endpoints = {
   pages: {
     list: '/pages',
     detail: (id) => `/pages/${id}`,
+    related: (id) => `/pages/${id}/related`,
     create: '/pages',
     update: (id) => `/pages/${id}`,
     delete: (id) => `/pages/${id}`,
