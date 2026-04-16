@@ -57,6 +57,7 @@
     "nprogress": "^0.2.0",
     "react": "19.1.2",
     "react-dom": "19.1.2",
+    "react-force-graph-2d": "^1.29.1",
     "react-hook-form": "^7.58.1",
     "react-i18next": "^15.4.1",
     "react-simple-maps": "^3.0.0",

@@ -1,11 +1,13 @@
 'use client';
 
+import { useRef, useCallback, useEffect, useState } from 'react';
+
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import Typography from '@mui/material/Typography';
-import Tooltip from '@mui/material/Tooltip';
-import { alpha, useTheme } from '@mui/material/styles';
+import CircularProgress from '@mui/material/CircularProgress';
+import { useTheme } from '@mui/material/styles';
 
 import { useRouter } from 'src/routes/hooks';
 import { paths } from 'src/routes/paths';
@@ -17,9 +19,17 @@ import { ChartCard } from '../../dashboard/components/chart-card';
 export function NetworkCircle({ page, relatedPages }) {
   const theme = useTheme();
   const router = useRouter();
+  const [ForceGraph, setForceGraph] = useState(null);
+  const graphRef = useRef();
 
-  // Use reshared posts to find related pages, or fallback to same-cluster pages
-  const connections = (relatedPages || []).slice(0, 8);
+  // Dynamic import for SSR compatibility
+  useEffect(() => {
+    import('react-force-graph-2d').then((mod) => {
+      setForceGraph(() => mod.default);
+    });
+  }, []);
+
+  const connections = (relatedPages || []).slice(0, 10);
 
   if (!page || connections.length === 0) {
     return (
@@ -31,79 +41,93 @@ export function NetworkCircle({ page, relatedPages }) {
     );
   }
 
+  // Build graph data
+  const nodes = [
+    { id: page.id, name: page.name, val: 20, color: theme.palette.primary.main, isCenter: true },
+    ...connections.map((c, i) => ({
+      id: c.id,
+      name: c.name,
+      val: 8 + (10 - i),
+      color: theme.palette.info.main,
+      isCenter: false,
+    })),
+  ];
+
+  const links = connections.map((c) => ({
+    source: page.id,
+    target: c.id,
+    value: 1,
+  }));
+
+  const graphData = { nodes, links };
+
+  const handleNodeClick = useCallback((node) => {
+    if (!node.isCenter) {
+      router.push(paths.dashboard.pages.profile(node.id));
+    }
+  }, [router]);
+
+  const nodeCanvasObject = useCallback((node, ctx, globalScale) => {
+    const label = node.name || '';
+    const fontSize = node.isCenter ? 12 / globalScale : 10 / globalScale;
+    const r = node.isCenter ? 14 : 9;
+
+    // Circle
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
+    ctx.fillStyle = node.color + '33';
+    ctx.fill();
+    ctx.strokeStyle = node.color;
+    ctx.lineWidth = node.isCenter ? 3 : 1.5;
+    ctx.stroke();
+
+    // Inner circle
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, r * 0.6, 0, 2 * Math.PI, false);
+    ctx.fillStyle = node.color + '88';
+    ctx.fill();
+
+    // Label
+    ctx.font = `${node.isCenter ? 'bold ' : ''}${fontSize}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = theme.palette.text.primary;
+    ctx.fillText(label.slice(0, 15), node.x, node.y + r + 3);
+  }, [theme]);
+
   return (
     <ChartCard
       title="حلقه نزدیکان"
       icon="solar:users-group-two-rounded-bold-duotone"
-      info="پیج اصلی در مرکز و پیج‌های مرتبط در اطراف. برای اثرگذاری از طریق «دوست» در شبکه اقدام کنید."
+      info="پیج اصلی در مرکز. پیج‌های هم‌خوشه در اطراف. کلیک کنید برای مشاهده پروفایل."
     >
-      <Box sx={{ position: 'relative', width: '100%', height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {/* Center node */}
-        <Tooltip title={page.name} arrow>
-          <Avatar
-            src={page.profile_image_url}
-            sx={{
-              width: 56, height: 56, position: 'absolute', zIndex: 2,
-              border: `3px solid ${theme.palette.primary.main}`,
-              boxShadow: `0 0 20px ${alpha(theme.palette.primary.main, 0.3)}`,
+      <Box sx={{ height: 320, direction: 'ltr', position: 'relative' }}>
+        {ForceGraph ? (
+          <ForceGraph
+            ref={graphRef}
+            graphData={graphData}
+            width={400}
+            height={320}
+            nodeCanvasObject={nodeCanvasObject}
+            nodePointerAreaPaint={(node, color, ctx) => {
+              const r = node.isCenter ? 14 : 9;
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, r + 4, 0, 2 * Math.PI, false);
+              ctx.fillStyle = color;
+              ctx.fill();
             }}
-          >
-            {page.name?.[0]}
-          </Avatar>
-        </Tooltip>
-
-        {/* Connection lines + nodes */}
-        {connections.map((conn, idx) => {
-          const angle = (idx / connections.length) * 360;
-          const distance = 100;
-          const rad = (angle * Math.PI) / 180;
-          const x = Math.cos(rad) * distance;
-          const y = Math.sin(rad) * distance;
-          const strength = 1 - idx * 0.1;
-
-          return (
-            <Box key={conn.id}>
-              {/* Line */}
-              <Box
-                sx={{
-                  position: 'absolute',
-                  left: '50%', top: '50%',
-                  width: distance,
-                  height: 2 + strength * 2,
-                  bgcolor: alpha(theme.palette.primary.main, 0.1 + strength * 0.2),
-                  borderRadius: 1,
-                  transformOrigin: '0 50%',
-                  transform: `rotate(${angle}deg)`,
-                  zIndex: 0,
-                }}
-              />
-              {/* Node */}
-              <Tooltip title={`${conn.name} • ${conn.category || '—'}`} arrow>
-                <Avatar
-                  src={conn.profile_image_url}
-                  onClick={() => router.push(paths.dashboard.pages.profile(conn.id))}
-                  sx={{
-                    position: 'absolute',
-                    left: `calc(50% + ${x}px)`,
-                    top: `calc(50% + ${y}px)`,
-                    transform: 'translate(-50%, -50%)',
-                    width: 36, height: 36,
-                    cursor: 'pointer',
-                    border: `2px solid ${alpha(theme.palette.primary.main, 0.3 + strength * 0.4)}`,
-                    zIndex: 1,
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      transform: 'translate(-50%, -50%) scale(1.2)',
-                      boxShadow: `0 0 12px ${alpha(theme.palette.primary.main, 0.3)}`,
-                    },
-                  }}
-                >
-                  {conn.name?.[0]}
-                </Avatar>
-              </Tooltip>
-            </Box>
-          );
-        })}
+            onNodeClick={handleNodeClick}
+            linkColor={() => theme.palette.divider}
+            linkWidth={1.5}
+            cooldownTicks={50}
+            backgroundColor="transparent"
+            enableZoomInteraction={false}
+          />
+        ) : (
+          <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CircularProgress size={24} />
+          </Box>
+        )}
       </Box>
 
       {/* Legend */}
@@ -113,7 +137,7 @@ export function NetworkCircle({ page, relatedPages }) {
             sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' }, p: 0.5, borderRadius: 0.5 }}
             onClick={() => router.push(paths.dashboard.pages.profile(conn.id))}
           >
-            <Avatar src={conn.profile_image_url} sx={{ width: 24, height: 24, fontSize: 10 }}>{conn.name?.[0]}</Avatar>
+            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'info.main', flexShrink: 0 }} />
             <Typography variant="caption" sx={{ fontWeight: 600, flex: 1 }} noWrap>{conn.name}</Typography>
             <Typography variant="caption" color="text.disabled" sx={{ fontSize: 10 }}>{conn.cluster || '—'}</Typography>
           </Stack>
