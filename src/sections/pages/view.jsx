@@ -37,7 +37,7 @@ import { useRouter } from 'src/routes/hooks';
 import { paths } from 'src/routes/paths';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { Iconify } from 'src/components/iconify';
-import { usePages, useCreatePage, useBulkCreatePages, useFetchPageData } from 'src/api/pages';
+import { usePages, useCreatePage, useBulkCreatePages } from 'src/api/pages';
 
 // ----------------------------------------------------------------------
 
@@ -102,7 +102,6 @@ export function PagesListView() {
   const { data, isLoading } = usePages(params);
   const createMutation = useCreatePage();
   const bulkMutation = useBulkCreatePages();
-  const fetchMutation = useFetchPageData();
   const rows = data?.data || [];
   const total = data?.total || 0;
 
@@ -283,14 +282,6 @@ export function PagesListView() {
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Stack direction="row" spacing={0.5}>
-                          <Tooltip title="واکشی دیتا" arrow>
-                            <IconButton size="small" onClick={() => fetchMutation.mutate(row.id)}
-                              disabled={fetchMutation.isPending}
-                              sx={(theme) => ({ color: fetchMutation.isPending ? 'text.disabled' : 'info.main' })}
-                            >
-                              <Iconify icon="solar:cloud-download-bold-duotone" width={20} />
-                            </IconButton>
-                          </Tooltip>
                           <Tooltip title="مشاهده پروفایل" arrow>
                             <IconButton size="small" onClick={() => router.push(paths.dashboard.pages.profile(row.id))}>
                               <Iconify icon="solar:eye-bold" width={18} />
