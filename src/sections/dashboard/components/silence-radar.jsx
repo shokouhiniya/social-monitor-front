@@ -1,23 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { Radar, Tooltip, PolarGrid, RadarChart, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
-import TextField from '@mui/material/TextField';
+import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
-import LinearProgress from '@mui/material/LinearProgress';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import LinearProgress from '@mui/material/LinearProgress';
+import CircularProgress from '@mui/material/CircularProgress';
+
+import axiosInstance, { endpoints } from 'src/lib/axios';
 
 import { Iconify } from 'src/components/iconify';
-import { ChartCard } from './chart-card';
 
-import { useMutation } from '@tanstack/react-query';
-import axiosInstance, { endpoints } from 'src/lib/axios';
+import { ChartCard } from './chart-card';
 
 // ----------------------------------------------------------------------
 
@@ -163,6 +164,14 @@ export function SilenceRadar() {
             )}
           </Box>
         </Stack>
+      )}
+
+      {result && result.covered_topics?.length === 0 && result.silence_gaps?.length === result.global_topics?.length && (
+        <Box sx={(t) => ({ p: 1.5, borderRadius: 1, bgcolor: alpha(t.palette.warning.main, 0.06), border: `1px dashed ${alpha(t.palette.warning.main, 0.3)}`, mt: 1.5 })}>
+          <Typography variant="caption" color="warning.main">
+            ⚠ همه موضوعات به عنوان «سکوت» شناسایی شدند. اگر پست‌ها هنوز توسط LLM تحلیل نشده‌اند، ابتدا از صفحه پیج‌ها دکمه «تحلیل هوشمند» را بزنید.
+          </Typography>
+        </Box>
       )}
     </ChartCard>
   );

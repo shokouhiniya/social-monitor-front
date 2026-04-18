@@ -5,31 +5,33 @@ import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Grid from '@mui/material/Grid';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
-import IconButton from '@mui/material/IconButton';
+import Menu from '@mui/material/Menu';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
+import Tooltip from '@mui/material/Tooltip';
+import { alpha } from '@mui/material/styles';
+import MenuItem from '@mui/material/MenuItem';
+import TextField from '@mui/material/TextField';
+import Accordion from '@mui/material/Accordion';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
-import CircularProgress from '@mui/material/CircularProgress';
 import LinearProgress from '@mui/material/LinearProgress';
-import Accordion from '@mui/material/Accordion';
+import CircularProgress from '@mui/material/CircularProgress';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
-import Menu from '@mui/material/Menu';
-import Tooltip from '@mui/material/Tooltip';
-import { alpha } from '@mui/material/styles';
 
-import { DashboardContent } from 'src/layouts/dashboard';
-import { Iconify } from 'src/components/iconify';
-import { StatCard } from '../dashboard/components/stat-card';
-import { useAlertStats, useGroupedAlerts, useCreateStrategicAlert, useUpdateAlertStatus } from 'src/api/strategic-alerts';
 import { useGenerateAlerts } from 'src/api/analytics';
+import { DashboardContent } from 'src/layouts/dashboard';
+import { useAlertStats, useGroupedAlerts, useUpdateAlertStatus, useCreateStrategicAlert } from 'src/api/strategic-alerts';
+
+import { Iconify } from 'src/components/iconify';
+
+import { StatCard } from '../dashboard/components/stat-card';
 
 // ----------------------------------------------------------------------
 
@@ -43,10 +45,11 @@ const CATEGORY_ICONS = { silence_gap: 'solar:eye-bold-duotone', trend_shift: 'so
 export function AlertsView() {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [showArchived, setShowArchived] = useState(false);
   const [form, setForm] = useState({ title: '', message: '', priority: 'medium', category: '', assigned_to: '', evidence_url: '' });
 
   const { data: stats, isLoading: statsLoading } = useAlertStats();
-  const { data: grouped, isLoading: groupedLoading } = useGroupedAlerts();
+  const { data: grouped, isLoading: groupedLoading } = useGroupedAlerts(showArchived ? 'archived' : undefined);
   const createMutation = useCreateStrategicAlert();
   const updateStatusMutation = useUpdateAlertStatus();
   const generateMutation = useGenerateAlerts();
@@ -68,6 +71,15 @@ export function AlertsView() {
           <Typography variant="body2" color="text.secondary">مدیریت هشدارها، تخصیص مسئولیت و پیگیری اقدامات</Typography>
         </Box>
         <Stack direction="row" spacing={1}>
+          <Button
+            variant={showArchived ? 'contained' : 'outlined'}
+            color={showArchived ? 'default' : 'inherit'}
+            startIcon={<Iconify icon="solar:archive-bold-duotone" />}
+            onClick={() => setShowArchived(!showArchived)}
+            sx={showArchived ? {} : { borderColor: 'divider', color: 'text.secondary' }}
+          >
+            {showArchived ? 'بازگشت به فعال‌ها' : 'آرشیو'}
+          </Button>
           <Button variant="outlined" color="warning"
             startIcon={generateMutation.isPending ? <CircularProgress size={16} /> : <Iconify icon="solar:cpu-bolt-bold-duotone" />}
             onClick={() => generateMutation.mutate()}
@@ -115,8 +127,8 @@ export function AlertsView() {
         <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
       ) : filteredGroups.length === 0 ? (
         <Card sx={{ p: 5, textAlign: 'center' }}>
-          <Iconify icon="solar:check-circle-bold-duotone" width={48} sx={{ color: 'success.main', mb: 2 }} />
-          <Typography variant="body1" color="text.secondary">هشدار فعالی وجود ندارد</Typography>
+          <Iconify icon={showArchived ? 'solar:archive-bold-duotone' : 'solar:check-circle-bold-duotone'} width={48} sx={{ color: showArchived ? 'text.disabled' : 'success.main', mb: 2 }} />
+          <Typography variant="body1" color="text.secondary">{showArchived ? 'هشدار آرشیو شده‌ای وجود ندارد' : 'هشدار فعالی وجود ندارد'}</Typography>
         </Card>
       ) : (
         <Stack spacing={2}>

@@ -26,11 +26,12 @@ export function useAlertStats() {
   });
 }
 
-export function useGroupedAlerts() {
+export function useGroupedAlerts(status) {
   return useQuery({
-    queryKey: ['strategic-alerts', 'grouped'],
+    queryKey: ['strategic-alerts', 'grouped', status],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.strategicAlerts.grouped);
+      const params = status ? { status } : {};
+      const res = await axiosInstance.get(endpoints.strategicAlerts.grouped, { params });
       return res.data?.data;
     },
     refetchInterval: 30000,

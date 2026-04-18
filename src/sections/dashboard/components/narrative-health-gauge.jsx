@@ -1,15 +1,15 @@
 'use client';
 
 import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
 import { alpha, useTheme } from '@mui/material/styles';
+import CircularProgress from '@mui/material/CircularProgress';
 
-import { Iconify } from 'src/components/iconify';
-import { ChartCard } from './chart-card';
 import { useNarrativeHealth } from 'src/api/analytics';
+
+import { ChartCard } from './chart-card';
 
 // ----------------------------------------------------------------------
 
@@ -85,17 +85,53 @@ export function NarrativeHealthGauge() {
 
       <Chip label={data.label} size="small" color={score > 70 ? 'success' : score > 40 ? 'warning' : 'error'} sx={{ display: 'flex', mb: 1.5 }} />
 
+      {/* Matched keywords */}
+      {data.matched_keywords?.length > 0 && (
+        <Box sx={{ mb: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+            کلمات کلیدی منطبق:
+          </Typography>
+          <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
+            {data.matched_keywords.map((kw) => (
+              <Chip key={kw} label={kw} size="small" color="success" variant="outlined" sx={{ fontSize: 11 }} />
+            ))}
+          </Stack>
+        </Box>
+      )}
+
+      {/* Unmatched keywords */}
+      {data.unmatched_keywords?.length > 0 && (
+        <Box sx={{ mb: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+            کلمات کلیدی بدون پوشش:
+          </Typography>
+          <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
+            {data.unmatched_keywords.map((kw) => (
+              <Chip key={kw} label={kw} size="small" color="warning" variant="outlined" sx={{ fontSize: 11 }} />
+            ))}
+          </Stack>
+        </Box>
+      )}
+
       {/* Deviation keywords */}
       {data.deviation_keywords?.length > 0 && (
         <Box>
           <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
             کلمات کلیدی منحرف‌کننده:
           </Typography>
-          <Stack direction="row" spacing={0.5}>
+          <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
             {data.deviation_keywords.map((kw) => (
               <Chip key={kw} label={kw} size="small" color="error" variant="outlined" sx={{ fontSize: 11 }} />
             ))}
           </Stack>
+        </Box>
+      )}
+
+      {data.total_network_terms === 0 && (
+        <Box sx={(t) => ({ p: 1.5, borderRadius: 1, bgcolor: alpha(t.palette.warning.main, 0.06), border: `1px dashed ${alpha(t.palette.warning.main, 0.3)}`, mt: 1 })}>
+          <Typography variant="caption" color="warning.main">
+            ⚠ هنوز هیچ پستی توسط LLM تحلیل نشده. ابتدا از صفحه پیج‌ها دکمه «تحلیل هوشمند» را بزنید تا کلمات کلیدی و موضوعات استخراج شوند.
+          </Typography>
         </Box>
       )}
     </ChartCard>

@@ -2,24 +2,25 @@
 
 import { useState } from 'react';
 
-import Card from '@mui/material/Card';
 import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import Chip from '@mui/material/Chip';
+import Menu from '@mui/material/Menu';
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
-import Typography from '@mui/material/Typography';
-import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
 import Tooltip from '@mui/material/Tooltip';
-import IconButton from '@mui/material/IconButton';
-import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import { alpha } from '@mui/material/styles';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import CircularProgress from '@mui/material/CircularProgress';
 
-import { Iconify } from 'src/components/iconify';
+import { toJalali } from 'src/utils/format-jalali';
+
 import axiosInstance, { endpoints } from 'src/lib/axios';
 import { useFetchPageData, useProcessPageData } from 'src/api/pages';
-import { toJalali } from 'src/utils/format-jalali';
+
+import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
@@ -120,7 +121,24 @@ export function ProfileHeader({ page, onEdit }) {
             <Typography variant="h5" sx={{ fontWeight: 700 }}>{page.name}</Typography>
             {page.is_active === false && <Chip label="غیرفعال" size="small" color="error" icon={<Iconify icon="solar:ghost-bold" width={14} />} />}
           </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>@{page.username} • {page.platform}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            <Box
+              component="a"
+              href={
+                page.platform === 'telegram'
+                  ? `https://t.me/${page.username}`
+                  : page.platform === 'twitter'
+                    ? `https://x.com/${page.username}`
+                    : `https://instagram.com/${page.username}`
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ color: 'primary.main', textDecoration: 'none', fontWeight: 600, fontSize: 'inherit', '&:hover': { textDecoration: 'underline' } }}
+            >
+              @{page.username}
+            </Box>
+            {' • '}{page.platform}
+          </Typography>
           {page.bio && <Typography variant="body2" color="text.secondary" sx={{ mb: 1, maxWidth: 500 }}>{page.bio}</Typography>}
           <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
             {page.category && <Chip label={page.category} size="small" color="primary" variant="outlined" />}
