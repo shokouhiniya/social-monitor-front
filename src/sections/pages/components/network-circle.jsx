@@ -1,13 +1,20 @@
 'use client';
 
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useMemo, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import Avatar from '@mui/material/Avatar';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
-import { useTheme } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  Handle,
+  Position,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 
 import { useRouter } from 'src/routes/hooks';
 import { paths } from 'src/routes/paths';
@@ -16,133 +23,162 @@ import { ChartCard } from '../../dashboard/components/chart-card';
 
 // ----------------------------------------------------------------------
 
+function CenterNode({ data }) {
+  return (
+    <Box
+      sx={{
+        width: 90, height: 90, borderRadius: '50%',
+        bgcolor: data.bgColor, border: `3px solid ${data.borderColor}`,
+        boxShadow: `0 0 20px ${data.glowColor}`,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        cursor: 'default',
+      }}
+    >
+      {data.image ? (
+        <Box component="img" src={data.image} sx={{ width: 40, height: 40, borderRadius: '50%', mb: 0.25 }} onError={(e) => { e.target.style.display = 'none'; }} />
+      ) : (
+        <Typography sx={{ fontSize: 24, fontWeight: 800, color: data.textColor }}>{data.initial}</Typography>
+      )}
+      <Typography sx={{ fontSize: 8, fontWeight: 700, color: data.textColor, textAlign: 'center', px: 0.5 }} noWrap>{data.label}</Typography>
+      <Handle type="source" position={Position.Top} style={{ opacity: 0 }} />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
+      <Handle type="source" position={Position.Left} style={{ opacity: 0 }} />
+      <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
+    </Box>
+  );
+}
+
+function RelatedNode({ data }) {
+  return (
+    <Box
+      sx={{
+        width: 70, height: 70, borderRadius: '50%',
+        bgcolor: data.bgColor, border: `2px solid ${data.borderColor}`,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', transition: 'all 0.2s',
+        '&:hover': { transform: 'scale(1.1)', boxShadow: `0 0 14px ${data.glowColor}` },
+      }}
+      onClick={data.onClick}
+    >
+      {data.image ? (
+        <Box component="img" src={data.image} sx={{ width: 28, height: 28, borderRadius: '50%', mb: 0.25 }} onError={(e) => { e.target.style.display = 'none'; }} />
+      ) : (
+        <Typography sx={{ fontSize: 16, fontWeight: 700, color: data.textColor }}>{data.initial}</Typography>
+      )}
+      <Typography sx={{ fontSize: 7, fontWeight: 600, color: data.textColor, textAlign: 'center', px: 0.25 }} noWrap>{data.label}</Typography>
+      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
+      <Handle type="target" position={Position.Bottom} style={{ opacity: 0 }} />
+      <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
+      <Handle type="target" position={Position.Right} style={{ opacity: 0 }} />
+    </Box>
+  );
+}
+
+const nodeTypes = { center: CenterNode, related: RelatedNode };
+
 export function NetworkCircle({ page, relatedPages }) {
   const theme = useTheme();
   const router = useRouter();
-  const [ForceGraph, setForceGraph] = useState(null);
-  const graphRef = useRef();
 
-  // Dynamic import for SSR compatibility
-  useEffect(() => {
-    import('react-force-graph-2d').then((mod) => {
-      setForceGraph(() => mod.default);
+  const connections = (relatedPages || []).slice(0, 8);
+
+  const { nodes, edges } = useMemo(() => {
+    if (!page || connections.length === 0) return { nodes: [], edges: [] };
+
+    const centerX = 200;
+    const centerY = 180;
+    const radius = 140;
+
+    const n = [
+      {
+        id: `page-${page.id}`,
+        type: 'center',
+        position: { x: centerX - 45, y: centerY - 45 },
+        data: {
+          label: page.name,
+          initial: page.name?.[0],
+          image: page.profile_image_url,
+          bgColor: alpha(theme.palette.primary.main, 0.12),
+          borderColor: theme.palette.primary.main,
+          glowColor: alpha(theme.palette.primary.main, 0.3),
+          textColor: theme.palette.primary.main,
+        },
+        draggable: false,
+      },
+    ];
+
+    const e = [];
+
+    connections.forEach((conn, idx) => {
+      const angle = (idx / connections.length) * 2 * Math.PI - Math.PI / 2;
+      const x = centerX + Math.cos(angle) * radius - 35;
+      const y = centerY + Math.sin(angle) * radius - 35;
+
+      n.push({
+        id: `page-${conn.id}`,
+        type: 'related',
+        position: { x, y },
+        data: {
+          label: conn.name,
+          initial: conn.name?.[0],
+          image: conn.profile_image_url,
+          bgColor: alpha(theme.palette.info.main, 0.08),
+          borderColor: alpha(theme.palette.info.main, 0.4),
+          glowColor: alpha(theme.palette.info.main, 0.2),
+          textColor: theme.palette.text.primary,
+          onClick: () => router.push(paths.dashboard.pages.profile(conn.id)),
+        },
+        draggable: true,
+      });
+
+      e.push({
+        id: `edge-${page.id}-${conn.id}`,
+        source: `page-${page.id}`,
+        target: `page-${conn.id}`,
+        type: 'default',
+        animated: idx < 3,
+        style: { stroke: alpha(theme.palette.primary.main, 0.2 + (1 - idx / connections.length) * 0.3), strokeWidth: 1.5 },
+      });
     });
-  }, []);
 
-  const connections = (relatedPages || []).slice(0, 10);
+    return { nodes: n, edges: e };
+  }, [page, connections, theme, router]);
 
   if (!page || connections.length === 0) {
     return (
-      <ChartCard title="حلقه نزدیکان" icon="solar:users-group-two-rounded-bold-duotone" info="پیج‌هایی که بیشترین تعامل را با این پیج دارند">
-        <Box sx={{ py: 4, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary">داده تعامل کافی موجود نیست</Typography>
-        </Box>
+      <ChartCard title="حلقه نزدیکان" icon="solar:users-group-two-rounded-bold-duotone" info="پیج‌های مرتبط در شبکه" sx={{ height: '100%' }}>
+        <Box sx={{ py: 4, textAlign: 'center' }}><Typography variant="body2" color="text.secondary">داده‌ای موجود نیست</Typography></Box>
       </ChartCard>
     );
   }
-
-  // Build graph data
-  const nodes = [
-    { id: page.id, name: page.name, val: 20, color: theme.palette.primary.main, isCenter: true },
-    ...connections.map((c, i) => ({
-      id: c.id,
-      name: c.name,
-      val: 8 + (10 - i),
-      color: theme.palette.info.main,
-      isCenter: false,
-    })),
-  ];
-
-  const links = connections.map((c) => ({
-    source: page.id,
-    target: c.id,
-    value: 1,
-  }));
-
-  const graphData = { nodes, links };
-
-  const handleNodeClick = useCallback((node) => {
-    if (!node.isCenter) {
-      router.push(paths.dashboard.pages.profile(node.id));
-    }
-  }, [router]);
-
-  const nodeCanvasObject = useCallback((node, ctx, globalScale) => {
-    const label = node.name || '';
-    const fontSize = node.isCenter ? 12 / globalScale : 10 / globalScale;
-    const r = node.isCenter ? 14 : 9;
-
-    // Circle
-    ctx.beginPath();
-    ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
-    ctx.fillStyle = node.color + '33';
-    ctx.fill();
-    ctx.strokeStyle = node.color;
-    ctx.lineWidth = node.isCenter ? 3 : 1.5;
-    ctx.stroke();
-
-    // Inner circle
-    ctx.beginPath();
-    ctx.arc(node.x, node.y, r * 0.6, 0, 2 * Math.PI, false);
-    ctx.fillStyle = node.color + '88';
-    ctx.fill();
-
-    // Label
-    ctx.font = `${node.isCenter ? 'bold ' : ''}${fontSize}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = theme.palette.text.primary;
-    ctx.fillText(label.slice(0, 15), node.x, node.y + r + 3);
-  }, [theme]);
 
   return (
     <ChartCard
       title="حلقه نزدیکان"
       icon="solar:users-group-two-rounded-bold-duotone"
-      info="پیج اصلی در مرکز. پیج‌های هم‌خوشه در اطراف. کلیک کنید برای مشاهده پروفایل."
+      info="پیج اصلی در مرکز. خطوط متحرک = ارتباط قوی‌تر. کلیک روی هر نود → پروفایل"
+      sx={{ height: '100%' }}
     >
-      <Box sx={{ height: 320, direction: 'ltr', position: 'relative' }}>
-        {ForceGraph ? (
-          <ForceGraph
-            ref={graphRef}
-            graphData={graphData}
-            width={400}
-            height={320}
-            nodeCanvasObject={nodeCanvasObject}
-            nodePointerAreaPaint={(node, color, ctx) => {
-              const r = node.isCenter ? 14 : 9;
-              ctx.beginPath();
-              ctx.arc(node.x, node.y, r + 4, 0, 2 * Math.PI, false);
-              ctx.fillStyle = color;
-              ctx.fill();
-            }}
-            onNodeClick={handleNodeClick}
-            linkColor={() => theme.palette.divider}
-            linkWidth={1.5}
-            cooldownTicks={50}
-            backgroundColor="transparent"
-            enableZoomInteraction={false}
-          />
-        ) : (
-          <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <CircularProgress size={24} />
-          </Box>
-        )}
+      <Box sx={{ height: 380, direction: 'ltr', borderRadius: 1, overflow: 'hidden', border: `1px solid ${theme.palette.divider}` }}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.3 }}
+          proOptions={{ hideAttribution: true }}
+          minZoom={0.5}
+          maxZoom={1.5}
+          nodesDraggable
+          nodesConnectable={false}
+          elementsSelectable={false}
+          panOnDrag
+          zoomOnScroll={false}
+        >
+          <Background color={alpha(theme.palette.text.primary, 0.03)} gap={20} />
+          <Controls showInteractive={false} style={{ bottom: 10, left: 10 }} />
+        </ReactFlow>
       </Box>
-
-      {/* Legend */}
-      <Stack spacing={0.5} sx={{ mt: 1 }}>
-        {connections.slice(0, 5).map((conn) => (
-          <Stack key={conn.id} direction="row" alignItems="center" spacing={1}
-            sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' }, p: 0.5, borderRadius: 0.5 }}
-            onClick={() => router.push(paths.dashboard.pages.profile(conn.id))}
-          >
-            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'info.main', flexShrink: 0 }} />
-            <Typography variant="caption" sx={{ fontWeight: 600, flex: 1 }} noWrap>{conn.name}</Typography>
-            <Typography variant="caption" color="text.disabled" sx={{ fontSize: 10 }}>{conn.cluster || '—'}</Typography>
-          </Stack>
-        ))}
-      </Stack>
     </ChartCard>
   );
 }
