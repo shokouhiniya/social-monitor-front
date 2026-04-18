@@ -106,6 +106,15 @@ export const endpoints = {
     create: '/action-plans',
     update: (id) => `/action-plans/${id}`,
   },
+  interactions: {
+    byPage: (pageId) => `/interactions/page/${pageId}`,
+    create: '/interactions',
+  },
+  settings: {
+    list: '/settings',
+    byCategory: (cat) => `/settings/category/${cat}`,
+    update: '/settings',
+  },
   strategicAlerts: {
     list: '/strategic-alerts',
     stats: '/strategic-alerts/stats',

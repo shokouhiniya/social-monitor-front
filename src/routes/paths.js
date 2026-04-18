@@ -26,5 +26,6 @@ export const paths = {
     fieldReports: `${ROOTS.DASHBOARD}/field-reports`,
     posts: `${ROOTS.DASHBOARD}/posts`,
     alerts: `${ROOTS.DASHBOARD}/alerts`,
+    settings: `${ROOTS.DASHBOARD}/settings`,
   },
 };

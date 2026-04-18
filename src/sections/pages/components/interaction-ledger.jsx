@@ -13,11 +13,14 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
+import CircularProgress from '@mui/material/CircularProgress';
 import { alpha } from '@mui/material/styles';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { Iconify } from 'src/components/iconify';
 import { ChartCard } from '../../dashboard/components/chart-card';
 import { toJalali } from 'src/utils/format-jalali';
+import axiosInstance, { endpoints } from 'src/lib/axios';
 
 // ----------------------------------------------------------------------
 
@@ -29,23 +32,11 @@ const CONTACT_TYPES = {
   comment: { label: 'کامنت', icon: 'solar:chat-line-bold', color: 'secondary' },
 };
 
-const DEMO_INTERACTIONS = [
-  { id: 1, date: '2026-04-08', type: 'direct', result: 'success', responsible: 'علی محمدی', note: 'ارسال محتوای پیشنهادی — پاسخ مثبت' },
-  { id: 2, date: '2026-04-05', type: 'comment', result: 'success', responsible: 'سارا احمدی', note: 'لایک و ریپلای استوری — واکنش مثبت' },
-  { id: 3, date: '2026-03-28', type: 'phone', result: 'failed', responsible: 'رضا حسینی', note: 'تماس بی‌پاسخ — پیگیری مجدد لازم' },
-  { id: 4, date: '2026-03-20', type: 'meeting', result: 'success', responsible: 'علی محمدی', note: 'جلسه حضوری — توافق اولیه' },
-  { id: 5, date: '2026-03-15', type: 'direct', result: 'failed', responsible: 'سارا احمدی', note: 'پیام دایرکت — بدون پاسخ' },
-];
-
 function InteractionRow({ item }) {
   const typeConf = CONTACT_TYPES[item.type] || CONTACT_TYPES.direct;
   return (
     <Stack direction="row" alignItems="center" spacing={1.5}
-      sx={(theme) => ({
-        p: 1.5, borderRadius: 1,
-        bgcolor: alpha(theme.palette.grey[500], 0.04),
-        border: `1px solid ${alpha(theme.palette.grey[500], 0.08)}`,
-      })}
+      sx={(theme) => ({ p: 1.5, borderRadius: 1, bgcolor: alpha(theme.palette.grey[500], 0.04), border: `1px solid ${alpha(theme.palette.grey[500], 0.08)}` })}
     >
       <Box sx={(theme) => ({ width: 32, height: 32, borderRadius: 1, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: alpha(theme.palette[typeConf.color].main, 0.1) })}>
         <Iconify icon={typeConf.icon} width={16} sx={{ color: `${typeConf.color}.main` }} />
@@ -53,26 +44,50 @@ function InteractionRow({ item }) {
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.25 }}>
           <Typography variant="caption" sx={{ fontWeight: 600, fontSize: 11 }}>{typeConf.label}</Typography>
-          <Chip label={item.result === 'success' ? 'موفق' : 'ناموفق'} size="small"
-            color={item.result === 'success' ? 'success' : 'error'} variant="outlined" sx={{ height: 18, fontSize: 9 }}
-          />
+          <Chip label={item.result === 'success' ? 'موفق' : 'ناموفق'} size="small" color={item.result === 'success' ? 'success' : 'error'} variant="outlined" sx={{ height: 18, fontSize: 9 }} />
           <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>{item.responsible}</Typography>
         </Stack>
         <Typography variant="caption" color="text.secondary" sx={{ fontSize: 11 }}>{item.note}</Typography>
       </Box>
-      <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9, flexShrink: 0 }}>{toJalali(item.date)}</Typography>
+      <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9, flexShrink: 0 }}>{toJalali(item.created_at)}</Typography>
     </Stack>
   );
 }
 
 export function InteractionLedger({ pageId }) {
+  const queryClient = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [interactions] = useState(DEMO_INTERACTIONS);
   const [form, setForm] = useState({ type: 'direct', result: 'success', responsible: '', note: '' });
 
-  const recent = interactions.slice(0, 3);
-  const archived = interactions.slice(3);
+  const { data: interactions, isLoading } = useQuery({
+    queryKey: ['interactions', pageId],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.interactions.byPage(pageId));
+      return res.data?.data || [];
+    },
+    enabled: !!pageId,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (dto) => {
+      const res = await axiosInstance.post(endpoints.interactions.create, dto);
+      return res.data?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['interactions', pageId] });
+      setAddOpen(false);
+      setForm({ type: 'direct', result: 'success', responsible: '', note: '' });
+    },
+  });
+
+  const items = interactions || [];
+  const recent = items.slice(0, 3);
+  const archived = items.slice(3);
+
+  const handleCreate = () => {
+    createMutation.mutate({ ...form, page_id: Number(pageId) });
+  };
 
   return (
     <ChartCard
@@ -95,23 +110,26 @@ export function InteractionLedger({ pageId }) {
       }
       sx={{ height: '100%' }}
     >
-      <Stack spacing={1} sx={{ maxHeight: 240, overflow: 'auto' }}>
-        {recent.map((item) => <InteractionRow key={item.id} item={item} />)}
-        {recent.length === 0 && <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>تعاملی ثبت نشده</Typography>}
-      </Stack>
+      {isLoading ? (
+        <Box sx={{ py: 3, textAlign: 'center' }}><CircularProgress size={20} /></Box>
+      ) : recent.length === 0 ? (
+        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>تعاملی ثبت نشده</Typography>
+      ) : (
+        <Stack spacing={1} sx={{ maxHeight: 240, overflow: 'auto' }}>
+          {recent.map((item) => <InteractionRow key={item.id} item={item} />)}
+        </Stack>
+      )}
 
-      {/* Archive Dialog */}
+      {/* Archive */}
       <Dialog open={archiveOpen} onClose={() => setArchiveOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
         <DialogTitle>آرشیو تعاملات</DialogTitle>
         <DialogContent>
-          <Stack spacing={1} sx={{ mt: 1 }}>
-            {archived.map((item) => <InteractionRow key={item.id} item={item} />)}
-          </Stack>
+          <Stack spacing={1} sx={{ mt: 1 }}>{archived.map((item) => <InteractionRow key={item.id} item={item} />)}</Stack>
         </DialogContent>
         <DialogActions><Button onClick={() => setArchiveOpen(false)}>بستن</Button></DialogActions>
       </Dialog>
 
-      {/* Add Dialog */}
+      {/* Add */}
       <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
         <DialogTitle>ثبت تعامل جدید</DialogTitle>
         <DialogContent>
@@ -128,7 +146,9 @@ export function InteractionLedger({ pageId }) {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAddOpen(false)}>انصراف</Button>
-          <Button variant="contained" onClick={() => setAddOpen(false)}>ثبت</Button>
+          <Button variant="contained" onClick={handleCreate} disabled={!form.responsible || !form.note || createMutation.isPending}>
+            {createMutation.isPending ? <CircularProgress size={16} /> : 'ثبت'}
+          </Button>
         </DialogActions>
       </Dialog>
     </ChartCard>
