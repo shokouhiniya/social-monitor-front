@@ -33,6 +33,7 @@ import { InsightPanel } from './components/insight-panel';
 import { NarrativeTimeline } from './components/narrative-timeline';
 import { NetworkCircle } from './components/network-circle';
 import { InteractionLedger } from './components/interaction-ledger';
+import { ContentHooksCard } from './components/content-hooks-card';
 
 // ----------------------------------------------------------------------
 
@@ -115,8 +116,17 @@ export function PageProfileView({ id }) {
               <Typography variant="h6" sx={{ fontWeight: 700 }}>تایم‌لاین</Typography>
             </Stack>
             <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 6 }}><SentimentTimeline data={data.sentiment_timeline} /></Grid>
-              <Grid size={{ xs: 12, md: 6 }}><NarrativeTimeline posts={pg?.posts} fieldReports={pg?.field_reports} contentHooks={data.content_hooks} /></Grid>
+              {/* Left: Sentiment + Content Hooks (stacked) */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Stack spacing={3}>
+                  <SentimentTimeline data={data.sentiment_timeline} />
+                  <ContentHooksCard data={data.content_hooks} />
+                </Stack>
+              </Grid>
+              {/* Right: Narrative Timeline (full height) */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <NarrativeTimeline posts={pg?.posts} fieldReports={pg?.field_reports} />
+              </Grid>
             </Grid>
           </Card>
         </Grid>
