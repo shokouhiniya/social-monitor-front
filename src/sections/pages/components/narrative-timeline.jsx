@@ -25,7 +25,7 @@ const EVENT_CONFIG = {
 
 const SENTIMENT_COLORS = { angry: 'error', hopeful: 'success', neutral: 'default', sad: 'info' };
 
-export function NarrativeTimeline({ posts, fieldReports }) {
+export function NarrativeTimeline({ posts, fieldReports, contentHooks }) {
   const [selectedPost, setSelectedPost] = useState(null);
 
   const events = [];
@@ -52,10 +52,22 @@ export function NarrativeTimeline({ posts, fieldReports }) {
 
   return (
     <ChartCard
-      title="تایم‌لاین یکپارچه"
+      title="تایم‌لاین یکپارچه و قلاب محتوایی"
       icon="solar:timeline-bold-duotone"
-      info="پست‌ها و گزارش‌های میدانی در یک خط زمانی — کلیک روی هر کارت برای جزئیات"
+      info="پست‌ها، گزارش‌ها و تحلیل فرمت‌های پرتعامل در یک نمای واحد"
     >
+      {/* Content Hooks Summary */}
+      {contentHooks?.length > 0 && (
+        <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }} useFlexGap>
+          <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>قلاب محتوایی:</Typography>
+          {contentHooks.map((h) => (
+            <Chip key={h.format} label={`${h.format}: ${Number(h.avg_engagement).toFixed(0)} تعامل (${h.post_count} پست)`}
+              size="small" variant="outlined" sx={{ fontSize: 10 }}
+            />
+          ))}
+        </Stack>
+      )}
+
       <Box sx={{ maxHeight: 500, overflow: 'auto', pr: 1 }}>
         {events.slice(0, 20).map((event, idx) => {
           const config = EVENT_CONFIG[event.type];

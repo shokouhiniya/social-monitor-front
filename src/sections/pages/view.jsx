@@ -183,7 +183,7 @@ export function PagesListView() {
         const obj = {};
         headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
         return obj;
-      }).filter((r) => r.name);
+      }).filter((r) => r.name || r.username);
       setImportPreview(rows);
     };
     reader.readAsText(file);

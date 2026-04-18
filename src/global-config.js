@@ -12,7 +12,7 @@ export const UI_CONFIG = {
   searchbar: false,
   contacts: false,
   settings: false,
-  account: true,
+  account: false,
   mobileOnly: false,
 }
 
