@@ -9,6 +9,7 @@ import { useTopicGravity, useReshareTree } from 'src/api/posts';
 import { useMacroDashboard, useAlignmentIndex } from 'src/api/analytics';
 
 import { StatCard } from '../dashboard/components/stat-card';
+import { RefreshBar } from '../dashboard/components/refresh-bar';
 import { TopicGravityChart } from '../dashboard/components/topic-gravity-chart';
 import { SentimentInfluenceMatrix } from './components/sentiment-influence-matrix';
 import { ReactionVelocityChart } from './components/reaction-velocity-chart';
@@ -44,6 +45,8 @@ export function MacroView() {
 
   return (
     <DashboardContent maxWidth="xl">
+      <RefreshBar />
+
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>نمای ماکرو</Typography>
         <Typography variant="body2" color="text.secondary">تحلیل عمیق محتوا — نفوذ، احساسات، شتاب واژگان و نبرد روایت‌ها</Typography>

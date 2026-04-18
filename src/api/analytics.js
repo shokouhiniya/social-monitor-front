@@ -180,3 +180,28 @@ export function useGenerateReport() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['analytics'] }),
   });
 }
+
+export function useRefreshStatus() {
+  return useQuery({
+    queryKey: ['analytics', 'refresh-status'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.refreshStatus);
+      return res.data?.data;
+    },
+    refetchInterval: 60000,
+  });
+}
+
+export function useRefreshDashboard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await axiosInstance.post(endpoints.analytics.refresh);
+      return res.data?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['strategic-alerts'] });
+    },
+  });
+}

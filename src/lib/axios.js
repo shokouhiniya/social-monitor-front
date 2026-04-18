@@ -97,6 +97,8 @@ export const endpoints = {
     narrativeBattle: '/analytics/narrative-battle',
     generateAlerts: '/analytics/generate-alerts',
     generateReport: '/analytics/generate-report',
+    refresh: '/analytics/refresh',
+    refreshStatus: '/analytics/refresh-status',
   },
   actionPlans: {
     byPage: (pageId) => `/action-plans/page/${pageId}`,

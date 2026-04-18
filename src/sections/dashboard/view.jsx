@@ -8,6 +8,7 @@ import { DashboardContent } from 'src/layouts/dashboard';
 import { useMacroDashboard, useAlignmentIndex } from 'src/api/analytics';
 
 import { AiSynthesizer } from './components/ai-synthesizer';
+import { RefreshBar } from './components/refresh-bar';
 import { PeriodicReport } from './components/periodic-report';
 import { PulseStrip } from './components/pulse-strip';
 import { StatCard } from './components/stat-card';
@@ -33,7 +34,10 @@ export function DashboardView() {
 
   return (
     <DashboardContent maxWidth="xl">
-      {/* 1. AI Synthesizer — headline */}
+      {/* 1. Refresh Bar */}
+      <RefreshBar />
+
+      {/* 2. AI Synthesizer — headline */}
       <AiSynthesizer />
 
       {/* 2. Periodic Report */}
