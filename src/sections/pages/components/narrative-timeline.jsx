@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -10,11 +10,13 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import Chip from '@mui/material/Chip';
-import Avatar from '@mui/material/Avatar';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
 import { alpha } from '@mui/material/styles';
 
 import { Iconify } from 'src/components/iconify';
 import { ChartCard } from '../../dashboard/components/chart-card';
+import { toJalaliDate, toJalaliShort } from 'src/utils/format-jalali';
 
 // ----------------------------------------------------------------------
 
@@ -27,18 +29,32 @@ const SENTIMENT_COLORS = { angry: 'error', hopeful: 'success', neutral: 'default
 
 export function NarrativeTimeline({ posts, fieldReports, contentHooks }) {
   const [selectedPost, setSelectedPost] = useState(null);
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [sentimentFilter, setSentimentFilter] = useState('');
 
-  const events = [];
+  const allEvents = useMemo(() => {
+    const evts = [];
+    (posts || []).slice(0, 20).forEach((p) => {
+      evts.push({ type: 'post', date: p.published_at || p.created_at, data: p });
+    });
+    (fieldReports || []).forEach((r) => {
+      evts.push({ type: 'field_report', date: r.created_at, data: r });
+    });
+    evts.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return evts;
+  }, [posts, fieldReports]);
 
-  (posts || []).slice(0, 12).forEach((p) => {
-    events.push({ type: 'post', date: p.published_at || p.created_at, data: p });
-  });
-
-  (fieldReports || []).forEach((r) => {
-    events.push({ type: 'field_report', date: r.created_at, data: r });
-  });
-
-  events.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const events = useMemo(() => {
+    let filtered = allEvents;
+    if (typeFilter !== 'all') filtered = filtered.filter((e) => e.type === typeFilter);
+    if (sentimentFilter) filtered = filtered.filter((e) => e.type === 'post' && e.data.sentiment_label === sentimentFilter);
+    if (search) filtered = filtered.filter((e) => {
+      const text = e.type === 'post' ? e.data.caption : e.data.content;
+      return text?.toLowerCase().includes(search.toLowerCase());
+    });
+    return filtered;
+  }, [allEvents, typeFilter, sentimentFilter, search]);
 
   if (events.length === 0) {
     return (
@@ -67,6 +83,23 @@ export function NarrativeTimeline({ posts, fieldReports, contentHooks }) {
           ))}
         </Stack>
       )}
+
+      {/* Filters */}
+      <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }} useFlexGap>
+        <TextField size="small" placeholder="جستجو..." value={search} onChange={(e) => setSearch(e.target.value)}
+          InputProps={{ startAdornment: <InputAdornment position="start"><Iconify icon="solar:magnifer-bold" width={16} sx={{ color: 'text.disabled' }} /></InputAdornment> }}
+          sx={{ minWidth: 180, '& .MuiInputBase-root': { height: 32, fontSize: 12 } }}
+        />
+        <Chip label="همه" size="small" variant={typeFilter === 'all' ? 'filled' : 'outlined'} color="primary" onClick={() => setTypeFilter('all')} />
+        <Chip label="پست‌ها" size="small" variant={typeFilter === 'post' ? 'filled' : 'outlined'} onClick={() => setTypeFilter(typeFilter === 'post' ? 'all' : 'post')} icon={<Iconify icon="solar:gallery-bold" width={14} />} />
+        <Chip label="گزارش‌ها" size="small" variant={typeFilter === 'field_report' ? 'filled' : 'outlined'} color="warning" onClick={() => setTypeFilter(typeFilter === 'field_report' ? 'all' : 'field_report')} icon={<Iconify icon="solar:microphone-bold" width={14} />} />
+        {['hopeful', 'angry', 'neutral', 'sad'].map((s) => (
+          <Chip key={s} label={s} size="small" variant={sentimentFilter === s ? 'filled' : 'outlined'}
+            color={s === 'hopeful' ? 'success' : s === 'angry' ? 'error' : s === 'sad' ? 'info' : 'default'}
+            onClick={() => setSentimentFilter(sentimentFilter === s ? '' : s)}
+          />
+        ))}
+      </Stack>
 
       <Box sx={{ maxHeight: 500, overflow: 'auto', pr: 1 }}>
         {events.slice(0, 20).map((event, idx) => {
@@ -115,7 +148,7 @@ export function NarrativeTimeline({ posts, fieldReports, contentHooks }) {
                     )}
                   </Stack>
                   <Typography variant="caption" color="text.disabled" sx={{ fontSize: 10 }}>
-                    {event.date ? new Date(event.date).toLocaleDateString('fa-IR') : '—'}
+                    {event.date ? toJalaliShort(event.date) : '—'}
                   </Typography>
                 </Stack>
 
@@ -176,7 +209,7 @@ export function NarrativeTimeline({ posts, fieldReports, contentHooks }) {
                 <Chip label={`💬 ${selectedPost.comments_count?.toLocaleString()}`} size="small" />
                 {selectedPost.post_type && <Chip label={selectedPost.post_type} size="small" variant="outlined" />}
                 {selectedPost.sentiment_label && <Chip label={selectedPost.sentiment_label} size="small" color={SENTIMENT_COLORS[selectedPost.sentiment_label] || 'default'} />}
-                {selectedPost.published_at && <Chip label={new Date(selectedPost.published_at).toLocaleDateString('fa-IR')} size="small" variant="outlined" />}
+                {selectedPost.published_at && <Chip label={toJalaliDate(selectedPost.published_at)} size="small" variant="outlined" />}
               </Stack>
               {selectedPost.extracted_topics?.length > 0 && (
                 <Stack direction="row" spacing={0.5} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>

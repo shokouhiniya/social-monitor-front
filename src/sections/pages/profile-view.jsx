@@ -96,14 +96,7 @@ export function PageProfileView({ id }) {
 
         {/* Profile Header + Edit */}
         <Grid size={{ xs: 12 }}>
-          <Stack direction="row" alignItems="flex-start" spacing={1}>
-            <Box sx={{ flex: 1 }}><ProfileHeader page={pg} /></Box>
-            <Tooltip title="ویرایش پروفایل" arrow>
-              <IconButton onClick={handleEditOpen} sx={{ mt: 1 }}>
-                <Iconify icon="solar:pen-bold-duotone" width={22} />
-              </IconButton>
-            </Tooltip>
-          </Stack>
+          <ProfileHeader page={pg} onEdit={handleEditOpen} />
         </Grid>
 
         {/* KPIs with refine buttons */}
@@ -114,16 +107,7 @@ export function PageProfileView({ id }) {
           { title: 'فالوور', value: pg?.followers_count || 0, prev: (pg?.followers_count || 0) * 0.92, icon: 'solar:users-group-rounded-bold-duotone', color: 'secondary', info: 'تعداد دنبال‌کنندگان', field: 'followers_count', maxValue: (pg?.followers_count || 0) * 1.2 || 100 },
         ].map((kpi) => (
           <Grid key={kpi.field} size={{ xs: 6, md: 3 }}>
-            <Box sx={{ position: 'relative' }}>
-              <ProfileStatCard {...kpi} prevValue={kpi.prev} maxValue={kpi.maxValue} />
-              <Tooltip title="بهبود این شاخص" arrow>
-                <IconButton size="small" onClick={() => handleRefine(kpi.field)}
-                  sx={{ position: 'absolute', top: 4, left: 4, opacity: 0.4, '&:hover': { opacity: 1 } }}
-                >
-                  <Iconify icon="solar:pen-new-square-bold-duotone" width={16} />
-                </IconButton>
-              </Tooltip>
-            </Box>
+            <ProfileStatCard {...kpi} prevValue={kpi.prev} maxValue={kpi.maxValue} onRefine={() => handleRefine(kpi.field)} />
           </Grid>
         ))}
 

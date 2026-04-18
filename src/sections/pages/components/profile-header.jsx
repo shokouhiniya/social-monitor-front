@@ -19,17 +19,13 @@ import { alpha } from '@mui/material/styles';
 import { Iconify } from 'src/components/iconify';
 import axiosInstance, { endpoints } from 'src/lib/axios';
 import { useFetchPageData, useProcessPageData } from 'src/api/pages';
+import { toJalali } from 'src/utils/format-jalali';
 
 // ----------------------------------------------------------------------
 
-function formatDate(d) {
-  if (!d) return null;
-  try {
-    return new Date(d).toLocaleString('fa-IR', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  } catch { return null; }
-}
+// removed formatDate - using toJalali from utils
 
-export function ProfileHeader({ page }) {
+export function ProfileHeader({ page, onEdit }) {
   const fetchMutation = useFetchPageData();
   const processMutation = useProcessPageData();
   const [fetchMenuAnchor, setFetchMenuAnchor] = useState(null);
@@ -97,9 +93,27 @@ export function ProfileHeader({ page }) {
   return (
     <Card sx={{ p: 3 }}>
       <Stack direction={{ xs: 'column', md: 'row' }} alignItems="center" spacing={3}>
-        <Avatar src={page.profile_image_url} sx={{ width: 80, height: 80, fontSize: 32 }}>
-          {page.name?.[0]}
-        </Avatar>
+        <Box sx={{ position: 'relative' }}>
+          <Avatar src={page.profile_image_url} sx={{ width: 80, height: 80, fontSize: 32 }}>
+            {page.name?.[0]}
+          </Avatar>
+          {onEdit && (
+            <Tooltip title="ویرایش پروفایل" arrow>
+              <IconButton size="small" onClick={onEdit}
+                sx={(theme) => ({
+                  position: 'absolute', bottom: -4, right: -4,
+                  width: 28, height: 28,
+                  bgcolor: 'background.paper',
+                  border: `1px solid ${theme.palette.divider}`,
+                  boxShadow: theme.shadows[2],
+                  '&:hover': { bgcolor: 'action.hover' },
+                })}
+              >
+                <Iconify icon="solar:pen-bold-duotone" width={14} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
 
         <Box sx={{ flex: 1 }}>
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
@@ -145,7 +159,7 @@ export function ProfileHeader({ page }) {
                   ✓ واکشی شد
                 </Typography>
                 <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>
-                  {formatDate(fetchMutation.data?.page?.last_fetched_at || page.last_fetched_at)}
+                  {toJalali(fetchMutation.data?.page?.last_fetched_at || page.last_fetched_at)}
                 </Typography>
               </Box>
               <IconButton size="small" onClick={(e) => setFetchMenuAnchor(e.currentTarget)}>
@@ -185,7 +199,7 @@ export function ProfileHeader({ page }) {
                     ✓ پردازش شد
                   </Typography>
                   <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>
-                    {formatDate(processMutation.data?.page?.last_processed_at || page.last_processed_at)}
+                    {toJalali(processMutation.data?.page?.last_processed_at || page.last_processed_at)}
                   </Typography>
                 </Box>
                 <IconButton size="small" onClick={(e) => setProcessMenuAnchor(e.currentTarget)}>

@@ -13,7 +13,7 @@ import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
-export function ProfileStatCard({ title, value, prevValue, icon, color = 'primary', info, maxValue = 10 }) {
+export function ProfileStatCard({ title, value, prevValue, icon, color = 'primary', info, maxValue = 10, onRefine }) {
   const numValue = typeof value === 'number' ? value : parseFloat(value) || 0;
   const numPrev = typeof prevValue === 'number' ? prevValue : parseFloat(prevValue) || 0;
   const diff = numPrev > 0 ? Math.round(((numValue - numPrev) / numPrev) * 100) : 0;
@@ -60,13 +60,22 @@ export function ProfileStatCard({ title, value, prevValue, icon, color = 'primar
           </Box>
         </Stack>
 
-        {info && (
-          <Tooltip title={info} arrow>
-            <IconButton size="small" sx={{ opacity: 0.4, '&:hover': { opacity: 1 } }}>
-              <Iconify icon="solar:info-circle-line-duotone" width={16} />
-            </IconButton>
-          </Tooltip>
-        )}
+        <Stack direction="row" spacing={0}>
+          {onRefine && (
+            <Tooltip title="بهبود شاخص" arrow>
+              <IconButton size="small" onClick={onRefine} sx={{ opacity: 0.4, '&:hover': { opacity: 1 } }}>
+                <Iconify icon="solar:pen-new-square-bold-duotone" width={14} />
+              </IconButton>
+            </Tooltip>
+          )}
+          {info && (
+            <Tooltip title={info} arrow>
+              <IconButton size="small" sx={{ opacity: 0.4, '&:hover': { opacity: 1 } }}>
+                <Iconify icon="solar:info-circle-line-duotone" width={16} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Stack>
       </Stack>
 
       {/* Pulse Graph */}
