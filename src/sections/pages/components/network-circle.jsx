@@ -1,24 +1,23 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
-
-import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import CircularProgress from '@mui/material/CircularProgress';
-import { alpha, useTheme } from '@mui/material/styles';
-import {
-  ReactFlow,
-  Background,
-  Controls,
-  Handle,
-  Position,
-} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { useRouter } from 'src/routes/hooks';
+import { useMemo } from 'react';
+import {
+  Handle,
+  Controls,
+  Position,
+  ReactFlow,
+  Background,
+} from '@xyflow/react';
+
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import { alpha, useTheme } from '@mui/material/styles';
+
 import { paths } from 'src/routes/paths';
-import { Iconify } from 'src/components/iconify';
+import { useRouter } from 'src/routes/hooks';
+
 import { ChartCard } from '../../dashboard/components/chart-card';
 
 // ----------------------------------------------------------------------

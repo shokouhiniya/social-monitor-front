@@ -1,12 +1,14 @@
 'use client';
 
+import { Bar, XAxis, YAxis, Tooltip, BarChart, CartesianGrid, ResponsiveContainer } from 'recharts';
+
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import CircularProgress from '@mui/material/CircularProgress';
+
+import { useReactionVelocity } from 'src/api/analytics';
 
 import { ChartCard } from '../../dashboard/components/chart-card';
-import { useReactionVelocity } from 'src/api/analytics';
 
 // ----------------------------------------------------------------------
 

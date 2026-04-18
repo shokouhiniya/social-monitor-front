@@ -2,8 +2,8 @@
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
+import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
 

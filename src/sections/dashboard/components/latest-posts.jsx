@@ -2,17 +2,17 @@
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
-import Stack from '@mui/material/Stack';
-import Avatar from '@mui/material/Avatar';
-import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
+import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
-import IconButton from '@mui/material/IconButton';
 import { alpha } from '@mui/material/styles';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import CircularProgress from '@mui/material/CircularProgress';
+
+import { useLatestPosts } from 'src/api/analytics';
 
 import { Iconify } from 'src/components/iconify';
-import { useLatestPosts } from 'src/api/analytics';
 
 // ----------------------------------------------------------------------
 

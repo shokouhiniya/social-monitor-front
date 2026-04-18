@@ -1,23 +1,23 @@
 'use client';
 
+import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
 
 import { DashboardContent } from 'src/layouts/dashboard';
-import { useTopicGravity, useReshareTree } from 'src/api/posts';
+import { useReshareTree, useTopicGravity } from 'src/api/posts';
 import { useMacroDashboard, useAlignmentIndex } from 'src/api/analytics';
 
 import { StatCard } from '../dashboard/components/stat-card';
+import { NarrativeBattle } from './components/narrative-battle';
+import { KeywordVelocity } from './components/keyword-velocity';
 import { RefreshBar } from '../dashboard/components/refresh-bar';
+import { ReshareTreeChart } from './components/reshare-tree-chart';
+import { NetworkActivityChart } from './components/network-activity-chart';
+import { ReactionVelocityChart } from './components/reaction-velocity-chart';
+import { SentimentOverviewChart } from './components/sentiment-overview-chart';
 import { TopicGravityChart } from '../dashboard/components/topic-gravity-chart';
 import { SentimentInfluenceMatrix } from './components/sentiment-influence-matrix';
-import { ReactionVelocityChart } from './components/reaction-velocity-chart';
-import { NarrativeBattle } from './components/narrative-battle';
-import { ReshareTreeChart } from './components/reshare-tree-chart';
-import { KeywordVelocity } from './components/keyword-velocity';
-import { NetworkActivityChart } from './components/network-activity-chart';
-import { SentimentOverviewChart } from './components/sentiment-overview-chart';
 
 // ----------------------------------------------------------------------
 

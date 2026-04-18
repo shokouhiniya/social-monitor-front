@@ -1,12 +1,14 @@
 'use client';
 
+import { XAxis, YAxis, Scatter, Tooltip, ScatterChart, CartesianGrid, ReferenceLine, ReferenceArea, ResponsiveContainer } from 'recharts';
+
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea } from 'recharts';
+import CircularProgress from '@mui/material/CircularProgress';
+
+import { useSentimentInfluenceMatrix } from 'src/api/analytics';
 
 import { ChartCard } from '../../dashboard/components/chart-card';
-import { useSentimentInfluenceMatrix } from 'src/api/analytics';
 
 // ----------------------------------------------------------------------
 

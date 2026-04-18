@@ -2,13 +2,15 @@
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
+import { alpha } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
-import { alpha } from '@mui/material/styles';
+
+import { useKeywordVelocity } from 'src/api/analytics';
 
 import { Iconify } from 'src/components/iconify';
+
 import { ChartCard } from '../../dashboard/components/chart-card';
-import { useKeywordVelocity } from 'src/api/analytics';
 
 // ----------------------------------------------------------------------
 

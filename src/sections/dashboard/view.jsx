@@ -1,26 +1,25 @@
 'use client';
 
-import Grid from '@mui/material/Grid';
-import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import Grid from '@mui/material/Grid';
 
 import { DashboardContent } from 'src/layouts/dashboard';
 import { useMacroDashboard, useAlignmentIndex } from 'src/api/analytics';
 
-import { AiSynthesizer } from './components/ai-synthesizer';
-import { RefreshBar } from './components/refresh-bar';
-import { PeriodicReport } from './components/periodic-report';
-import { PulseStrip } from './components/pulse-strip';
 import { StatCard } from './components/stat-card';
-import { StrategicAlertsWidget } from './components/strategic-alerts-widget';
-import { IdentityRadialChart } from './components/identity-radial-chart';
-import { TopicGravityChart } from './components/topic-gravity-chart';
-import { TopInfluencersRank } from './components/top-influencers-rank';
+import { RefreshBar } from './components/refresh-bar';
+import { PulseStrip } from './components/pulse-strip';
 import { GeoWorldMap } from './components/geo-world-map';
 import { SilenceRadar } from './components/silence-radar';
-import { NarrativeHealthGauge } from './components/narrative-health-gauge';
-import { HighImpactFeed } from './components/high-impact-feed';
+import { AiSynthesizer } from './components/ai-synthesizer';
+import { PeriodicReport } from './components/periodic-report';
 import { CrisisCorridor } from './components/crisis-corridor';
+import { HighImpactFeed } from './components/high-impact-feed';
+import { TopicGravityChart } from './components/topic-gravity-chart';
+import { TopInfluencersRank } from './components/top-influencers-rank';
+import { IdentityRadialChart } from './components/identity-radial-chart';
+import { NarrativeHealthGauge } from './components/narrative-health-gauge';
+import { StrategicAlertsWidget } from './components/strategic-alerts-widget';
 
 // ----------------------------------------------------------------------
 

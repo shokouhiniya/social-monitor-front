@@ -1,8 +1,9 @@
 'use client';
 
+import { Radar, Tooltip, PolarGrid, RadarChart, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
 import { ChartCard } from '../../dashboard/components/chart-card';
 

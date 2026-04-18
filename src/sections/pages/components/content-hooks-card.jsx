@@ -2,11 +2,12 @@
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
 
 import { Iconify } from 'src/components/iconify';
+
 import { ChartCard } from '../../dashboard/components/chart-card';
 
 // ----------------------------------------------------------------------

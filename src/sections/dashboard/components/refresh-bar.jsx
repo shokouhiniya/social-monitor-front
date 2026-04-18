@@ -3,16 +3,18 @@
 import { useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
 import Chip from '@mui/material/Chip';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
 import { alpha } from '@mui/material/styles';
+import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
+
+import { toJalali } from 'src/utils/format-jalali';
+
+import { useRefreshStatus, useRefreshDashboard } from 'src/api/analytics';
 
 import { Iconify } from 'src/components/iconify';
-import { useRefreshStatus, useRefreshDashboard } from 'src/api/analytics';
-import { toJalali } from 'src/utils/format-jalali';
 
 // ----------------------------------------------------------------------
 
@@ -35,7 +37,7 @@ export function RefreshBar() {
 
   // Countdown timer
   useEffect(() => {
-    if (cooldown <= 0) return;
+    if (cooldown <= 0) return null;
     const timer = setInterval(() => {
       setCooldown((prev) => {
         if (prev <= 1) { clearInterval(timer); return 0; }

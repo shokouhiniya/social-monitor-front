@@ -4,9 +4,9 @@ import InitColorSchemeScript from '@mui/material/InitColorSchemeScript';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 
 import { CONFIG } from 'src/global-config';
-import { themeConfig, ThemeProvider, primary as primaryColor } from 'src/theme';
-import { I18nProvider, LocalizationProvider } from 'src/locales';
 import ScreenSize from 'src/layouts/screen-size';
+import { I18nProvider, LocalizationProvider } from 'src/locales';
+import { themeConfig, ThemeProvider, primary as primaryColor } from 'src/theme';
 
 import { ProgressBar } from 'src/components/progress-bar';
 import { MotionLazy } from 'src/components/animate/motion-lazy';

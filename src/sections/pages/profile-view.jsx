@@ -2,38 +2,39 @@
 
 import { useState } from 'react';
 
-import Grid from '@mui/material/Grid';
-import Typography from '@mui/material/Typography';
-import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
+import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
 import Dialog from '@mui/material/Dialog';
+import Button from '@mui/material/Button';
+import { alpha } from '@mui/material/styles';
+import MenuItem from '@mui/material/MenuItem';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import MenuItem from '@mui/material/MenuItem';
-import { alpha } from '@mui/material/styles';
+import CircularProgress from '@mui/material/CircularProgress';
 
-import { DashboardContent } from 'src/layouts/dashboard';
-import { Iconify } from 'src/components/iconify';
 import { useProfileDeepDive } from 'src/api/analytics';
-import { useRelatedPages, useUpdatePage } from 'src/api/pages';
+import { DashboardContent } from 'src/layouts/dashboard';
+import { useUpdatePage, useRelatedPages } from 'src/api/pages';
 
+import { Iconify } from 'src/components/iconify';
+
+import { ActionCards } from './components/action-cards';
+import { PersonaRadar } from './components/persona-radar';
+import { InsightPanel } from './components/insight-panel';
+import { ProfileHeader } from './components/profile-header';
+import { NetworkCircle } from './components/network-circle';
 import { ProfileStatCard } from './components/profile-stat-card';
 import { CriticalRedlines } from './components/critical-redlines';
-import { PersonaRadar } from './components/persona-radar';
-import { SentimentTimeline } from './components/sentiment-timeline';
-import { ProfileHeader } from './components/profile-header';
-import { InteractionCopilot } from './components/interaction-copilot';
-import { ActionCards } from './components/action-cards';
-import { InsightPanel } from './components/insight-panel';
-import { NarrativeTimeline } from './components/narrative-timeline';
-import { NetworkCircle } from './components/network-circle';
-import { InteractionLedger } from './components/interaction-ledger';
 import { ContentHooksCard } from './components/content-hooks-card';
+import { SentimentTimeline } from './components/sentiment-timeline';
+import { NarrativeTimeline } from './components/narrative-timeline';
+import { InteractionLedger } from './components/interaction-ledger';
+import { InteractionCopilot } from './components/interaction-copilot';
 
 // ----------------------------------------------------------------------
 

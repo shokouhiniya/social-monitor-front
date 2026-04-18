@@ -1,12 +1,14 @@
 'use client';
 
+import { Area, XAxis, YAxis, Tooltip, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer } from 'recharts';
+
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
+import CircularProgress from '@mui/material/CircularProgress';
+
+import { useSentimentTimeline } from 'src/api/posts';
 
 import { ChartCard } from '../../dashboard/components/chart-card';
-import { useSentimentTimeline } from 'src/api/posts';
 
 // ----------------------------------------------------------------------
 

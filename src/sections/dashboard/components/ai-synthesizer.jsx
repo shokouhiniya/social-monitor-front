@@ -1,12 +1,13 @@
 'use client';
 
 import Box from '@mui/material/Box';
+import { alpha } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
-import { alpha } from '@mui/material/styles';
+
+import { useAiSynthesizer } from 'src/api/analytics';
 
 import { Iconify } from 'src/components/iconify';
-import { useAiSynthesizer } from 'src/api/analytics';
 
 // ----------------------------------------------------------------------
 

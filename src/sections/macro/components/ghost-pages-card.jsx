@@ -1,16 +1,18 @@
 'use client';
 
 import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
-import Typography from '@mui/material/Typography';
-import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
 import { alpha } from '@mui/material/styles';
+import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
+
+import { useGhostPages } from 'src/api/analytics';
 
 import { Iconify } from 'src/components/iconify';
+
 import { ChartCard } from '../../dashboard/components/chart-card';
-import { useGhostPages } from 'src/api/analytics';
 
 // ----------------------------------------------------------------------
 

@@ -1,14 +1,13 @@
 'use client';
 
 import { memo } from 'react';
+import { Marker, Geography, Geographies, ComposableMap } from 'react-simple-maps';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import CircularProgress from '@mui/material/CircularProgress';
-import Tooltip from '@mui/material/Tooltip';
 import { alpha, useTheme } from '@mui/material/styles';
-import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps';
+import CircularProgress from '@mui/material/CircularProgress';
 
 import { ChartCard } from './chart-card';
 

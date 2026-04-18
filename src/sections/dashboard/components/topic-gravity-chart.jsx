@@ -1,14 +1,11 @@
 'use client';
 
-import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import CircularProgress from '@mui/material/CircularProgress';
-import Tooltip from '@mui/material/Tooltip';
-import { alpha, useTheme } from '@mui/material/styles';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, Cell } from 'recharts';
+import { Bar, Cell, XAxis, YAxis, BarChart, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip } from 'recharts';
 
-import { Iconify } from 'src/components/iconify';
+import Box from '@mui/material/Box';
+import { useTheme } from '@mui/material/styles';
+import CircularProgress from '@mui/material/CircularProgress';
+
 import { ChartCard } from './chart-card';
 
 // ----------------------------------------------------------------------

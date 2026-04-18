@@ -1,43 +1,45 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Grid from '@mui/material/Grid';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import TablePagination from '@mui/material/TablePagination';
-import Typography from '@mui/material/Typography';
-import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
-import Avatar from '@mui/material/Avatar';
 import Chip from '@mui/material/Chip';
+import Table from '@mui/material/Table';
 import Stack from '@mui/material/Stack';
-import CircularProgress from '@mui/material/CircularProgress';
-import IconButton from '@mui/material/IconButton';
+import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
 import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import MenuItem from '@mui/material/MenuItem';
 import Drawer from '@mui/material/Drawer';
 import Slider from '@mui/material/Slider';
 import Tooltip from '@mui/material/Tooltip';
-import LinearProgress from '@mui/material/LinearProgress';
 import { alpha } from '@mui/material/styles';
+import TableRow from '@mui/material/TableRow';
+import Checkbox from '@mui/material/Checkbox';
+import MenuItem from '@mui/material/MenuItem';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableHead from '@mui/material/TableHead';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import TableContainer from '@mui/material/TableContainer';
+import InputAdornment from '@mui/material/InputAdornment';
+import LinearProgress from '@mui/material/LinearProgress';
+import TablePagination from '@mui/material/TablePagination';
+import CircularProgress from '@mui/material/CircularProgress';
 
-import { useRouter } from 'src/routes/hooks';
 import { paths } from 'src/routes/paths';
+import { useRouter } from 'src/routes/hooks';
+
 import { DashboardContent } from 'src/layouts/dashboard';
+import { usePages, useCreatePage, useDeletePage, useBulkCreatePages } from 'src/api/pages';
+
 import { Iconify } from 'src/components/iconify';
-import { usePages, useCreatePage, useBulkCreatePages, useDeletePage } from 'src/api/pages';
 
 // ----------------------------------------------------------------------
 
@@ -178,13 +180,13 @@ export function PagesListView() {
       if (typeof text !== 'string') return;
       const lines = text.split('\n').filter(Boolean);
       const headers = lines[0].split(',').map((h) => h.trim());
-      const rows = lines.slice(1).map((line) => {
+      const lrows = lines.slice(1).map((line) => {
         const vals = line.split(',').map((v) => v.trim());
         const obj = {};
         headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
         return obj;
       }).filter((r) => r.name || r.username);
-      setImportPreview(rows);
+      setImportPreview(lrows);
     };
     reader.readAsText(file);
   };
