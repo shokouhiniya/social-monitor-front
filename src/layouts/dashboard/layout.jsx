@@ -25,6 +25,7 @@ import { Searchbar } from '../components/searchbar';
 import { _workspaces } from '../nav-config-workspace';
 import { MenuButton } from '../components/menu-button';
 import { AccountDrawer } from '../components/account-drawer';
+import { SignOutButton } from '../components/sign-out-button';
 import { SettingsButton } from '../components/settings-button';
 import { LanguagePopover } from '../components/language-popover';
 import { ContactsPopover } from '../components/contacts-popover';
@@ -149,6 +150,9 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
 
           {/** @slot Settings button */}
           {UI_CONFIG.settings && <SettingsButton />}
+
+          {/** @slot Sign out button */}
+          <SignOutButton />
 
           {/** @slot Account drawer */}
           {UI_CONFIG.account && <AccountDrawer data={_account} />}

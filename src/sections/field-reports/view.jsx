@@ -15,11 +15,13 @@ import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
+import Autocomplete from '@mui/material/Autocomplete';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import LinearProgress from '@mui/material/LinearProgress';
 import CircularProgress from '@mui/material/CircularProgress';
 
+import { usePages } from 'src/api/pages';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { useFieldReports, useFieldReportStats, useCreateFieldReport } from 'src/api/field-reports';
 
@@ -53,17 +55,20 @@ export function FieldReportsView() {
   const [open, setOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [form, setForm] = useState({ page_id: '', content: '', source_type: 'manual', sentiment: '', reporter_id: 1 });
+  const [selectedPage, setSelectedPage] = useState(null);
 
   const { data: reportsData, isLoading } = useFieldReports({ status: statusFilter || undefined });
   const { data: stats } = useFieldReportStats();
+  const { data: pagesData } = usePages({ page: 1, limit: 100 });
   const createMutation = useCreateFieldReport();
 
   const reports = reportsData?.data || [];
+  const pages = pagesData?.data || [];
 
   const handleCreate = () => {
     createMutation.mutate(
-      { ...form, page_id: form.page_id ? Number(form.page_id) : undefined },
-      { onSuccess: () => { setOpen(false); setForm({ page_id: '', content: '', source_type: 'manual', sentiment: '', reporter_id: 1 }); } }
+      { ...form, page_id: selectedPage?.id || undefined },
+      { onSuccess: () => { setOpen(false); setForm({ page_id: '', content: '', source_type: 'manual', sentiment: '', reporter_id: 1 }); setSelectedPage(null); } }
     );
   };
 
@@ -179,7 +184,29 @@ export function FieldReportsView() {
         <DialogTitle>ثبت گزارش میدانی</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField fullWidth size="small" label="شناسه یا نام پیج" value={form.page_id} onChange={(e) => setForm({ ...form, page_id: e.target.value })} placeholder="شماره ID پیج" />
+            <Autocomplete
+              fullWidth
+              size="small"
+              options={pages}
+              value={selectedPage}
+              onChange={(_, newValue) => setSelectedPage(newValue)}
+              getOptionLabel={(option) => `${option.name} (@${option.username})`}
+              renderInput={(params) => <TextField {...params} label="انتخاب پیج" placeholder="جستجوی نام یا یوزرنیم..." />}
+              renderOption={(props, option) => (
+                <Box component="li" {...props} key={option.id}>
+                  <Stack direction="row" alignItems="center" spacing={1.5} sx={{ width: '100%' }}>
+                    <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700 }}>{option.name?.[0]}</Typography>
+                    </Box>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="body2" noWrap>{option.name}</Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap>@{option.username}</Typography>
+                    </Box>
+                    <Chip label={option.platform} size="small" variant="outlined" sx={{ fontSize: 10 }} />
+                  </Stack>
+                </Box>
+              )}
+            />
             <TextField select fullWidth size="small" label="نوع منبع" value={form.source_type} onChange={(e) => setForm({ ...form, source_type: e.target.value })}>
               <MenuItem value="manual">متن دستی</MenuItem>
               <MenuItem value="voice">ویس</MenuItem>

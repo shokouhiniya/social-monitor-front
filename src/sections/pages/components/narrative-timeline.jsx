@@ -121,7 +121,11 @@ export function NarrativeTimeline({ posts, fieldReports }) {
 
                 <Card
                   sx={(theme) => ({ flex: 1, p: 1.5, mb: 1.5, cursor: isPost ? 'pointer' : 'default', border: `1px solid ${alpha(theme.palette[config.color].main, 0.08)}`, transition: 'all 0.2s', '&:hover': isPost ? { borderColor: alpha(theme.palette[config.color].main, 0.25) } : {} })}
-                  onClick={() => isPost && setSelectedPost(d)}
+                  onClick={() => {
+                    if (isPost && d.external_id) {
+                      window.open(`https://www.instagram.com/p/${d.external_id}/`, '_blank');
+                    }
+                  }}
                 >
                   <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
                     <Stack direction="row" spacing={0.5}>

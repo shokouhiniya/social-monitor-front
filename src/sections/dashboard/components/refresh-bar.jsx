@@ -37,10 +37,10 @@ export function RefreshBar() {
 
   // Countdown timer
   useEffect(() => {
-    if (cooldown <= 0) return null;
+    if (cooldown <= 0) return undefined;
     const timer = setInterval(() => {
       setCooldown((prev) => {
-        if (prev <= 1) { clearInterval(timer); return 0; }
+        if (prev <= 1) return 0;
         return prev - 1;
       });
     }, 1000);

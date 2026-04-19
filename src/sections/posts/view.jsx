@@ -190,12 +190,25 @@ function PostCard({ post, compact }) {
   const sentConf = SENTIMENT_CONFIG[post.sentiment_label] || SENTIMENT_CONFIG.neutral;
   const engagement = (post.likes_count || 0) + (post.comments_count || 0) + (post.shares_count || 0);
 
+  // Generate Instagram post URL
+  const getInstagramUrl = () => {
+    if (!post.external_id) return null;
+    return `https://www.instagram.com/p/${post.external_id}/`;
+  };
+
+  const handleClick = () => {
+    const url = getInstagramUrl();
+    if (url) window.open(url, '_blank');
+  };
+
   return (
     <Card
+      onClick={handleClick}
       sx={(theme) => ({
         p: 2, height: '100%',
         border: post.is_outlier ? `1px solid ${alpha(theme.palette.warning.main, 0.3)}` : `1px solid ${alpha(theme.palette.grey[500], 0.08)}`,
         transition: 'all 0.2s',
+        cursor: getInstagramUrl() ? 'pointer' : 'default',
         '&:hover': { borderColor: alpha(theme.palette.primary.main, 0.3), boxShadow: theme.shadows[2] },
       })}
     >
