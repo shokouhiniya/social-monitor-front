@@ -24,11 +24,13 @@ export function useAlignmentIndex() {
   });
 }
 
-export function useProfileDeepDive(pageId) {
+export function useProfileDeepDive(pageId, timeRange = '1w') {
   return useQuery({
-    queryKey: ['analytics', 'profile', pageId],
+    queryKey: ['analytics', 'profile', pageId, timeRange],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.profileDeepDive(pageId));
+      const res = await axiosInstance.get(endpoints.analytics.profileDeepDive(pageId), {
+        params: { timeRange },
+      });
       return res.data?.data;
     },
     enabled: !!pageId,

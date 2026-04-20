@@ -38,6 +38,7 @@ import { paths } from 'src/routes/paths';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { Iconify } from 'src/components/iconify';
 import { usePages, useCreatePage, useBulkCreatePages, useDeletePage } from 'src/api/pages';
+import { TwitterSyncDialog } from './twitter-sync-dialog';
 
 // ----------------------------------------------------------------------
 
@@ -48,7 +49,26 @@ const CATEGORY_LABELS = {
   religious: 'مذهبی', art: 'هنری', student: 'دانشجویی', health: 'سلامت',
   technology: 'تکنولوژی', culture: 'فرهنگی', sports: 'ورزشی', analyst: 'تحلیل‌گر',
 };
-const EMPTY_FORM = { name: '', username: '', platform: 'instagram', category: '', country: '', language: '', bio: '' };
+const PAGE_CATEGORY_LABELS = {
+  official: 'رسمی',
+  news_agency: 'خبرگزاری‌ها',
+  fan_pages: 'پیج‌های هواداری',
+  news_pages: 'پیج‌های خبری',
+  local_sources: 'منابع محلی',
+  opposition_sources: 'منابع ضدنظام',
+  foreign_sources: 'منابع خارجی',
+};
+const EMPTY_FORM = { 
+  name: '', 
+  username: '', 
+  platform: 'instagram', 
+  category: '', 
+  country: '', 
+  language: '', 
+  bio: '',
+  page_category: 'official',
+  client_keywords: '',
+};
 
 // Health badge based on activity
 function HealthBadge({ page }) {
@@ -96,6 +116,7 @@ export function PagesListView() {
   const [openImport, setOpenImport] = useState(false);
   const [importPreview, setImportPreview] = useState([]);
   const [openFilter, setOpenFilter] = useState(false);
+  const [openTwitterSync, setOpenTwitterSync] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [filterCluster, setFilterCluster] = useState('');
   const [filterInfluence, setFilterInfluence] = useState([0, 10]);
@@ -115,7 +136,14 @@ export function PagesListView() {
   const total = data?.total || 0;
 
   const handleCreate = () => {
-    createMutation.mutate(form, { onSuccess: () => { setOpenAdd(false); setForm(EMPTY_FORM); } });
+    // Parse client_keywords from comma-separated string to array
+    const payload = {
+      ...form,
+      client_keywords: form.client_keywords 
+        ? form.client_keywords.split(',').map(k => k.trim()).filter(Boolean)
+        : undefined,
+    };
+    createMutation.mutate(payload, { onSuccess: () => { setOpenAdd(false); setForm(EMPTY_FORM); } });
   };
 
   const handleSelectAll = (e) => {
@@ -203,6 +231,9 @@ export function PagesListView() {
           <Typography variant="body2" color="text.secondary">مدیریت و تحلیل {total} پیج تحت پایش</Typography>
         </Box>
         <Stack direction="row" spacing={1}>
+          <Button variant="outlined" startIcon={<Iconify icon="mdi:twitter" />} onClick={() => setOpenTwitterSync(true)} color="info">
+            Sync Twitter
+          </Button>
           <Button variant="outlined" startIcon={<Iconify icon="solar:filter-bold" />} onClick={() => setOpenFilter(true)}>
             فیلتر پیشرفته
           </Button>
@@ -292,7 +323,18 @@ export function PagesListView() {
                         </Stack>
                       </TableCell>
                       <TableCell>
-                        <Chip label={CATEGORY_LABELS[row.category] || row.category || '—'} size="small" variant="outlined" sx={{ fontSize: 11 }} />
+                        <Stack spacing={0.5}>
+                          <Chip label={CATEGORY_LABELS[row.category] || row.category || '—'} size="small" variant="outlined" sx={{ fontSize: 11 }} />
+                          {row.page_category && row.page_category !== 'official' && (
+                            <Chip 
+                              label={PAGE_CATEGORY_LABELS[row.page_category] || row.page_category} 
+                              size="small" 
+                              variant="filled" 
+                              color="info"
+                              sx={{ fontSize: 10 }} 
+                            />
+                          )}
+                        </Stack>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>{row.followers_count?.toLocaleString()}</Typography>
@@ -373,20 +415,38 @@ export function PagesListView() {
         <DialogTitle>افزودن پیج جدید</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="نام پیج" value={form.name} onChange={set('name')} /></Grid>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="یوزرنیم" value={form.username} onChange={set('username')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="نام پیج" value={form.name || ''} onChange={set('name')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="یوزرنیم" value={form.username || ''} onChange={set('username')} /></Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField select fullWidth size="small" label="پلتفرم" value={form.platform} onChange={set('platform')}>
+              <TextField select fullWidth size="small" label="پلتفرم" value={form.platform || 'instagram'} onChange={set('platform')}>
                 <MenuItem value="instagram">اینستاگرام</MenuItem><MenuItem value="twitter">توییتر</MenuItem><MenuItem value="telegram">تلگرام</MenuItem>
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField select fullWidth size="small" label="دسته‌بندی" value={form.category} onChange={set('category')}>
+              <TextField select fullWidth size="small" label="دسته‌بندی" value={form.category || ''} onChange={set('category')}>
                 {Object.entries(CATEGORY_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="کشور" value={form.country} onChange={set('country')} /></Grid>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="زبان" value={form.language} onChange={set('language')} /></Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField select fullWidth size="small" label="نوع منبع" value={form.page_category || 'official'} onChange={set('page_category')}>
+                {Object.entries(PAGE_CATEGORY_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
+              </TextField>
+            </Grid>
+            {form.page_category !== 'official' && (
+              <Grid size={{ xs: 12 }}>
+                <TextField 
+                  fullWidth 
+                  size="small" 
+                  label="کلمات کلیدی (با کاما جدا کنید)" 
+                  value={form.client_keywords || ''} 
+                  onChange={set('client_keywords')}
+                  placeholder="مثال: قالیباف, شهردار"
+                  helperText="فقط پست‌هایی که حاوی این کلمات هستند ذخیره می‌شوند"
+                />
+              </Grid>
+            )}
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="کشور" value={form.country || ''} onChange={set('country')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="زبان" value={form.language || ''} onChange={set('language')} /></Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
@@ -483,6 +543,16 @@ export function PagesListView() {
           )}
         </DialogActions>
       </Dialog>
+
+      {/* Twitter Sync Dialog */}
+      <TwitterSyncDialog
+        open={openTwitterSync}
+        onClose={() => setOpenTwitterSync(false)}
+        onSuccess={() => {
+          // Refresh the pages list after successful sync
+          window.location.reload();
+        }}
+      />
     </DashboardContent>
   );
 }

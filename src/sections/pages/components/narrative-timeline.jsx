@@ -14,6 +14,7 @@ import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import Collapse from '@mui/material/Collapse';
+import Pagination from '@mui/material/Pagination';
 import { alpha } from '@mui/material/styles';
 
 import { Iconify } from 'src/components/iconify';
@@ -27,6 +28,15 @@ const EVENT_CONFIG = {
   field_report: { icon: 'solar:microphone-bold-duotone', color: 'warning', label: 'گزارش' },
 };
 const SENTIMENT_COLORS = { angry: 'error', hopeful: 'success', neutral: 'default', sad: 'info' };
+const COVERAGE_TYPE_LABELS = {
+  quote: { label: 'نقل قول', color: 'info', icon: 'solar:quote-down-circle-bold' },
+  criticism: { label: 'انتقاد', color: 'error', icon: 'solar:danger-triangle-bold' },
+  praise: { label: 'تمجید', color: 'success', icon: 'solar:star-bold' },
+  neutral_mention: { label: 'ذکر خنثی', color: 'default', icon: 'solar:document-text-bold' },
+  analysis: { label: 'تحلیل', color: 'warning', icon: 'solar:chart-bold' },
+  interview: { label: 'مصاحبه', color: 'secondary', icon: 'solar:microphone-bold' },
+  report: { label: 'گزارش', color: 'primary', icon: 'solar:document-bold' },
+};
 
 function HighlightText({ text, search }) {
   if (!search || !text) return text || '';
@@ -44,16 +54,19 @@ export function NarrativeTimeline({ posts, fieldReports }) {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [sentimentFilter, setSentimentFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 20;
 
   const allEvents = useMemo(() => {
     const evts = [];
-    (posts || []).slice(0, 20).forEach((p) => { evts.push({ type: 'post', date: p.published_at || p.created_at, data: p }); });
+    // Don't slice here - use all posts
+    (posts || []).forEach((p) => { evts.push({ type: 'post', date: p.published_at || p.created_at, data: p }); });
     (fieldReports || []).forEach((r) => { evts.push({ type: 'field_report', date: r.created_at, data: r }); });
     evts.sort((a, b) => new Date(b.date) - new Date(a.date));
     return evts;
   }, [posts, fieldReports]);
 
-  const events = useMemo(() => {
+  const filteredEvents = useMemo(() => {
     let f = allEvents;
     if (typeFilter !== 'all') f = f.filter((e) => e.type === typeFilter);
     if (sentimentFilter) f = f.filter((e) => e.type === 'post' && e.data.sentiment_label === sentimentFilter);
@@ -61,6 +74,19 @@ export function NarrativeTimeline({ posts, fieldReports }) {
     return f;
   }, [allEvents, typeFilter, sentimentFilter, search]);
 
+  // Reset to page 1 when filters change
+  useMemo(() => {
+    setPage(1);
+  }, [typeFilter, sentimentFilter, search]);
+
+  // Paginate filtered events
+  const events = useMemo(() => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredEvents.slice(startIndex, endIndex);
+  }, [filteredEvents, page]);
+
+  const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
   const hasFilters = search || typeFilter !== 'all' || sentimentFilter;
 
   return (
@@ -98,59 +124,95 @@ export function NarrativeTimeline({ posts, fieldReports }) {
         </Stack>
       </Collapse>
 
-      {events.length === 0 ? (
+      {filteredEvents.length === 0 ? (
         <Box sx={{ py: 4, textAlign: 'center' }}><Typography variant="body2" color="text.secondary">رویدادی یافت نشد</Typography></Box>
       ) : (
-        <Box sx={{ maxHeight: 450, overflow: 'auto', pr: 0.5 }}>
-          {events.slice(0, 20).map((event, idx) => {
-            const config = EVENT_CONFIG[event.type];
-            const isPost = event.type === 'post';
-            const d = event.data;
-            const isLast = idx === Math.min(events.length, 20) - 1;
+        <>
+          <Box sx={{ maxHeight: 450, overflow: 'auto', pr: 0.5 }}>
+            {events.map((event, idx) => {
+              const config = EVENT_CONFIG[event.type];
+              const isPost = event.type === 'post';
+              const d = event.data;
+              const isLast = idx === events.length - 1;
 
-            return (
-              <Stack key={idx} direction="row" spacing={1.5}>
-                <Stack alignItems="center" sx={{ width: 32, flexShrink: 0 }}>
-                  <Box sx={(theme) => ({ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: alpha(theme.palette[config.color].main, 0.12), border: `2px solid ${alpha(theme.palette[config.color].main, 0.3)}` })}>
-                    <Iconify icon={config.icon} width={14} sx={{ color: `${config.color}.main` }} />
-                  </Box>
-                  {!isLast && <Box sx={(theme) => ({ width: 2, flex: 1, minHeight: 16, bgcolor: alpha(theme.palette.divider, 0.4) })} />}
-                </Stack>
-
-                <Card
-                  sx={(theme) => ({ flex: 1, p: 1.5, mb: 1.5, cursor: isPost ? 'pointer' : 'default', border: `1px solid ${alpha(theme.palette[config.color].main, 0.08)}`, transition: 'all 0.2s', '&:hover': isPost ? { borderColor: alpha(theme.palette[config.color].main, 0.25) } : {} })}
-                  onClick={() => isPost && setSelectedPost(d)}
-                >
-                  <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                    <Stack direction="row" spacing={0.5}>
-                      <Chip label={config.label} size="small" color={config.color} variant="outlined" sx={{ height: 18, fontSize: 9 }} />
-                      {isPost && d.post_type && <Chip label={d.post_type} size="small" variant="outlined" sx={{ height: 18, fontSize: 9 }} />}
-                      {isPost && d.sentiment_label && <Chip label={d.sentiment_label} size="small" color={SENTIMENT_COLORS[d.sentiment_label] || 'default'} sx={{ height: 18, fontSize: 9 }} />}
-                    </Stack>
-                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>{toJalaliShort(event.date)}</Typography>
-                  </Stack>
-
-                  <Stack direction="row" spacing={1}>
-                    {isPost && d.media_url && (
-                      <Box component="img" src={d.media_url} sx={{ width: 48, height: 48, borderRadius: 1, objectFit: 'cover', flexShrink: 0 }} onError={(e) => { e.target.style.display = 'none'; }} />
-                    )}
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body2" sx={{ fontSize: 11, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        <HighlightText text={isPost ? (d.caption || 'بدون کپشن') : (d.content || 'گزارش')} search={search} />
-                      </Typography>
-                      {isPost && (
-                        <Stack direction="row" spacing={1.5} sx={{ mt: 0.25 }}>
-                          <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>❤️ {d.likes_count?.toLocaleString()}</Typography>
-                          <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>💬 {d.comments_count?.toLocaleString()}</Typography>
-                        </Stack>
-                      )}
+              return (
+                <Stack key={idx} direction="row" spacing={1.5}>
+                  <Stack alignItems="center" sx={{ width: 32, flexShrink: 0 }}>
+                    <Box sx={(theme) => ({ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: alpha(theme.palette[config.color].main, 0.12), border: `2px solid ${alpha(theme.palette[config.color].main, 0.3)}` })}>
+                      <Iconify icon={config.icon} width={14} sx={{ color: `${config.color}.main` }} />
                     </Box>
+                    {!isLast && <Box sx={(theme) => ({ width: 2, flex: 1, minHeight: 16, bgcolor: alpha(theme.palette.divider, 0.4) })} />}
                   </Stack>
-                </Card>
-              </Stack>
-            );
-          })}
-        </Box>
+
+                  <Card
+                    sx={(theme) => ({ flex: 1, p: 1.5, mb: 1.5, cursor: isPost ? 'pointer' : 'default', border: `1px solid ${alpha(theme.palette[config.color].main, 0.08)}`, transition: 'all 0.2s', '&:hover': isPost ? { borderColor: alpha(theme.palette[config.color].main, 0.25) } : {} })}
+                    onClick={() => isPost && setSelectedPost(d)}
+                  >
+                    <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                        <Chip label={config.label} size="small" color={config.color} variant="outlined" sx={{ height: 18, fontSize: 9 }} />
+                        {isPost && d.post_type && <Chip label={d.post_type} size="small" variant="outlined" sx={{ height: 18, fontSize: 9 }} />}
+                        {isPost && d.sentiment_label && <Chip label={d.sentiment_label} size="small" color={SENTIMENT_COLORS[d.sentiment_label] || 'default'} sx={{ height: 18, fontSize: 9 }} />}
+                        {isPost && d.coverage_type && COVERAGE_TYPE_LABELS[d.coverage_type] && (
+                          <Chip 
+                            label={COVERAGE_TYPE_LABELS[d.coverage_type].label} 
+                            size="small" 
+                            color={COVERAGE_TYPE_LABELS[d.coverage_type].color} 
+                            icon={<Iconify icon={COVERAGE_TYPE_LABELS[d.coverage_type].icon} width={12} />}
+                            sx={{ height: 18, fontSize: 9, fontWeight: 600 }} 
+                          />
+                        )}
+                      </Stack>
+                      <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>{toJalaliShort(event.date)}</Typography>
+                    </Stack>
+
+                    <Stack direction="row" spacing={1}>
+                      {isPost && d.media_url && (
+                        <Box component="img" src={d.media_url} sx={{ width: 48, height: 48, borderRadius: 1, objectFit: 'cover', flexShrink: 0 }} onError={(e) => { e.target.style.display = 'none'; }} />
+                      )}
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="body2" sx={{ fontSize: 11, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          <HighlightText text={isPost ? (d.caption || 'بدون کپشن') : (d.content || 'گزارش')} search={search} />
+                        </Typography>
+                        {isPost && (
+                          <Stack direction="row" spacing={1.5} sx={{ mt: 0.25 }}>
+                            <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>❤️ {d.likes_count?.toLocaleString()}</Typography>
+                            <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>💬 {d.comments_count?.toLocaleString()}</Typography>
+                          </Stack>
+                        )}
+                      </Box>
+                    </Stack>
+                  </Card>
+                </Stack>
+              );
+            })}
+          </Box>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>
+                نمایش {((page - 1) * itemsPerPage) + 1} تا {Math.min(page * itemsPerPage, filteredEvents.length)} از {filteredEvents.length} رویداد
+              </Typography>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={(e, value) => setPage(value)}
+                size="small"
+                color="primary"
+                siblingCount={1}
+                boundaryCount={1}
+                sx={{
+                  '& .MuiPaginationItem-root': {
+                    fontSize: 11,
+                    minWidth: 28,
+                    height: 28,
+                  }
+                }}
+              />
+            </Stack>
+          )}
+        </>
       )}
 
       {/* Post Detail */}
@@ -166,6 +228,14 @@ export function NarrativeTimeline({ posts, fieldReports }) {
                 <Chip label={`💬 ${selectedPost.comments_count?.toLocaleString()}`} size="small" />
                 {selectedPost.post_type && <Chip label={selectedPost.post_type} size="small" variant="outlined" />}
                 {selectedPost.sentiment_label && <Chip label={selectedPost.sentiment_label} size="small" color={SENTIMENT_COLORS[selectedPost.sentiment_label] || 'default'} />}
+                {selectedPost.coverage_type && COVERAGE_TYPE_LABELS[selectedPost.coverage_type] && (
+                  <Chip 
+                    label={COVERAGE_TYPE_LABELS[selectedPost.coverage_type].label} 
+                    size="small" 
+                    color={COVERAGE_TYPE_LABELS[selectedPost.coverage_type].color}
+                    icon={<Iconify icon={COVERAGE_TYPE_LABELS[selectedPost.coverage_type].icon} width={16} />}
+                  />
+                )}
                 {selectedPost.published_at && <Chip label={toJalaliDate(selectedPost.published_at)} size="small" variant="outlined" />}
               </Stack>
             </DialogContent>

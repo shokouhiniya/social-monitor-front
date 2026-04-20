@@ -27,4 +27,6 @@ export const paths = {
     posts: `${ROOTS.DASHBOARD}/posts`,
     alerts: `${ROOTS.DASHBOARD}/alerts`,
   },
+  // OTHER
+  faqs: '/faqs',
 };

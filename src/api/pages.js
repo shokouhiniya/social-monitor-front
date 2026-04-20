@@ -97,8 +97,8 @@ export function useFetchPageData() {
 export function useProcessPageData() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id) => {
-      const res = await axiosInstance.post(endpoints.pages.process(id));
+    mutationFn: async ({ id, timeRange }) => {
+      const res = await axiosInstance.post(endpoints.pages.process(id), { timeRange });
       return res.data?.data;
     },
     onSuccess: () => {
