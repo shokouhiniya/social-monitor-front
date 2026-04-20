@@ -122,8 +122,11 @@ export function NarrativeTimeline({ posts, fieldReports }) {
                 <Card
                   sx={(theme) => ({ flex: 1, p: 1.5, mb: 1.5, cursor: isPost ? 'pointer' : 'default', border: `1px solid ${alpha(theme.palette[config.color].main, 0.08)}`, transition: 'all 0.2s', '&:hover': isPost ? { borderColor: alpha(theme.palette[config.color].main, 0.25) } : {} })}
                   onClick={() => {
-                    if (isPost && d.external_id) {
-                      window.open(`https://www.instagram.com/p/${d.external_id}/`, '_blank');
+                    if (isPost) {
+                      const shortcode = d.shortcode || d.external_id;
+                      if (shortcode && shortcode.length < 20) {
+                        window.open(`https://www.instagram.com/p/${shortcode}/`, '_blank');
+                      }
                     }
                   }}
                 >

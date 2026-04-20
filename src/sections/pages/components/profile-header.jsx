@@ -16,6 +16,7 @@ import IconButton from '@mui/material/IconButton';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { toJalali } from 'src/utils/format-jalali';
+import { proxyImage } from 'src/utils/proxy-image';
 
 import axiosInstance, { endpoints } from 'src/lib/axios';
 import { useFetchPageData, useProcessPageData } from 'src/api/pages';
@@ -95,7 +96,7 @@ export function ProfileHeader({ page, onEdit }) {
     <Card sx={{ p: 3 }}>
       <Stack direction={{ xs: 'column', md: 'row' }} alignItems="center" spacing={3}>
         <Box sx={{ position: 'relative' }}>
-          <Avatar src={page.profile_image_url} sx={{ width: 80, height: 80, fontSize: 32 }}>
+          <Avatar src={proxyImage(page.profile_image_url)} sx={{ width: 80, height: 80, fontSize: 32 }}>
             {page.name?.[0]}
           </Avatar>
           {onEdit && (

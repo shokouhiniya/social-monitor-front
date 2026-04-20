@@ -66,10 +66,10 @@ export function tokenExpired(exp) {
 export async function setSession(accessToken) {
   try {
     if (accessToken) {
-      sessionStorage.setItem(JWT_STORAGE_KEY, accessToken);
+      localStorage.setItem(JWT_STORAGE_KEY, accessToken);
       axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
     } else {
-      sessionStorage.removeItem(JWT_STORAGE_KEY);
+      localStorage.removeItem(JWT_STORAGE_KEY);
       delete axios.defaults.headers.common.Authorization;
     }
   } catch (error) {

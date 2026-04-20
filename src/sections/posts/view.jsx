@@ -21,6 +21,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useHighImpactPosts } from 'src/api/analytics';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { usePostsFeed, useTopicClusters } from 'src/api/posts';
+import { proxyImage } from 'src/utils/proxy-image';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -173,7 +174,7 @@ function SpikeCard({ post }) {
     >
       <Stack direction="row" alignItems="center" spacing={1.5}>
         <Iconify icon="solar:bolt-circle-bold-duotone" width={24} sx={{ color: 'warning.main' }} />
-        <Avatar src={post.page?.profile_image_url} sx={{ width: 32, height: 32 }}>{post.page?.name?.[0]}</Avatar>
+        <Avatar src={proxyImage(post.page?.profile_image_url)} sx={{ width: 32, height: 32 }}>{post.page?.name?.[0]}</Avatar>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="caption" sx={{ fontWeight: 700 }}>{post.page?.name}</Typography>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: 10 }} noWrap>
@@ -193,7 +194,17 @@ function PostCard({ post, compact }) {
   // Generate Instagram post URL
   const getInstagramUrl = () => {
     if (!post.external_id) return null;
-    return `https://www.instagram.com/p/${post.external_id}/`;
+    
+    // If external_id is a number (media_id), we need shortcode
+    // For now, we'll use the external_id as is (assuming it's shortcode)
+    // In production, you should store shortcode separately
+    const shortcode = post.shortcode || post.external_id;
+    
+    // Only create URL if shortcode looks valid (not a long number)
+    if (shortcode && shortcode.length < 20) {
+      return `https://www.instagram.com/p/${shortcode}/`;
+    }
+    return null;
   };
 
   const handleClick = () => {
@@ -214,7 +225,7 @@ function PostCard({ post, compact }) {
     >
       {/* Header */}
       <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.5 }}>
-        <Avatar src={post.page?.profile_image_url} sx={{ width: 32, height: 32 }}>{post.page?.name?.[0]}</Avatar>
+        <Avatar src={proxyImage(post.page?.profile_image_url)} sx={{ width: 32, height: 32 }}>{post.page?.name?.[0]}</Avatar>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="caption" sx={{ fontWeight: 700 }}>{post.page?.name}</Typography>
           <Typography variant="caption" color="text.disabled" sx={{ display: 'block', fontSize: 10 }}>

@@ -23,8 +23,8 @@ export const signInWithPassword = async ({ username, password }) => {
       throw new Error('Access token not found in response');
     }
 
-    // Store user info in session
-    sessionStorage.setItem('user', JSON.stringify(user));
+    // Store user info in localStorage (not sessionStorage)
+    localStorage.setItem('user', JSON.stringify(user));
     setSession(token);
   } catch (error) {
     console.error('Error during sign in:', error);
@@ -65,7 +65,7 @@ export const signUp = async ({ email, password, firstName, lastName }) => {
 export const signOut = async () => {
   try {
     await setSession(null);
-    sessionStorage.removeItem('user');
+    localStorage.removeItem('user');
   } catch (error) {
     console.error('Error during sign out:', error);
     throw error;

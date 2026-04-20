@@ -20,13 +20,13 @@ export function AuthProvider({ children }) {
 
   const checkUserSession = useCallback(async () => {
     try {
-      const accessToken = sessionStorage.getItem(JWT_STORAGE_KEY);
-      const userStr = sessionStorage.getItem('user');
+      const accessToken = localStorage.getItem(JWT_STORAGE_KEY);
+      const userStr = localStorage.getItem('user');
 
       if (accessToken && isValidToken(accessToken)) {
         setSession(accessToken);
 
-        // Get user from session storage (simple auth)
+        // Get user from localStorage (simple auth)
         const user = userStr ? JSON.parse(userStr) : null;
 
         if (user) {
