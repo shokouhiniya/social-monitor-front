@@ -9,6 +9,7 @@ import { useTheme } from '@mui/material/styles';
 import { iconButtonClasses } from '@mui/material/IconButton';
 
 import { _contacts, _notifications } from 'src/_mock';
+import { useNetworkContext } from 'src/contexts/network-context';
 
 import { Logo } from 'src/components/logo';
 import { useSettingsContext } from 'src/components/settings';
@@ -26,16 +27,14 @@ import { _workspaces } from '../nav-config-workspace';
 import { MenuButton } from '../components/menu-button';
 import { AccountDrawer } from '../components/account-drawer';
 import { SignOutButton } from '../components/sign-out-button';
+import { getNavDataByNetwork } from '../nav-config-dashboard';
 import { SettingsButton } from '../components/settings-button';
 import { LanguagePopover } from '../components/language-popover';
 import { ContactsPopover } from '../components/contacts-popover';
 import { WorkspacesPopover } from '../components/workspaces-popover';
-import { getNavDataByNetwork } from '../nav-config-dashboard';
 import { dashboardLayoutVars, dashboardNavColorVars } from './css-vars';
 import { NotificationsDrawer } from '../components/notifications-drawer';
 import { MainSection, layoutClasses, HeaderSection, LayoutSection } from '../core';
-
-import { useNetworkContext } from 'src/contexts/network-context';
 
 // ----------------------------------------------------------------------
 

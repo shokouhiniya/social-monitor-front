@@ -18,10 +18,11 @@ import InputAdornment from '@mui/material/InputAdornment';
 import CircularProgress from '@mui/material/CircularProgress';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
+import { proxyImage } from 'src/utils/proxy-image';
+
 import { useHighImpactPosts } from 'src/api/analytics';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { usePostsFeed, useTopicClusters } from 'src/api/posts';
-import { proxyImage } from 'src/utils/proxy-image';
 
 import { Iconify } from 'src/components/iconify';
 

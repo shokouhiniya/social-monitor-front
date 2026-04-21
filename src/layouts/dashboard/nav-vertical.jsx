@@ -8,8 +8,8 @@ import { Scrollbar } from 'src/components/scrollbar';
 import { NavSectionMini, NavSectionVertical } from 'src/components/nav-section';
 
 import { layoutClasses } from '../core';
-import { NetworkSwitcher, NetworkSwitcherMini } from '../components/network-switcher';
 import { NavToggleButton } from '../components/nav-toggle-button';
+import { NetworkSwitcher, NetworkSwitcherMini } from '../components/network-switcher';
 
 // ----------------------------------------------------------------------
 

@@ -15,10 +15,10 @@ import { StatCard } from '../dashboard/components/stat-card';
 import { NarrativeBattle } from '../macro/components/narrative-battle';
 import { KeywordVelocity } from '../macro/components/keyword-velocity';
 import { ReshareTreeChart } from '../macro/components/reshare-tree-chart';
+import { TopicGravityChart } from '../dashboard/components/topic-gravity-chart';
 import { NetworkActivityChart } from '../macro/components/network-activity-chart';
 import { ReactionVelocityChart } from '../macro/components/reaction-velocity-chart';
 import { SentimentOverviewChart } from '../macro/components/sentiment-overview-chart';
-import { TopicGravityChart } from '../dashboard/components/topic-gravity-chart';
 import { SentimentInfluenceMatrix } from '../macro/components/sentiment-influence-matrix';
 
 // ----------------------------------------------------------------------
