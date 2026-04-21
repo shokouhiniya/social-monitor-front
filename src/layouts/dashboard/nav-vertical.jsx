@@ -8,6 +8,7 @@ import { Scrollbar } from 'src/components/scrollbar';
 import { NavSectionMini, NavSectionVertical } from 'src/components/nav-section';
 
 import { layoutClasses } from '../core';
+import { NetworkSwitcher, NetworkSwitcherMini } from '../components/network-switcher';
 import { NavToggleButton } from '../components/nav-toggle-button';
 
 // ----------------------------------------------------------------------
@@ -32,6 +33,8 @@ export function NavVertical({
         </Box>
       )}
 
+      <NetworkSwitcher />
+
       <Scrollbar fillContent>
         <NavSectionVertical
           data={data}
@@ -52,6 +55,8 @@ export function NavVertical({
           <Logo />
         </Box>
       )}
+
+      <NetworkSwitcherMini />
 
       <NavSectionMini
         data={data}

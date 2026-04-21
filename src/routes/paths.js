@@ -18,14 +18,29 @@ export const paths = {
   // DASHBOARD
   dashboard: {
     root: ROOTS.DASHBOARD,
-    macro: `${ROOTS.DASHBOARD}/macro`,
-    pages: {
-      root: `${ROOTS.DASHBOARD}/pages`,
-      profile: (id) => `${ROOTS.DASHBOARD}/pages/${id}`,
+    // Instagram
+    instagram: {
+      root: `${ROOTS.DASHBOARD}/instagram`,
+      macro: `${ROOTS.DASHBOARD}/instagram/macro`,
+      pages: {
+        root: `${ROOTS.DASHBOARD}/instagram/pages`,
+        profile: (id) => `${ROOTS.DASHBOARD}/instagram/pages/${id}`,
+      },
+      posts: `${ROOTS.DASHBOARD}/instagram/posts`,
+      alerts: `${ROOTS.DASHBOARD}/instagram/alerts`,
+      fieldReports: `${ROOTS.DASHBOARD}/instagram/field-reports`,
+      settings: `${ROOTS.DASHBOARD}/instagram/settings`,
     },
-    fieldReports: `${ROOTS.DASHBOARD}/field-reports`,
-    posts: `${ROOTS.DASHBOARD}/posts`,
-    alerts: `${ROOTS.DASHBOARD}/alerts`,
-    settings: `${ROOTS.DASHBOARD}/settings`,
+    // Telegram
+    telegram: {
+      root: `${ROOTS.DASHBOARD}/telegram`,
+      macro: `${ROOTS.DASHBOARD}/telegram/macro`,
+      channels: `${ROOTS.DASHBOARD}/telegram/channels`,
+      channel: (id) => `${ROOTS.DASHBOARD}/telegram/channels/${id}`,
+      posts: `${ROOTS.DASHBOARD}/telegram/posts`,
+      alerts: `${ROOTS.DASHBOARD}/telegram/alerts`,
+      fieldReports: `${ROOTS.DASHBOARD}/telegram/field-reports`,
+      settings: `${ROOTS.DASHBOARD}/telegram/settings`,
+    },
   },
 };

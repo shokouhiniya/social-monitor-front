@@ -11,6 +11,7 @@ import { Scrollbar } from 'src/components/scrollbar';
 import { NavSectionVertical } from 'src/components/nav-section';
 
 import { layoutClasses } from '../core';
+import { NetworkSwitcher } from '../components/network-switcher';
 
 // ----------------------------------------------------------------------
 
@@ -56,6 +57,8 @@ export function NavMobile({
           <Logo />
         </Box>
       )}
+
+      <NetworkSwitcher />
 
       <Scrollbar fillContent>
         <NavSectionVertical

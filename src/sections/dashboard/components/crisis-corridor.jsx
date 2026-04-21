@@ -46,7 +46,7 @@ export function CrisisCorridor() {
               direction="row"
               alignItems="center"
               spacing={1.5}
-              onClick={() => router.push(paths.dashboard.pages.profile(page.id))}
+              onClick={() => router.push(paths.dashboard.instagram.pages.profile(page.id))}
               sx={(theme) => ({
                 p: 1, borderRadius: 1, cursor: 'pointer',
                 bgcolor: alpha(theme.palette.error.main, 0.04),

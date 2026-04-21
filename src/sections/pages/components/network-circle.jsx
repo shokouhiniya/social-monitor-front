@@ -125,7 +125,7 @@ export function NetworkCircle({ page, relatedPages }) {
           borderColor: alpha(theme.palette.info.main, 0.4),
           glowColor: alpha(theme.palette.info.main, 0.2),
           textColor: theme.palette.text.primary,
-          onClick: () => router.push(paths.dashboard.pages.profile(conn.id)),
+          onClick: () => router.push(paths.dashboard.instagram.pages.profile(conn.id)),
         },
         draggable: true,
       });
