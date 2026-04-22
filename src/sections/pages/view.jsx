@@ -37,7 +37,7 @@ import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
 import { DashboardContent } from 'src/layouts/dashboard';
-import { usePages, useCreatePage, useDeletePage, useBulkCreatePages } from 'src/api/pages';
+import { usePages, useCreatePage, useDeletePage, useBulkCreatePages, useFetchPageData } from 'src/api/pages';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -113,8 +113,35 @@ export function PagesListView() {
   const createMutation = useCreatePage();
   const bulkMutation = useBulkCreatePages();
   const deleteMutation = useDeletePage();
+  const fetchMutation = useFetchPageData();
   const rows = data?.data || [];
   const total = data?.total || 0;
+  const [fetchingAll, setFetchingAll] = useState(false);
+  const [fetchProgress, setFetchProgress] = useState({ current: 0, total: 0, currentPage: '' });
+  const [fetchResults, setFetchResults] = useState(null);
+
+  const handleFetchAll = async () => {
+    if (rows.length === 0) return;
+    setFetchingAll(true);
+    setFetchProgress({ current: 0, total: rows.length, currentPage: '' });
+    const results = { success: [], failed: [] };
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      setFetchProgress({ current: i + 1, total: rows.length, currentPage: row.name });
+      try {
+        await fetchMutation.mutateAsync(row.id);
+        results.success.push(row.name);
+      } catch (err) {
+        console.error(`Failed to fetch ${row.name}:`, err);
+        results.failed.push({ name: row.name, error: err.message || 'خطای ناشناخته' });
+      }
+    }
+
+    setFetchingAll(false);
+    setFetchProgress({ current: 0, total: 0, currentPage: '' });
+    setFetchResults(results);
+  };
 
   const handleCreate = () => {
     createMutation.mutate(form, { onSuccess: () => { setOpenAdd(false); setForm(EMPTY_FORM); } });
@@ -205,6 +232,15 @@ export function PagesListView() {
           <Typography variant="body2" color="text.secondary">مدیریت و تحلیل {total} پیج تحت پایش</Typography>
         </Box>
         <Stack direction="row" spacing={1}>
+          <Button
+            variant="contained"
+            color="warning"
+            startIcon={fetchingAll ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:download-bold" />}
+            onClick={handleFetchAll}
+            disabled={fetchingAll || rows.length === 0}
+          >
+            {fetchingAll ? `بارگیری ${fetchProgress.current} از ${fetchProgress.total}` : 'بارگیری همه'}
+          </Button>
           <Button variant="outlined" startIcon={<Iconify icon="solar:filter-bold" />} onClick={() => setOpenFilter(true)}>
             فیلتر پیشرفته
           </Button>
@@ -221,6 +257,24 @@ export function PagesListView() {
       </Stack>
 
       {/* Quick Segment Bar */}
+      {fetchingAll && (
+        <Card sx={{ p: 2, mb: 2, bgcolor: 'warning.lighter' }}>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <CircularProgress size={20} color="warning" />
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                در حال بارگیری: {fetchProgress.currentPage} ({fetchProgress.current} از {fetchProgress.total})
+              </Typography>
+              <LinearProgress
+                variant="determinate"
+                value={(fetchProgress.current / fetchProgress.total) * 100}
+                color="warning"
+                sx={{ mt: 0.5, height: 6, borderRadius: 1 }}
+              />
+            </Box>
+          </Stack>
+        </Card>
+      )}
       <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }} useFlexGap>
         {[
           { key: 'all', label: 'همه', icon: 'solar:list-bold' },
@@ -273,7 +327,7 @@ export function PagesListView() {
                 <TableBody>
                   {rows.map((row) => (
                     <TableRow key={row.id} hover selected={selected.includes(row.id)} sx={{ cursor: 'pointer' }}
-                      onClick={() => router.push(paths.dashboard.instagram.pages.profile(row.id))}
+                      onClick={() => router.push(paths.dashboard.pages.profile(row.id))}
                     >
                       <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
                         <Checkbox checked={selected.includes(row.id)} onChange={() => handleSelect(row.id)} />
@@ -322,7 +376,7 @@ export function PagesListView() {
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Stack direction="row" spacing={0.5}>
                           <Tooltip title="مشاهده پروفایل" arrow>
-                            <IconButton size="small" onClick={() => router.push(paths.dashboard.instagram.pages.profile(row.id))}>
+                            <IconButton size="small" onClick={() => router.push(paths.dashboard.pages.profile(row.id))}>
                               <Iconify icon="solar:eye-bold" width={18} />
                             </IconButton>
                           </Tooltip>
@@ -483,6 +537,49 @@ export function PagesListView() {
               تایید و افزودن {importPreview.length} پیج
             </Button>
           )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Fetch All Results Dialog */}
+      <Dialog open={!!fetchResults} onClose={() => setFetchResults(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Iconify icon="solar:download-bold-duotone" width={24} sx={{ color: 'warning.main' }} />
+            <span>نتیجه بارگیری</span>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          {fetchResults && (
+            <Stack spacing={2}>
+              {fetchResults.success.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" color="success.main" sx={{ mb: 1 }}>
+                    ✅ موفق ({fetchResults.success.length})
+                  </Typography>
+                  <Stack spacing={0.5}>
+                    {fetchResults.success.map((name, i) => (
+                      <Chip key={i} label={name} size="small" color="success" variant="outlined" />
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+              {fetchResults.failed.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" color="error.main" sx={{ mb: 1 }}>
+                    ❌ ناموفق ({fetchResults.failed.length})
+                  </Typography>
+                  <Stack spacing={0.5}>
+                    {fetchResults.failed.map((item, i) => (
+                      <Chip key={i} label={`${item.name}: ${item.error}`} size="small" color="error" variant="outlined" />
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFetchResults(null)}>بستن</Button>
         </DialogActions>
       </Dialog>
     </DashboardContent>

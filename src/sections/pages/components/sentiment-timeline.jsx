@@ -37,16 +37,27 @@ export function SentimentTimeline({ data }) {
     );
   }
 
-  const chartData = items.map((item) => ({
-    ...item,
-    jalaliDate: toJalaliDate(item.date),
-    avg_sentiment: Number(item.avg_sentiment) || 0,
-    post_count: Number(item.post_count) || 0,
-  }));
+  // Filter out days with no posts and calculate bubble size based on post count
+  const chartData = items
+    .filter(item => Number(item.post_count) > 0) // Only show days with posts
+    .map((item) => {
+      const postCount = Number(item.post_count) || 0;
+      const avgSentiment = Number(item.avg_sentiment) || 0;
+      
+      return {
+        ...item,
+        jalaliDate: toJalaliDate(item.date),
+        avg_sentiment: avgSentiment,
+        post_count: postCount,
+        // Calculate bubble size (radius) based on post count
+        // Min size 3, max size 15, scaled logarithmically for better visualization
+        bubbleSize: Math.max(3, Math.min(15, 3 + Math.log(postCount + 1) * 3)),
+      };
+    });
 
   return (
     <ChartCard title="تایم‌لاین تغییر فاز" icon="solar:graph-bold-duotone"
-      info="نوسان احساسات در طول زمان. بالای صفر = امیدوار، زیر = خشمگین." sx={{ height: '100%' }}
+      info="نوسان احساسات در طول زمان. اندازه نقاط = تعداد پست. بالای صفر = امیدوار، زیر = خشمگین." sx={{ height: '100%' }}
     >
       <Box sx={{ height: 200, direction: 'ltr' }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -59,11 +70,51 @@ export function SentimentTimeline({ data }) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
-            <XAxis dataKey="jalaliDate" tick={{ fontSize: 9, fill: theme.palette.text.secondary }} />
-            <YAxis domain={[-1, 1]} tick={{ fontSize: 9, fill: theme.palette.text.secondary }} />
+            <XAxis 
+              dataKey="jalaliDate" 
+              tick={{ fontSize: 9, fill: theme.palette.text.secondary }}
+              interval="preserveStartEnd"
+            />
+            <YAxis 
+              domain={[-1, 1]} 
+              tick={{ fontSize: 9, fill: theme.palette.text.secondary }}
+              ticks={[-1, -0.5, 0, 0.5, 1]}
+              tickFormatter={(value) => {
+                if (value === 1) return 'امیدوار';
+                if (value === 0.5) return 'مثبت';
+                if (value === 0) return 'خنثی';
+                if (value === -0.5) return 'منفی';
+                if (value === -1) return 'خشمگین';
+                return value;
+              }}
+            />
             <Tooltip content={<CustomTooltip />} />
             <ReferenceLine y={0} stroke={theme.palette.text.disabled} strokeDasharray="5 5" />
-            <Area type="monotone" dataKey="avg_sentiment" stroke={theme.palette.primary.main} fill="url(#sentGrad)" strokeWidth={2} />
+            <ReferenceLine y={0.5} stroke={theme.palette.success.light} strokeDasharray="3 3" opacity={0.3} />
+            <ReferenceLine y={-0.5} stroke={theme.palette.error.light} strokeDasharray="3 3" opacity={0.3} />
+            <Area 
+              type="monotone" 
+              dataKey="avg_sentiment" 
+              stroke={theme.palette.primary.main} 
+              fill="url(#sentGrad)" 
+              strokeWidth={2}
+              dot={(props) => {
+                const { cx, cy, payload } = props;
+                if (!payload) return null;
+                const size = payload.bubbleSize || 3;
+                return (
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={size}
+                    fill={theme.palette.primary.main}
+                    stroke={theme.palette.background.paper}
+                    strokeWidth={1.5}
+                    opacity={0.8}
+                  />
+                );
+              }}
+            />
           </AreaChart>
         </ResponsiveContainer>
       </Box>

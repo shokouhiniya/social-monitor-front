@@ -1,4 +1,5 @@
 import 'src/global.css';
+import 'src/utils/farsi-numbers-polyfill';
 
 import InitColorSchemeScript from '@mui/material/InitColorSchemeScript';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';

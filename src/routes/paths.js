@@ -43,4 +43,6 @@ export const paths = {
       settings: `${ROOTS.DASHBOARD}/telegram/settings`,
     },
   },
+  // OTHER
+  faqs: '/faqs',
 };
