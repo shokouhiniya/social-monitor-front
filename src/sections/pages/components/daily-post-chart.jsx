@@ -1,36 +1,23 @@
 'use client';
 
 import { useMemo } from 'react';
-import dynamic from 'next/dynamic';
 import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
 import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
-import moment from 'moment-jalaali';
+import Typography from '@mui/material/Typography';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
+import dayjs from 'dayjs';
+import jalaliday from 'jalaliday';
 
-// Configure moment-jalaali
-moment.loadPersian({ dialect: 'persian-modern' });
-
-// Dynamic import for Chart to avoid SSR issues
-const Chart = dynamic(() => import('react-apexcharts'), { 
-  ssr: false,
-  loading: () => (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 280 }}>
-      <CircularProgress />
-    </Box>
-  )
-});
+dayjs.extend(jalaliday);
 
 export function DailyPostChart({ posts }) {
   const theme = useTheme();
 
   const chartData = useMemo(() => {
-    if (!posts || posts.length === 0) {
-      return { categories: [], data: [] };
-    }
+    if (!posts || posts.length === 0) return [];
 
-    // Get last 30 days
     const days = 30;
     const now = new Date();
     const dailyCounts = {};
@@ -39,119 +26,69 @@ export function DailyPostChart({ posts }) {
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(date.getDate() - i);
-      // Convert to Tehran timezone (+3:30)
-      const tehranDate = new Date(date.getTime() + (3.5 * 60 * 60 * 1000));
-      const dateKey = tehranDate.toISOString().split('T')[0];
+      const dateKey = date.toISOString().split('T')[0];
       dailyCounts[dateKey] = 0;
     }
 
     // Count posts per day
     posts.forEach((post) => {
       if (!post.published_at) return;
-      
-      // Convert to Tehran timezone
       const postDate = new Date(post.published_at);
-      const tehranDate = new Date(postDate.getTime() + (3.5 * 60 * 60 * 1000));
-      const dateKey = tehranDate.toISOString().split('T')[0];
-      
+      const dateKey = postDate.toISOString().split('T')[0];
       if (dailyCounts[dateKey] !== undefined) {
         dailyCounts[dateKey]++;
       }
     });
 
-    // Convert to arrays and format dates as Shamsi
-    const sortedDates = Object.keys(dailyCounts).sort();
-    const categories = sortedDates.map((dateStr) => {
-      const date = new Date(dateStr);
-      // Format as Shamsi date (e.g., "۱۴ فروردین")
-      return moment(date).format('jD jMMMM');
-    });
-    const data = sortedDates.map((dateStr) => dailyCounts[dateStr]);
-
-    return { categories, data };
+    // Convert to recharts format with Shamsi labels
+    return Object.keys(dailyCounts).sort().map((dateStr) => ({
+      date: dayjs(dateStr).calendar('jalali').locale('fa').format('DD MMMM'),
+      count: dailyCounts[dateStr],
+    }));
   }, [posts]);
 
-  const chartOptions = {
-    chart: {
-      type: 'bar',
-      toolbar: { show: false },
-      fontFamily: theme.typography.fontFamily,
-    },
-    plotOptions: {
-      bar: {
-        borderRadius: 4,
-        columnWidth: '60%',
-      },
-    },
-    dataLabels: {
-      enabled: false,
-    },
-    xaxis: {
-      categories: chartData.categories,
-      labels: {
-        rotate: -45,
-        rotateAlways: true,
-        style: {
-          fontSize: '10px',
-          colors: theme.palette.text.secondary,
-        },
-      },
-      axisBorder: {
-        show: false,
-      },
-      axisTicks: {
-        show: false,
-      },
-    },
-    yaxis: {
-      labels: {
-        style: {
-          colors: theme.palette.text.secondary,
-        },
-      },
-      title: {
-        text: 'تعداد پست',
-        style: {
-          color: theme.palette.text.secondary,
-          fontSize: '12px',
-          fontWeight: 500,
-        },
-      },
-    },
-    grid: {
-      borderColor: theme.palette.divider,
-      strokeDashArray: 3,
-      xaxis: {
-        lines: {
-          show: false,
-        },
-      },
-    },
-    colors: [theme.palette.info.main],
-    tooltip: {
-      theme: theme.palette.mode,
-      y: {
-        formatter: (value) => `${value} پست`,
-      },
-    },
-  };
-
-  const series = [
-    {
-      name: 'تعداد پست',
-      data: chartData.data,
-    },
-  ];
+  if (chartData.length === 0) {
+    return (
+      <Card>
+        <CardHeader title="توزیع روزانه پست‌ها" titleTypographyProps={{ variant: 'subtitle2', fontWeight: 600 }} />
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary">داده‌ای موجود نیست</Typography>
+        </Box>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader
         title="توزیع روزانه پست‌ها"
-        subheader="۳۰ روز گذشته (تاریخ شمسی - منطقه زمانی تهران)"
+        subheader="۳۰ روز گذشته (تاریخ شمسی)"
         titleTypographyProps={{ variant: 'subtitle2', fontWeight: 600 }}
         subheaderTypographyProps={{ variant: 'caption' }}
       />
-      <Chart options={chartOptions} series={series} type="bar" height={280} />
+      <Box sx={{ p: 2, pt: 0 }}>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 40 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 9, fill: theme.palette.text.secondary }}
+              angle={-45}
+              textAnchor="end"
+              interval={2}
+            />
+            <YAxis
+              tick={{ fontSize: 10, fill: theme.palette.text.secondary }}
+              label={{ value: 'تعداد پست', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: theme.palette.text.secondary } }}
+            />
+            <Tooltip
+              contentStyle={{ borderRadius: 8, fontSize: 12, fontFamily: theme.typography.fontFamily }}
+              formatter={(value) => [`${value} پست`, 'تعداد']}
+            />
+            <Bar dataKey="count" fill={theme.palette.info.main} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Box>
     </Card>
   );
 }

@@ -327,7 +327,7 @@ export function PagesListView() {
                 <TableBody>
                   {rows.map((row) => (
                     <TableRow key={row.id} hover selected={selected.includes(row.id)} sx={{ cursor: 'pointer' }}
-                      onClick={() => router.push(paths.dashboard.instagram.pages.profile(row.id))}
+                      onClick={() => router.push(paths.dashboard.pages.profile(row.id))}
                     >
                       <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
                         <Checkbox checked={selected.includes(row.id)} onChange={() => handleSelect(row.id)} />
@@ -376,7 +376,7 @@ export function PagesListView() {
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Stack direction="row" spacing={0.5}>
                           <Tooltip title="مشاهده پروفایل" arrow>
-                            <IconButton size="small" onClick={() => router.push(paths.dashboard.instagram.pages.profile(row.id))}>
+                            <IconButton size="small" onClick={() => router.push(paths.dashboard.pages.profile(row.id))}>
                               <Iconify icon="solar:eye-bold" width={18} />
                             </IconButton>
                           </Tooltip>

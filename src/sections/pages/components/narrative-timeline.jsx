@@ -39,6 +39,22 @@ function getMediaUrl(url) {
   return url;
 }
 
+// Convert Instagram media ID to shortcode for URL
+function mediaIdToShortcode(mediaId) {
+  try {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    let id = BigInt(mediaId);
+    let shortcode = '';
+    while (id > 0n) {
+      shortcode = alphabet[Number(id % 64n)] + shortcode;
+      id = id / 64n;
+    }
+    return shortcode;
+  } catch {
+    return null;
+  }
+}
+
 function HighlightText({ text, search }) {
   if (!search || !text) return text || '';
   const parts = text.split(new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
@@ -165,12 +181,24 @@ export function NarrativeTimeline({ posts, fieldReports, page: pageInfo }) {
 
                     {/* Media - right side, takes ~50% width */}
                     {isPost && d.media_url && (
-                      <Box
-                        component="img"
-                        src={getMediaUrl(d.media_url)}
-                        sx={{ width: '45%', borderRadius: 1, objectFit: 'cover', flexShrink: 0 }}
-                        onError={(e) => { e.target.style.display = 'none'; }}
-                      />
+                      d.media_url.endsWith('.mp4') ? (
+                        <Box
+                          component="video"
+                          src={getMediaUrl(d.media_url)}
+                          sx={{ width: '45%', borderRadius: 1, objectFit: 'cover', flexShrink: 0 }}
+                          muted
+                          loop
+                          onMouseEnter={(e) => e.target.play()}
+                          onMouseLeave={(e) => { e.target.pause(); e.target.currentTime = 0; }}
+                        />
+                      ) : (
+                        <Box
+                          component="img"
+                          src={getMediaUrl(d.media_url)}
+                          sx={{ width: '45%', borderRadius: 1, objectFit: 'cover', flexShrink: 0 }}
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      )
                     )}
                   </Stack>
                 </Card>
@@ -192,7 +220,11 @@ export function NarrativeTimeline({ posts, fieldReports, page: pageInfo }) {
             </DialogTitle>
             <DialogContent>
               {selectedPost.media_url && (
-                <Box component="img" src={getMediaUrl(selectedPost.media_url)} sx={{ width: '100%', maxHeight: 500, objectFit: 'contain', borderRadius: 1, mb: 2 }} onError={(e) => { e.target.style.display = 'none'; }} />
+                selectedPost.media_url.endsWith('.mp4') ? (
+                  <Box component="video" src={getMediaUrl(selectedPost.media_url)} controls sx={{ width: '100%', maxHeight: 500, borderRadius: 1, mb: 2 }} />
+                ) : (
+                  <Box component="img" src={getMediaUrl(selectedPost.media_url)} sx={{ width: '100%', maxHeight: 500, objectFit: 'contain', borderRadius: 1, mb: 2 }} onError={(e) => { e.target.style.display = 'none'; }} />
+                )
               )}
 
               {/* Original caption */}
@@ -219,12 +251,14 @@ export function NarrativeTimeline({ posts, fieldReports, page: pageInfo }) {
 
               {/* Link to original post */}
               {(() => {
-                const shortcode = selectedPost.shortcode || selectedPost.external_id;
                 const platform = pageInfo?.platform;
                 let url = null;
 
-                if (platform === 'instagram' && shortcode && shortcode.length < 20) {
-                  url = `https://www.instagram.com/p/${shortcode}/`;
+                if (platform === 'instagram' && selectedPost.external_id) {
+                  const shortcode = mediaIdToShortcode(selectedPost.external_id);
+                  if (shortcode) {
+                    url = `https://www.instagram.com/p/${shortcode}/`;
+                  }
                 } else if (platform === 'twitter') {
                   url = `https://twitter.com/i/status/${selectedPost.external_id}`;
                 } else if (platform === 'telegram' && pageInfo?.username) {
