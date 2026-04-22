@@ -225,7 +225,7 @@ export function PageProfileView({ id }) {
               </Grid>
               {/* Right: Narrative Timeline (full height) */}
               <Grid size={{ xs: 12, md: 6 }}>
-                <NarrativeTimeline posts={pg?.posts} fieldReports={pg?.field_reports} />
+                <NarrativeTimeline posts={pg?.posts} fieldReports={pg?.field_reports} page={pg} />
               </Grid>
             </Grid>
           </Card>

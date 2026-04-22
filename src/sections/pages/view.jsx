@@ -1,44 +1,45 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Grid from '@mui/material/Grid';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import TablePagination from '@mui/material/TablePagination';
-import Typography from '@mui/material/Typography';
-import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
-import Avatar from '@mui/material/Avatar';
 import Chip from '@mui/material/Chip';
+import Table from '@mui/material/Table';
 import Stack from '@mui/material/Stack';
-import CircularProgress from '@mui/material/CircularProgress';
-import IconButton from '@mui/material/IconButton';
+import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
 import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import MenuItem from '@mui/material/MenuItem';
 import Drawer from '@mui/material/Drawer';
 import Slider from '@mui/material/Slider';
 import Tooltip from '@mui/material/Tooltip';
-import LinearProgress from '@mui/material/LinearProgress';
 import { alpha } from '@mui/material/styles';
+import TableRow from '@mui/material/TableRow';
+import Checkbox from '@mui/material/Checkbox';
+import MenuItem from '@mui/material/MenuItem';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableHead from '@mui/material/TableHead';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import TableContainer from '@mui/material/TableContainer';
+import InputAdornment from '@mui/material/InputAdornment';
+import LinearProgress from '@mui/material/LinearProgress';
+import TablePagination from '@mui/material/TablePagination';
+import CircularProgress from '@mui/material/CircularProgress';
 
-import { useRouter } from 'src/routes/hooks';
 import { paths } from 'src/routes/paths';
+import { useRouter } from 'src/routes/hooks';
+
 import { DashboardContent } from 'src/layouts/dashboard';
+import { usePages, useCreatePage, useDeletePage, useBulkCreatePages, useFetchPageData } from 'src/api/pages';
+
 import { Iconify } from 'src/components/iconify';
-import { usePages, useCreatePage, useBulkCreatePages, useDeletePage } from 'src/api/pages';
-import { TwitterSyncDialog } from './twitter-sync-dialog';
 
 // ----------------------------------------------------------------------
 
@@ -49,26 +50,7 @@ const CATEGORY_LABELS = {
   religious: 'مذهبی', art: 'هنری', student: 'دانشجویی', health: 'سلامت',
   technology: 'تکنولوژی', culture: 'فرهنگی', sports: 'ورزشی', analyst: 'تحلیل‌گر',
 };
-const PAGE_CATEGORY_LABELS = {
-  official: 'رسمی',
-  news_agency: 'خبرگزاری‌ها',
-  fan_pages: 'پیج‌های هواداری',
-  news_pages: 'پیج‌های خبری',
-  local_sources: 'منابع محلی',
-  opposition_sources: 'منابع ضدنظام',
-  foreign_sources: 'منابع خارجی',
-};
-const EMPTY_FORM = { 
-  name: '', 
-  username: '', 
-  platform: 'instagram', 
-  category: '', 
-  country: '', 
-  language: '', 
-  bio: '',
-  page_category: 'official',
-  client_keywords: '',
-};
+const EMPTY_FORM = { name: '', username: '', platform: 'instagram', category: '', country: '', language: '', bio: '' };
 
 // Health badge based on activity
 function HealthBadge({ page }) {
@@ -116,7 +98,6 @@ export function PagesListView() {
   const [openImport, setOpenImport] = useState(false);
   const [importPreview, setImportPreview] = useState([]);
   const [openFilter, setOpenFilter] = useState(false);
-  const [openTwitterSync, setOpenTwitterSync] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [filterCluster, setFilterCluster] = useState('');
   const [filterInfluence, setFilterInfluence] = useState([0, 10]);
@@ -132,18 +113,38 @@ export function PagesListView() {
   const createMutation = useCreatePage();
   const bulkMutation = useBulkCreatePages();
   const deleteMutation = useDeletePage();
+  const fetchMutation = useFetchPageData();
   const rows = data?.data || [];
   const total = data?.total || 0;
+  const [fetchingAll, setFetchingAll] = useState(false);
+  const [fetchProgress, setFetchProgress] = useState({ current: 0, total: 0, currentPage: '' });
+  const [fetchResults, setFetchResults] = useState(null);
+
+  const handleFetchAll = async () => {
+    if (rows.length === 0) return;
+    setFetchingAll(true);
+    setFetchProgress({ current: 0, total: rows.length, currentPage: '' });
+    const results = { success: [], failed: [] };
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      setFetchProgress({ current: i + 1, total: rows.length, currentPage: row.name });
+      try {
+        await fetchMutation.mutateAsync(row.id);
+        results.success.push(row.name);
+      } catch (err) {
+        console.error(`Failed to fetch ${row.name}:`, err);
+        results.failed.push({ name: row.name, error: err.message || 'خطای ناشناخته' });
+      }
+    }
+
+    setFetchingAll(false);
+    setFetchProgress({ current: 0, total: 0, currentPage: '' });
+    setFetchResults(results);
+  };
 
   const handleCreate = () => {
-    // Parse client_keywords from comma-separated string to array
-    const payload = {
-      ...form,
-      client_keywords: form.client_keywords 
-        ? form.client_keywords.split(',').map(k => k.trim()).filter(Boolean)
-        : undefined,
-    };
-    createMutation.mutate(payload, { onSuccess: () => { setOpenAdd(false); setForm(EMPTY_FORM); } });
+    createMutation.mutate(form, { onSuccess: () => { setOpenAdd(false); setForm(EMPTY_FORM); } });
   };
 
   const handleSelectAll = (e) => {
@@ -206,13 +207,13 @@ export function PagesListView() {
       if (typeof text !== 'string') return;
       const lines = text.split('\n').filter(Boolean);
       const headers = lines[0].split(',').map((h) => h.trim());
-      const rows = lines.slice(1).map((line) => {
+      const lrows = lines.slice(1).map((line) => {
         const vals = line.split(',').map((v) => v.trim());
         const obj = {};
         headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
         return obj;
       }).filter((r) => r.name || r.username);
-      setImportPreview(rows);
+      setImportPreview(lrows);
     };
     reader.readAsText(file);
   };
@@ -231,8 +232,14 @@ export function PagesListView() {
           <Typography variant="body2" color="text.secondary">مدیریت و تحلیل {total} پیج تحت پایش</Typography>
         </Box>
         <Stack direction="row" spacing={1}>
-          <Button variant="outlined" startIcon={<Iconify icon="mdi:twitter" />} onClick={() => setOpenTwitterSync(true)} color="info">
-            Sync Twitter
+          <Button
+            variant="contained"
+            color="warning"
+            startIcon={fetchingAll ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:download-bold" />}
+            onClick={handleFetchAll}
+            disabled={fetchingAll || rows.length === 0}
+          >
+            {fetchingAll ? `بارگیری ${fetchProgress.current} از ${fetchProgress.total}` : 'بارگیری همه'}
           </Button>
           <Button variant="outlined" startIcon={<Iconify icon="solar:filter-bold" />} onClick={() => setOpenFilter(true)}>
             فیلتر پیشرفته
@@ -250,6 +257,24 @@ export function PagesListView() {
       </Stack>
 
       {/* Quick Segment Bar */}
+      {fetchingAll && (
+        <Card sx={{ p: 2, mb: 2, bgcolor: 'warning.lighter' }}>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <CircularProgress size={20} color="warning" />
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                در حال بارگیری: {fetchProgress.currentPage} ({fetchProgress.current} از {fetchProgress.total})
+              </Typography>
+              <LinearProgress
+                variant="determinate"
+                value={(fetchProgress.current / fetchProgress.total) * 100}
+                color="warning"
+                sx={{ mt: 0.5, height: 6, borderRadius: 1 }}
+              />
+            </Box>
+          </Stack>
+        </Card>
+      )}
       <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }} useFlexGap>
         {[
           { key: 'all', label: 'همه', icon: 'solar:list-bold' },
@@ -302,7 +327,7 @@ export function PagesListView() {
                 <TableBody>
                   {rows.map((row) => (
                     <TableRow key={row.id} hover selected={selected.includes(row.id)} sx={{ cursor: 'pointer' }}
-                      onClick={() => router.push(paths.dashboard.pages.profile(row.id))}
+                      onClick={() => router.push(paths.dashboard.instagram.pages.profile(row.id))}
                     >
                       <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
                         <Checkbox checked={selected.includes(row.id)} onChange={() => handleSelect(row.id)} />
@@ -323,18 +348,7 @@ export function PagesListView() {
                         </Stack>
                       </TableCell>
                       <TableCell>
-                        <Stack spacing={0.5}>
-                          <Chip label={CATEGORY_LABELS[row.category] || row.category || '—'} size="small" variant="outlined" sx={{ fontSize: 11 }} />
-                          {row.page_category && row.page_category !== 'official' && (
-                            <Chip 
-                              label={PAGE_CATEGORY_LABELS[row.page_category] || row.page_category} 
-                              size="small" 
-                              variant="filled" 
-                              color="info"
-                              sx={{ fontSize: 10 }} 
-                            />
-                          )}
-                        </Stack>
+                        <Chip label={CATEGORY_LABELS[row.category] || row.category || '—'} size="small" variant="outlined" sx={{ fontSize: 11 }} />
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>{row.followers_count?.toLocaleString()}</Typography>
@@ -362,7 +376,7 @@ export function PagesListView() {
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Stack direction="row" spacing={0.5}>
                           <Tooltip title="مشاهده پروفایل" arrow>
-                            <IconButton size="small" onClick={() => router.push(paths.dashboard.pages.profile(row.id))}>
+                            <IconButton size="small" onClick={() => router.push(paths.dashboard.instagram.pages.profile(row.id))}>
                               <Iconify icon="solar:eye-bold" width={18} />
                             </IconButton>
                           </Tooltip>
@@ -415,38 +429,20 @@ export function PagesListView() {
         <DialogTitle>افزودن پیج جدید</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="نام پیج" value={form.name || ''} onChange={set('name')} /></Grid>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="یوزرنیم" value={form.username || ''} onChange={set('username')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="نام پیج" value={form.name} onChange={set('name')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="یوزرنیم" value={form.username} onChange={set('username')} /></Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField select fullWidth size="small" label="پلتفرم" value={form.platform || 'instagram'} onChange={set('platform')}>
+              <TextField select fullWidth size="small" label="پلتفرم" value={form.platform} onChange={set('platform')}>
                 <MenuItem value="instagram">اینستاگرام</MenuItem><MenuItem value="twitter">توییتر</MenuItem><MenuItem value="telegram">تلگرام</MenuItem>
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField select fullWidth size="small" label="دسته‌بندی" value={form.category || ''} onChange={set('category')}>
+              <TextField select fullWidth size="small" label="دسته‌بندی" value={form.category} onChange={set('category')}>
                 {Object.entries(CATEGORY_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid size={{ xs: 12 }}>
-              <TextField select fullWidth size="small" label="نوع منبع" value={form.page_category || 'official'} onChange={set('page_category')}>
-                {Object.entries(PAGE_CATEGORY_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
-              </TextField>
-            </Grid>
-            {form.page_category !== 'official' && (
-              <Grid size={{ xs: 12 }}>
-                <TextField 
-                  fullWidth 
-                  size="small" 
-                  label="کلمات کلیدی (با کاما جدا کنید)" 
-                  value={form.client_keywords || ''} 
-                  onChange={set('client_keywords')}
-                  placeholder="مثال: قالیباف, شهردار"
-                  helperText="فقط پست‌هایی که حاوی این کلمات هستند ذخیره می‌شوند"
-                />
-              </Grid>
-            )}
-            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="کشور" value={form.country || ''} onChange={set('country')} /></Grid>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="زبان" value={form.language || ''} onChange={set('language')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="کشور" value={form.country} onChange={set('country')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="زبان" value={form.language} onChange={set('language')} /></Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
@@ -544,15 +540,48 @@ export function PagesListView() {
         </DialogActions>
       </Dialog>
 
-      {/* Twitter Sync Dialog */}
-      <TwitterSyncDialog
-        open={openTwitterSync}
-        onClose={() => setOpenTwitterSync(false)}
-        onSuccess={() => {
-          // Refresh the pages list after successful sync
-          window.location.reload();
-        }}
-      />
+      {/* Fetch All Results Dialog */}
+      <Dialog open={!!fetchResults} onClose={() => setFetchResults(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Iconify icon="solar:download-bold-duotone" width={24} sx={{ color: 'warning.main' }} />
+            <span>نتیجه بارگیری</span>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          {fetchResults && (
+            <Stack spacing={2}>
+              {fetchResults.success.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" color="success.main" sx={{ mb: 1 }}>
+                    ✅ موفق ({fetchResults.success.length})
+                  </Typography>
+                  <Stack spacing={0.5}>
+                    {fetchResults.success.map((name, i) => (
+                      <Chip key={i} label={name} size="small" color="success" variant="outlined" />
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+              {fetchResults.failed.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" color="error.main" sx={{ mb: 1 }}>
+                    ❌ ناموفق ({fetchResults.failed.length})
+                  </Typography>
+                  <Stack spacing={0.5}>
+                    {fetchResults.failed.map((item, i) => (
+                      <Chip key={i} label={`${item.name}: ${item.error}`} size="small" color="error" variant="outlined" />
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFetchResults(null)}>بستن</Button>
+        </DialogActions>
+      </Dialog>
     </DashboardContent>
   );
 }
