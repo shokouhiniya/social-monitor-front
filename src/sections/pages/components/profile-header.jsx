@@ -14,6 +14,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import CircularProgress from '@mui/material/CircularProgress';
+import { alpha } from '@mui/material/styles';
 
 import { toJalali } from 'src/utils/format-jalali';
 import { proxyImage } from 'src/utils/proxy-image';
@@ -27,7 +28,7 @@ import { Iconify } from 'src/components/iconify';
 
 // removed formatDate - using toJalali from utils
 
-export function ProfileHeader({ page, onEdit }) {
+export function ProfileHeader({ page, onEdit, timeRange }) {
   const fetchMutation = useFetchPageData();
   const processMutation = useProcessPageData();
   const [fetchMenuAnchor, setFetchMenuAnchor] = useState(null);
@@ -45,7 +46,7 @@ export function ProfileHeader({ page, onEdit }) {
 
   const handleProcess = () => {
     setProcessMenuAnchor(null);
-    processMutation.mutate(page.id);
+    processMutation.mutate({ id: page.id, timeRange });
   };
 
   const handleExport = async () => {
@@ -212,23 +213,36 @@ export function ProfileHeader({ page, onEdit }) {
                 {processMutation.isPending ? 'در حال پردازش...' : 'پردازش هوشمند'}
               </Button>
             ) : (
-              <Stack direction="row" alignItems="center" spacing={0.5} sx={{ width: '100%' }}>
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="caption" color="warning.main" sx={{ fontWeight: 600, fontSize: 10, display: 'block' }}>
-                    ✓ پردازش شد
-                  </Typography>
-                  <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>
-                    {toJalali(processMutation.data?.page?.last_processed_at || page.last_processed_at)}
-                  </Typography>
-                </Box>
-                <IconButton size="small" onClick={(e) => setProcessMenuAnchor(e.currentTarget)}>
-                  <Iconify icon="solar:menu-dots-bold" width={16} />
-                </IconButton>
-                <Menu anchorEl={processMenuAnchor} open={Boolean(processMenuAnchor)} onClose={() => setProcessMenuAnchor(null)}>
-                  <MenuItem onClick={handleProcess} sx={{ fontSize: 12 }}>
-                    <Iconify icon="solar:cpu-bolt-bold" width={16} sx={{ mr: 1 }} />پردازش مجدد
-                  </MenuItem>
-                </Menu>
+              <Stack spacing={0.5} sx={{ width: '100%' }}>
+                <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="caption" color="warning.main" sx={{ fontWeight: 600, fontSize: 10, display: 'block' }}>
+                      ✓ پردازش شد
+                    </Typography>
+                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>
+                      {toJalali(processMutation.data?.page?.last_processed_at || page.last_processed_at)}
+                    </Typography>
+                  </Box>
+                  <IconButton size="small" onClick={(e) => setProcessMenuAnchor(e.currentTarget)}>
+                    <Iconify icon="solar:menu-dots-bold" width={16} />
+                  </IconButton>
+                  <Menu anchorEl={processMenuAnchor} open={Boolean(processMenuAnchor)} onClose={() => setProcessMenuAnchor(null)}>
+                    <MenuItem onClick={handleProcess} sx={{ fontSize: 12 }}>
+                      <Iconify icon="solar:cpu-bolt-bold" width={16} sx={{ mr: 1 }} />پردازش مجدد
+                    </MenuItem>
+                  </Menu>
+                </Stack>
+                {(processMutation.data?.page?.last_processed_timeframe || page.last_processed_timeframe) && (
+                  <Box sx={(theme) => ({ px: 1, py: 0.5, bgcolor: alpha(theme.palette.warning.main, 0.08), borderRadius: 0.5, border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}` })}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: 9, display: 'block' }}>
+                      بازه زمانی: {
+                        { '24h': '۲۴ ساعت', '3d': '۳ روز', '1w': '۱ هفته', '2w': '۲ هفته', '1m': '۱ ماه', 'all': 'همه' }
+                        [processMutation.data?.page?.last_processed_timeframe || page.last_processed_timeframe] ||
+                        (processMutation.data?.page?.last_processed_timeframe || page.last_processed_timeframe)
+                      }
+                    </Typography>
+                  </Box>
+                )}
               </Stack>
             )
           )}

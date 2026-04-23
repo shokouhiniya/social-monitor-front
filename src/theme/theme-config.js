@@ -19,7 +19,7 @@ export const themeConfig = {
    * Typography
    *************************************** */
   fontFamily: {
-    primary: 'Vazirmatn Variable',
+    primary: 'YekanBakhFaNum',
     secondary: 'Barlow',
   },
   /** **************************************

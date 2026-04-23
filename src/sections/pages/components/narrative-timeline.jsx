@@ -12,6 +12,7 @@ import Collapse from '@mui/material/Collapse';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -30,17 +31,46 @@ const EVENT_CONFIG = {
 };
 const SENTIMENT_COLORS = { angry: 'error', hopeful: 'success', neutral: 'default', sad: 'info' };
 
-function HighlightText({ text, search }) {
-  if (!search || !text) return text || '';
-  const parts = text.split(new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
-  return parts.map((part, i) =>
-    part.toLowerCase() === search.toLowerCase()
-      ? <Box key={i} component="span" sx={{ bgcolor: 'warning.lighter', px: 0.25, borderRadius: 0.5, fontWeight: 700 }}>{part}</Box>
-      : part
-  );
+const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://127.0.0.1:3000';
+
+function getMediaUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('/static/')) return `${SERVER_URL}${url}`;
+  return url;
 }
 
-export function NarrativeTimeline({ posts, fieldReports }) {
+// Convert Instagram media ID to shortcode for URL
+function mediaIdToShortcode(mediaId) {
+  try {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    let id = BigInt(mediaId);
+    let shortcode = '';
+    while (id > 0n) {
+      shortcode = alphabet[Number(id % 64n)] + shortcode;
+      id = id / 64n;
+    }
+    return shortcode;
+  } catch {
+    return null;
+  }
+}
+
+function HighlightText({ text, search }) {
+  if (!search || !text) return text || '';
+  try {
+    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
+    return parts.map((part, i) =>
+      part.toLowerCase() === search.toLowerCase()
+        ? <Box key={i} component="span" sx={{ bgcolor: 'warning.lighter', px: 0.25, borderRadius: 0.5, fontWeight: 700 }}>{part}</Box>
+        : part
+    );
+  } catch {
+    return text;
+  }
+}
+
+export function NarrativeTimeline({ posts, fieldReports, page: pageInfo }) {
   const [selectedPost, setSelectedPost] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [search, setSearch] = useState('');
@@ -121,39 +151,46 @@ export function NarrativeTimeline({ posts, fieldReports }) {
 
                 <Card
                   sx={(theme) => ({ flex: 1, p: 1.5, mb: 1.5, cursor: isPost ? 'pointer' : 'default', border: `1px solid ${alpha(theme.palette[config.color].main, 0.08)}`, transition: 'all 0.2s', '&:hover': isPost ? { borderColor: alpha(theme.palette[config.color].main, 0.25) } : {} })}
-                  onClick={() => {
-                    if (isPost) {
-                      const shortcode = d.shortcode || d.external_id;
-                      if (shortcode && shortcode.length < 20) {
-                        window.open(`https://www.instagram.com/p/${shortcode}/`, '_blank');
-                      }
-                    }
-                  }}
+                  onClick={() => isPost && setSelectedPost(d)}
                 >
                   <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                    <Stack direction="row" spacing={0.5}>
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                       <Chip label={config.label} size="small" color={config.color} variant="outlined" sx={{ height: 18, fontSize: 9 }} />
                       {isPost && d.post_type && <Chip label={d.post_type} size="small" variant="outlined" sx={{ height: 18, fontSize: 9 }} />}
                       {isPost && d.sentiment_label && <Chip label={d.sentiment_label} size="small" color={SENTIMENT_COLORS[d.sentiment_label] || 'default'} sx={{ height: 18, fontSize: 9 }} />}
                     </Stack>
-                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>{toJalaliShort(event.date)}</Typography>
+                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9, flexShrink: 0 }}>{toJalaliShort(event.date)}</Typography>
                   </Stack>
 
-                  <Stack direction="row" spacing={1}>
-                    {isPost && d.media_url && (
-                      <Box component="img" src={d.media_url} sx={{ width: 48, height: 48, borderRadius: 1, objectFit: 'cover', flexShrink: 0 }} onError={(e) => { e.target.style.display = 'none'; }} />
-                    )}
+                  <Stack direction="row" spacing={1.5}>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body2" sx={{ fontSize: 11, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      <Typography variant="body2" sx={{ fontSize: 11, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: isPost && d.media_url ? 4 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         <HighlightText text={isPost ? (d.caption || 'بدون کپشن') : (d.content || 'گزارش')} search={search} />
                       </Typography>
+                      {isPost && d.caption_fa && (
+                        <div dir="rtl" style={{ marginTop: 4, paddingTop: 4, borderTop: '1px dashed #e0e0e0', textAlign: 'right', direction: 'rtl' }}>
+                          <Typography variant="caption" color="info.main" sx={{ fontSize: 9, fontWeight: 700 }}>🔤 ترجمه فارسی:</Typography>
+                          <Typography variant="body2" style={{ textAlign: 'right', direction: 'rtl' }} sx={{ fontSize: 11, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: isPost && d.media_url ? 4 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            <HighlightText text={d.caption_fa} search={search} />
+                          </Typography>
+                        </div>
+                      )}
                       {isPost && (
-                        <Stack direction="row" spacing={1.5} sx={{ mt: 0.25 }}>
+                        <Stack direction="row" spacing={1.5} sx={{ mt: 0.5 }}>
                           <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>❤️ {d.likes_count?.toLocaleString()}</Typography>
                           <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>💬 {d.comments_count?.toLocaleString()}</Typography>
                         </Stack>
                       )}
                     </Box>
+
+                    {isPost && d.media_url && (
+                      d.media_url.endsWith('.mp4') ? (
+                        <Box component="video" src={getMediaUrl(d.media_url)} sx={{ width: '45%', borderRadius: 1, objectFit: 'cover', flexShrink: 0 }} muted loop
+                          onMouseEnter={(e) => e.target.play()} onMouseLeave={(e) => { e.target.pause(); e.target.currentTime = 0; }} />
+                      ) : (
+                        <Box component="img" src={getMediaUrl(d.media_url)} sx={{ width: '45%', borderRadius: 1, objectFit: 'cover', flexShrink: 0 }} onError={(e) => { e.target.style.display = 'none'; }} />
+                      )
+                    )}
                   </Stack>
                 </Card>
               </Stack>
@@ -162,21 +199,65 @@ export function NarrativeTimeline({ posts, fieldReports }) {
         </Box>
       )}
 
-      {/* Post Detail */}
-      <Dialog open={!!selectedPost} onClose={() => setSelectedPost(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+      {/* Post Detail Dialog */}
+      <Dialog open={!!selectedPost} onClose={() => setSelectedPost(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2, maxHeight: '90vh' } }}>
         {selectedPost && (
           <>
-            <DialogTitle sx={{ pb: 1 }}>جزئیات پست</DialogTitle>
+            <DialogTitle sx={{ pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>جزئیات پست</span>
+              <IconButton size="small" onClick={() => setSelectedPost(null)}>
+                <Iconify icon="solar:close-circle-bold" width={22} />
+              </IconButton>
+            </DialogTitle>
             <DialogContent>
-              {selectedPost.media_url && <Box component="img" src={selectedPost.media_url} sx={{ width: '100%', maxHeight: 400, objectFit: 'contain', borderRadius: 1, mb: 2 }} onError={(e) => { e.target.style.display = 'none'; }} />}
-              <Typography variant="body2" sx={{ lineHeight: 2, mb: 2 }}>{selectedPost.caption || 'بدون کپشن'}</Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {selectedPost.media_url && (
+                selectedPost.media_url.endsWith('.mp4') ? (
+                  <Box component="video" src={getMediaUrl(selectedPost.media_url)} controls sx={{ width: '100%', maxHeight: 500, borderRadius: 1, mb: 2 }} />
+                ) : (
+                  <Box component="img" src={getMediaUrl(selectedPost.media_url)} sx={{ width: '100%', maxHeight: 500, objectFit: 'contain', borderRadius: 1, mb: 2 }} onError={(e) => { e.target.style.display = 'none'; }} />
+                )
+              )}
+
+              <Typography variant="body2" sx={{ lineHeight: 2, mb: 1 }}>
+                {selectedPost.caption || 'بدون کپشن'}
+              </Typography>
+
+              {selectedPost.caption_fa && (
+                <div dir="rtl" style={{ marginBottom: 16, padding: 12, borderRadius: 8, backgroundColor: '#e0f7fa', border: '1px solid #b2ebf2', textAlign: 'right', direction: 'rtl' }}>
+                  <Typography variant="caption" color="info.dark" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>🔤 ترجمه فارسی:</Typography>
+                  <Typography variant="body2" style={{ textAlign: 'right', direction: 'rtl' }} sx={{ lineHeight: 2 }}>{selectedPost.caption_fa}</Typography>
+                </div>
+              )}
+
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
                 <Chip label={`❤️ ${selectedPost.likes_count?.toLocaleString()}`} size="small" />
                 <Chip label={`💬 ${selectedPost.comments_count?.toLocaleString()}`} size="small" />
                 {selectedPost.post_type && <Chip label={selectedPost.post_type} size="small" variant="outlined" />}
                 {selectedPost.sentiment_label && <Chip label={selectedPost.sentiment_label} size="small" color={SENTIMENT_COLORS[selectedPost.sentiment_label] || 'default'} />}
                 {selectedPost.published_at && <Chip label={toJalaliDate(selectedPost.published_at)} size="small" variant="outlined" />}
               </Stack>
+
+              {(() => {
+                const platform = pageInfo?.platform;
+                let url = null;
+
+                if (platform === 'instagram' && selectedPost.external_id) {
+                  const shortcode = mediaIdToShortcode(selectedPost.external_id);
+                  if (shortcode) url = `https://www.instagram.com/p/${shortcode}/`;
+                } else if (platform === 'twitter') {
+                  url = `https://twitter.com/i/status/${selectedPost.external_id}`;
+                } else if (platform === 'telegram' && pageInfo?.username) {
+                  url = `https://t.me/${pageInfo.username}/${selectedPost.external_id}`;
+                }
+
+                return url ? (
+                  <Button variant="outlined" fullWidth href={url} target="_blank" rel="noopener noreferrer" sx={{ mb: 2 }}
+                    startIcon={<Iconify icon={platform === 'instagram' ? 'mdi:instagram' : platform === 'twitter' ? 'mdi:twitter' : 'mdi:telegram'} />}
+                  >
+                    مشاهده پست اصلی
+                  </Button>
+                ) : null;
+              })()}
             </DialogContent>
           </>
         )}

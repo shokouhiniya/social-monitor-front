@@ -1,40 +1,43 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 
-import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
+import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
+import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
 import Dialog from '@mui/material/Dialog';
-import Button from '@mui/material/Button';
-import { alpha } from '@mui/material/styles';
-import MenuItem from '@mui/material/MenuItem';
-import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import CircularProgress from '@mui/material/CircularProgress';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import MenuItem from '@mui/material/MenuItem';
+import Alert from '@mui/material/Alert';
+import { alpha } from '@mui/material/styles';
 
-import { useProfileDeepDive } from 'src/api/analytics';
 import { DashboardContent } from 'src/layouts/dashboard';
-import { useUpdatePage, useRelatedPages } from 'src/api/pages';
-
 import { Iconify } from 'src/components/iconify';
+import { useProfileDeepDive } from 'src/api/analytics';
+import { useRelatedPages, useUpdatePage } from 'src/api/pages';
+import { twitterApi } from 'src/api/twitter';
+import axios from 'axios';
 
-import { ActionCards } from './components/action-cards';
-import { PersonaRadar } from './components/persona-radar';
-import { InsightPanel } from './components/insight-panel';
-import { ProfileHeader } from './components/profile-header';
-import { NetworkCircle } from './components/network-circle';
 import { ProfileStatCard } from './components/profile-stat-card';
 import { CriticalRedlines } from './components/critical-redlines';
-import { ContentHooksCard } from './components/content-hooks-card';
+import { PersonaRadar } from './components/persona-radar';
 import { SentimentTimeline } from './components/sentiment-timeline';
-import { NarrativeTimeline } from './components/narrative-timeline';
-import { InteractionLedger } from './components/interaction-ledger';
+import { ProfileHeader } from './components/profile-header';
 import { InteractionCopilot } from './components/interaction-copilot';
+import { ActionCards } from './components/action-cards';
+import { InsightPanel } from './components/insight-panel';
+import { NarrativeTimeline } from './components/narrative-timeline';
+import { NetworkCircle } from './components/network-circle';
+import { InteractionLedger } from './components/interaction-ledger';
+import { ContentHooksCard } from './components/content-hooks-card';
+import { DailyPostChart } from './components/daily-post-chart';
 
 // ----------------------------------------------------------------------
 
@@ -45,8 +48,18 @@ const CATEGORY_LABELS = {
   technology: 'تکنولوژی', culture: 'فرهنگی', sports: 'ورزشی', analyst: 'تحلیل‌گر',
 };
 
+const TIME_RANGES = [
+  { value: '24h', label: '۲۴ ساعت گذشته', hours: 24 },
+  { value: '3d', label: '۳ روز گذشته', hours: 72 },
+  { value: '1w', label: '۱ هفته گذشته', hours: 168 },
+  { value: '2w', label: '۲ هفته گذشته', hours: 336 },
+  { value: '1m', label: '۱ ماه گذشته', hours: 720 },
+  { value: 'all', label: 'همه', hours: null },
+];
+
 export function PageProfileView({ id }) {
-  const { data, isLoading } = useProfileDeepDive(id);
+  const [timeRange, setTimeRange] = useState('1w');
+  const { data, isLoading, refetch } = useProfileDeepDive(id, timeRange);
   const { data: relatedPages } = useRelatedPages(id);
   const updateMutation = useUpdatePage();
   const [editOpen, setEditOpen] = useState(false);
@@ -54,6 +67,17 @@ export function PageProfileView({ id }) {
   const [refineOpen, setRefineOpen] = useState(false);
   const [refineField, setRefineField] = useState('');
   const [refineNote, setRefineNote] = useState('');
+  const [fetchingMore, setFetchingMore] = useState(false);
+  const [fetchResult, setFetchResult] = useState(null);
+  const [hasSetInitialTimeRange, setHasSetInitialTimeRange] = useState(false);
+
+  // Set default timeRange from last processed timeframe (only once on initial load)
+  React.useEffect(() => {
+    if (!hasSetInitialTimeRange && data?.page?.last_processed_timeframe) {
+      setTimeRange(data.page.last_processed_timeframe);
+      setHasSetInitialTimeRange(true);
+    }
+  }, [data?.page?.last_processed_timeframe, hasSetInitialTimeRange]);
 
   if (isLoading) return <DashboardContent maxWidth="xl"><Box sx={{ py: 10, textAlign: 'center' }}><CircularProgress /></Box></DashboardContent>;
   if (!data) return <DashboardContent maxWidth="xl"><Typography>پیج یافت نشد</Typography></DashboardContent>;
@@ -68,6 +92,29 @@ export function PageProfileView({ id }) {
   const handleRefine = (field) => { setRefineField(field); setRefineNote(''); setRefineOpen(true); };
   const handleRefineSubmit = () => { setRefineOpen(false); };
 
+  const handleFetchMore = async () => {
+    setFetchingMore(true);
+    setFetchResult(null);
+    try {
+      let result;
+      if (pg.platform === 'twitter') {
+        result = await twitterApi.fetchMoreTweets(id, 100);
+        setFetchResult({ success: true, message: result.message, count: result.tweets_fetched });
+      } else if (pg.platform === 'telegram') {
+        const response = await axios.post(`http://localhost:3000/telegram/fetch-more/${id}`, { messageLimit: 100 });
+        setFetchResult({ success: true, message: response.data.message, count: response.data.messages_fetched });
+      } else {
+        setFetchResult({ success: false, message: 'این پلتفرم پشتیبانی نمی‌شود' });
+        return;
+      }
+      refetch();
+    } catch (error) {
+      setFetchResult({ success: false, message: error.response?.data?.message || error.message });
+    } finally {
+      setFetchingMore(false);
+    }
+  };
+
   return (
     <DashboardContent maxWidth="xl">
       <Grid container spacing={3}>
@@ -75,7 +122,30 @@ export function PageProfileView({ id }) {
         <Grid size={{ xs: 12 }}><CriticalRedlines page={pg} /></Grid>
 
         {/* Header */}
-        <Grid size={{ xs: 12 }}><ProfileHeader page={pg} onEdit={handleEditOpen} /></Grid>
+        <Grid size={{ xs: 12 }}><ProfileHeader page={pg} onEdit={handleEditOpen} timeRange={timeRange} /></Grid>
+
+        {/* Time Range Selector */}
+        <Grid size={{ xs: 12 }}>
+          <Card sx={{ p: 2 }}>
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <Iconify icon="solar:calendar-bold-duotone" width={24} sx={{ color: 'primary.main' }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>بازه زمانی تحلیل:</Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {TIME_RANGES.map((range) => (
+                  <Button
+                    key={range.value}
+                    size="small"
+                    variant={timeRange === range.value ? 'contained' : 'outlined'}
+                    onClick={() => setTimeRange(range.value)}
+                    sx={{ fontSize: 12 }}
+                  >
+                    {range.label}
+                  </Button>
+                ))}
+              </Stack>
+            </Stack>
+          </Card>
+        </Grid>
 
         {/* KPIs */}
         {[
@@ -112,11 +182,38 @@ export function PageProfileView({ id }) {
         {/* === تایم‌لاین === */}
         <Grid size={{ xs: 12 }}>
           <Card sx={(theme) => ({ p: 3, borderRadius: 2, border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`, background: `linear-gradient(180deg, ${alpha(theme.palette.info.main, 0.02)} 0%, transparent 100%)` })}>
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
-              <Iconify icon="solar:timeline-bold-duotone" width={22} sx={{ color: 'info.main' }} />
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>تایم‌لاین</Typography>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Iconify icon="solar:timeline-bold-duotone" width={22} sx={{ color: 'info.main' }} />
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>تایم‌لاین</Typography>
+                <Typography variant="caption" color="text.secondary">({pg?.posts?.length || 0} پست)</Typography>
+              </Stack>
+              {(pg?.platform === 'twitter' || pg?.platform === 'telegram') && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={fetchingMore ? <CircularProgress size={16} /> : <Iconify icon="solar:download-minimalistic-bold" />}
+                  onClick={handleFetchMore}
+                  disabled={fetchingMore}
+                  sx={{ fontSize: 12 }}
+                >
+                  {fetchingMore ? 'در حال دریافت...' : 'دریافت پست‌های بیشتر'}
+                </Button>
+              )}
             </Stack>
+            
+            {fetchResult && (
+              <Alert severity={fetchResult.success ? 'success' : 'error'} sx={{ mb: 2 }} onClose={() => setFetchResult(null)}>
+                {fetchResult.message}
+              </Alert>
+            )}
+            
             <Grid container spacing={3}>
+              {/* Daily Post Distribution Chart */}
+              <Grid size={{ xs: 12 }}>
+                <DailyPostChart posts={pg?.posts || []} />
+              </Grid>
+              
               {/* Left: Sentiment + Content Hooks (stacked) */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <Stack spacing={3}>
@@ -126,7 +223,7 @@ export function PageProfileView({ id }) {
               </Grid>
               {/* Right: Narrative Timeline (full height) */}
               <Grid size={{ xs: 12, md: 6 }}>
-                <NarrativeTimeline posts={pg?.posts} fieldReports={pg?.field_reports} />
+                <NarrativeTimeline posts={pg?.posts} fieldReports={pg?.field_reports} page={pg} />
               </Grid>
             </Grid>
           </Card>
