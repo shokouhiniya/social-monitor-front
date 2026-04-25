@@ -108,3 +108,15 @@ export function useProcessPageData() {
     },
   });
 }
+
+export function usePageProgress(id, enabled = false) {
+  return useQuery({
+    queryKey: ['pages', id, 'progress'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(`/pages/${id}/progress`);
+      return res.data?.data;
+    },
+    enabled: !!id && enabled,
+    refetchInterval: enabled ? 1000 : false, // Poll every second when enabled
+  });
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -13,6 +13,7 @@ import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
+import LinearProgress from '@mui/material/LinearProgress';
 import CircularProgress from '@mui/material/CircularProgress';
 import { alpha } from '@mui/material/styles';
 
@@ -20,19 +21,87 @@ import { toJalali } from 'src/utils/format-jalali';
 import { proxyImage } from 'src/utils/proxy-image';
 
 import axiosInstance, { endpoints } from 'src/lib/axios';
-import { useFetchPageData, useProcessPageData } from 'src/api/pages';
+import { useFetchPageData, useProcessPageData, usePageProgress } from 'src/api/pages';
 
 import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
-// removed formatDate - using toJalali from utils
+const STEP_ICONS = {
+  'واکشی پروفایل...': 'solar:user-scan-bold',
+  'واکشی پست‌ها...': 'solar:gallery-download-bold',
+  'دانلود مدیا...': 'solar:cloud-download-bold',
+  'واکشی استوری‌ها...': 'solar:stories-bold',
+  'شروع پردازش...': 'solar:cpu-bolt-bold',
+  'رونوشت‌برداری ویدیوها...': 'solar:microphone-bold',
+  'ارسال به هوش مصنوعی...': 'solar:magic-stick-3-bold',
+  'ذخیره نتایج تحلیل...': 'solar:database-bold',
+  'تکمیل شد': 'solar:check-circle-bold',
+};
+
+function ProgressBar({ progress }) {
+  if (!progress) return null;
+
+  const isRunning = progress.status === 'running';
+  const isError = progress.status === 'error';
+  const isComplete = progress.status === 'completed';
+  const icon = STEP_ICONS[progress.step] || 'solar:loading-bold';
+
+  const color = isError ? 'error' : isComplete ? 'success' : progress.operation === 'fetch' ? 'info' : 'warning';
+
+  return (
+    <Box sx={(theme) => ({
+      px: 1.5, py: 1, borderRadius: 1,
+      bgcolor: alpha(theme.palette[color].main, 0.06),
+      border: `1px solid ${alpha(theme.palette[color].main, 0.15)}`,
+    })}>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+        {isRunning ? (
+          <CircularProgress size={14} color={color} thickness={5} />
+        ) : (
+          <Iconify icon={isError ? 'solar:danger-triangle-bold' : 'solar:check-circle-bold'} width={14} sx={{ color: `${color}.main` }} />
+        )}
+        <Typography variant="caption" sx={{ fontWeight: 600, fontSize: 10, flex: 1 }} color={`${color}.main`}>
+          {progress.step}
+        </Typography>
+        {progress.detail && (
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: 9 }}>
+            {progress.detail}
+          </Typography>
+        )}
+        <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 10 }} color={`${color}.main`}>
+          {progress.percent}%
+        </Typography>
+      </Stack>
+      <LinearProgress
+        variant={isRunning && progress.percent === 0 ? 'indeterminate' : 'determinate'}
+        value={progress.percent}
+        color={color}
+        sx={{ height: 5, borderRadius: 1 }}
+      />
+      {isError && progress.error && (
+        <Typography variant="caption" color="error.main" sx={{ fontSize: 9, mt: 0.5, display: 'block' }}>
+          {progress.error}
+        </Typography>
+      )}
+    </Box>
+  );
+}
 
 export function ProfileHeader({ page, onEdit, timeRange }) {
   const fetchMutation = useFetchPageData();
   const processMutation = useProcessPageData();
   const [fetchMenuAnchor, setFetchMenuAnchor] = useState(null);
   const [processMenuAnchor, setProcessMenuAnchor] = useState(null);
+
+  // Poll progress when a mutation is pending
+  const isAnyPending = fetchMutation.isPending || processMutation.isPending;
+  const { data: progressData } = usePageProgress(page?.id, isAnyPending);
+
+  // Find active progress for each operation
+  const progressList = Array.isArray(progressData) ? progressData : progressData ? [progressData] : [];
+  const fetchProgress = progressList.find((p) => p.operation === 'fetch' && p.status === 'running');
+  const processProgress = progressList.find((p) => p.operation === 'process' && p.status === 'running');
 
   if (!page) return null;
 
@@ -56,14 +125,12 @@ export function ProfileHeader({ page, onEdit, timeRange }) {
       if (!data) return;
 
       const lines = [];
-      // Page info
       lines.push('=== اطلاعات پیج ===');
       const p = data.page;
       Object.entries(p).forEach(([k, v]) => {
         lines.push(`${k},${typeof v === 'object' ? JSON.stringify(v) : v}`);
       });
 
-      // Posts
       if (data.posts?.length > 0) {
         lines.push('');
         lines.push('=== پست‌ها ===');
@@ -162,9 +229,13 @@ export function ProfileHeader({ page, onEdit, timeRange }) {
         </Stack>
 
         {/* Actions */}
-        <Stack spacing={1} alignItems="flex-end" sx={{ minWidth: 180 }}>
+        <Stack spacing={1} alignItems="flex-end" sx={{ minWidth: 200 }}>
           {/* Step 1: Fetch */}
-          {!hasFetched && !fetchMutation.isSuccess ? (
+          {fetchMutation.isPending && fetchProgress ? (
+            <Box sx={{ width: '100%' }}>
+              <ProgressBar progress={fetchProgress} />
+            </Box>
+          ) : !hasFetched && !fetchMutation.isSuccess ? (
             <Button
               variant="contained" color="info" size="small" fullWidth
               startIcon={fetchMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:cloud-download-bold-duotone" />}
@@ -204,7 +275,11 @@ export function ProfileHeader({ page, onEdit, timeRange }) {
 
           {/* Step 2: Process — only after successful fetch */}
           {(hasFetched || fetchMutation.isSuccess) && (
-            !hasProcessed && !processMutation.isSuccess ? (
+            processMutation.isPending && processProgress ? (
+              <Box sx={{ width: '100%' }}>
+                <ProgressBar progress={processProgress} />
+              </Box>
+            ) : !hasProcessed && !processMutation.isSuccess ? (
               <Button
                 variant="contained" color="warning" size="small" fullWidth
                 startIcon={processMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:cpu-bolt-bold-duotone" />}

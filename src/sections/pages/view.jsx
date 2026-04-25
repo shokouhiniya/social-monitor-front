@@ -37,7 +37,7 @@ import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
 import { DashboardContent } from 'src/layouts/dashboard';
-import { usePages, useCreatePage, useDeletePage, useBulkCreatePages, useFetchPageData } from 'src/api/pages';
+import { usePages, useCreatePage, useDeletePage, useBulkCreatePages, useFetchPageData, useProcessPageData, usePageProgress } from 'src/api/pages';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -117,18 +117,27 @@ export function PagesListView() {
   const rows = data?.data || [];
   const total = data?.total || 0;
   const [fetchingAll, setFetchingAll] = useState(false);
-  const [fetchProgress, setFetchProgress] = useState({ current: 0, total: 0, currentPage: '' });
+  const [fetchProgress, setFetchProgress] = useState({ current: 0, total: 0, currentPage: '', currentPageId: null, skipped: 0, status: '' });
   const [fetchResults, setFetchResults] = useState(null);
+
+  // Poll per-page progress during batch fetch
+  const { data: currentPageProgress } = usePageProgress(
+    fetchProgress.currentPageId,
+    fetchingAll && !!fetchProgress.currentPageId,
+  );
+  const activePageProgress = Array.isArray(currentPageProgress)
+    ? currentPageProgress.find((p) => p.operation === 'fetch' && p.status === 'running')
+    : currentPageProgress?.status === 'running' ? currentPageProgress : null;
 
   const handleFetchAll = async () => {
     if (rows.length === 0) return;
     setFetchingAll(true);
-    setFetchProgress({ current: 0, total: rows.length, currentPage: '' });
+    setFetchProgress({ current: 0, total: rows.length, currentPage: '', currentPageId: null, skipped: 0, status: '' });
     const results = { success: [], failed: [] };
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      setFetchProgress({ current: i + 1, total: rows.length, currentPage: row.name });
+      setFetchProgress({ current: i + 1, total: rows.length, currentPage: row.name, currentPageId: row.id, skipped: 0, status: '' });
       try {
         await fetchMutation.mutateAsync(row.id);
         results.success.push(row.name);
@@ -139,12 +148,56 @@ export function PagesListView() {
     }
 
     setFetchingAll(false);
-    setFetchProgress({ current: 0, total: 0, currentPage: '' });
+    setFetchProgress({ current: 0, total: 0, currentPage: '', currentPageId: null, skipped: 0, status: '' });
     setFetchResults(results);
   };
 
+  // --- Process All (AI analysis) ---
+  const processMutation = useProcessPageData();
+  const [processingAll, setProcessingAll] = useState(false);
+  const [processProgress, setProcessProgress] = useState({ current: 0, total: 0, currentPage: '', currentPageId: null });
+  const [processResults, setProcessResults] = useState(null);
+
+  // Poll per-page progress during batch process
+  const { data: currentProcessPageProgress } = usePageProgress(
+    processProgress.currentPageId,
+    processingAll && !!processProgress.currentPageId,
+  );
+  const activeProcessProgress = Array.isArray(currentProcessPageProgress)
+    ? currentProcessPageProgress.find((p) => p.operation === 'process' && p.status === 'running')
+    : currentProcessPageProgress?.status === 'running' ? currentProcessPageProgress : null;
+
+  const handleProcessAll = async () => {
+    if (rows.length === 0) return;
+    setProcessingAll(true);
+    setProcessProgress({ current: 0, total: rows.length, currentPage: '', currentPageId: null });
+    const results = { success: [], skipped: [], failed: [] };
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      setProcessProgress({ current: i + 1, total: rows.length, currentPage: row.name, currentPageId: row.id });
+      try {
+        const result = await processMutation.mutateAsync({ id: row.id, timeRange: '1w' });
+        if (result?.status === 'skipped') {
+          results.skipped.push(row.name);
+        } else {
+          results.success.push(row.name);
+        }
+      } catch (err) {
+        console.error(`Failed to process ${row.name}:`, err);
+        results.failed.push({ name: row.name, error: err.message || 'خطای ناشناخته' });
+      }
+    }
+
+    setProcessingAll(false);
+    setProcessProgress({ current: 0, total: 0, currentPage: '', currentPageId: null });
+    setProcessResults(results);
+  };
+
   const handleCreate = () => {
-    createMutation.mutate(form, { onSuccess: () => { setOpenAdd(false); setForm(EMPTY_FORM); } });
+    createMutation.mutate(form, {
+      onSuccess: () => { setOpenAdd(false); setForm(EMPTY_FORM); },
+    });
   };
 
   const handleSelectAll = (e) => {
@@ -218,9 +271,17 @@ export function PagesListView() {
     reader.readAsText(file);
   };
 
+  const [importResult, setImportResult] = useState(null);
+
   const handleBulkImport = () => {
     bulkMutation.mutate(importPreview, {
-      onSuccess: () => { setOpenImport(false); setImportPreview([]); },
+      onSuccess: (data) => {
+        setOpenImport(false);
+        setImportPreview([]);
+        if (data?.skipped?.length > 0) {
+          setImportResult(data);
+        }
+      },
     });
   };
 
@@ -237,9 +298,18 @@ export function PagesListView() {
             color="warning"
             startIcon={fetchingAll ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:download-bold" />}
             onClick={handleFetchAll}
-            disabled={fetchingAll || rows.length === 0}
+            disabled={fetchingAll || processingAll || rows.length === 0}
           >
             {fetchingAll ? `بارگیری ${fetchProgress.current} از ${fetchProgress.total}` : 'بارگیری همه'}
+          </Button>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={processingAll ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:cpu-bolt-bold" />}
+            onClick={handleProcessAll}
+            disabled={processingAll || fetchingAll || rows.length === 0}
+          >
+            {processingAll ? `تحلیل ${processProgress.current} از ${processProgress.total}` : 'تحلیل همه'}
           </Button>
           <Button variant="outlined" startIcon={<Iconify icon="solar:filter-bold" />} onClick={() => setOpenFilter(true)}>
             فیلتر پیشرفته
@@ -259,14 +329,104 @@ export function PagesListView() {
       {/* Fetch Progress */}
       {fetchingAll && (
         <Card sx={{ p: 2, mb: 2, bgcolor: 'warning.lighter' }}>
-          <Stack direction="row" alignItems="center" spacing={2}>
-            <CircularProgress size={20} color="warning" />
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                در حال بارگیری: {fetchProgress.currentPage} ({fetchProgress.current} از {fetchProgress.total})
+          <Stack spacing={1.5}>
+            {/* Overall batch progress */}
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <CircularProgress size={20} color="warning" />
+              <Box sx={{ flex: 1 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    بارگیری: {fetchProgress.currentPage} ({fetchProgress.current} از {fetchProgress.total})
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {Math.round((fetchProgress.current / fetchProgress.total) * 100)}%
+                  </Typography>
+                </Stack>
+                <LinearProgress variant="determinate" value={(fetchProgress.current / fetchProgress.total) * 100} color="warning" sx={{ mt: 0.5, height: 6, borderRadius: 1 }} />
+              </Box>
+            </Stack>
+
+            {/* Per-page progress from backend */}
+            {activePageProgress && (
+              <Box sx={{ px: 1.5, py: 1, borderRadius: 1, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+                  <CircularProgress size={12} color="info" thickness={5} />
+                  <Typography variant="caption" sx={{ fontWeight: 600, fontSize: 10, flex: 1 }} color="info.main">
+                    {activePageProgress.step}
+                  </Typography>
+                  {activePageProgress.detail && (
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: 9 }}>
+                      {activePageProgress.detail}
+                    </Typography>
+                  )}
+                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 10 }} color="info.main">
+                    {activePageProgress.percent}%
+                  </Typography>
+                </Stack>
+                <LinearProgress
+                  variant={activePageProgress.percent === 0 ? 'indeterminate' : 'determinate'}
+                  value={activePageProgress.percent}
+                  color="info"
+                  sx={{ height: 4, borderRadius: 1 }}
+                />
+              </Box>
+            )}
+
+            {/* Skipped info */}
+            {fetchProgress.skipped > 0 && (
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>
+                ⏭️ {fetchProgress.skipped} پیج قبلاً واکشی شده — رد شد
               </Typography>
-              <LinearProgress variant="determinate" value={(fetchProgress.current / fetchProgress.total) * 100} color="warning" sx={{ mt: 0.5, height: 6, borderRadius: 1 }} />
-            </Box>
+            )}
+          </Stack>
+        </Card>
+      )}
+
+      {/* Process Progress */}
+      {processingAll && (
+        <Card sx={{ p: 2, mb: 2, bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.08) }}>
+          <Stack spacing={1.5}>
+            {/* Overall batch progress */}
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <CircularProgress size={20} color="secondary" />
+              <Box sx={{ flex: 1 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    تحلیل: {processProgress.currentPage} ({processProgress.current} از {processProgress.total})
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {Math.round((processProgress.current / processProgress.total) * 100)}%
+                  </Typography>
+                </Stack>
+                <LinearProgress variant="determinate" value={(processProgress.current / processProgress.total) * 100} color="secondary" sx={{ mt: 0.5, height: 6, borderRadius: 1 }} />
+              </Box>
+            </Stack>
+
+            {/* Per-page process progress from backend */}
+            {activeProcessProgress && (
+              <Box sx={{ px: 1.5, py: 1, borderRadius: 1, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+                  <CircularProgress size={12} color="warning" thickness={5} />
+                  <Typography variant="caption" sx={{ fontWeight: 600, fontSize: 10, flex: 1 }} color="warning.main">
+                    {activeProcessProgress.step}
+                  </Typography>
+                  {activeProcessProgress.detail && (
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: 9 }}>
+                      {activeProcessProgress.detail}
+                    </Typography>
+                  )}
+                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 10 }} color="warning.main">
+                    {activeProcessProgress.percent}%
+                  </Typography>
+                </Stack>
+                <LinearProgress
+                  variant={activeProcessProgress.percent === 0 ? 'indeterminate' : 'determinate'}
+                  value={activeProcessProgress.percent}
+                  color="warning"
+                  sx={{ height: 4, borderRadius: 1 }}
+                />
+              </Box>
+            )}
           </Stack>
         </Card>
       )}
@@ -443,7 +603,12 @@ export function PagesListView() {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenAdd(false)}>انصراف</Button>
+          {createMutation.isError && (
+            <Typography variant="caption" color="error.main" sx={{ flex: 1, px: 2 }}>
+              {createMutation.error?.message || 'خطا در ثبت پیج'}
+            </Typography>
+          )}
+          <Button onClick={() => { setOpenAdd(false); createMutation.reset(); }}>انصراف</Button>
           <Button variant="contained" onClick={handleCreate} disabled={!form.name || createMutation.isPending}>ثبت</Button>
         </DialogActions>
       </Dialog>
@@ -551,7 +716,7 @@ export function PagesListView() {
               {fetchResults.success.length > 0 && (
                 <Box>
                   <Typography variant="subtitle2" color="success.main" sx={{ mb: 1 }}>✅ موفق ({fetchResults.success.length})</Typography>
-                  <Stack spacing={0.5}>
+                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                     {fetchResults.success.map((name, i) => (
                       <Chip key={i} label={name} size="small" color="success" variant="outlined" />
                     ))}
@@ -573,6 +738,94 @@ export function PagesListView() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setFetchResults(null)}>بستن</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Process All Results Dialog */}
+      <Dialog open={!!processResults} onClose={() => setProcessResults(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Iconify icon="solar:cpu-bolt-bold-duotone" width={24} sx={{ color: 'secondary.main' }} />
+            <span>نتیجه تحلیل</span>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          {processResults && (
+            <Stack spacing={2}>
+              {processResults.success.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" color="success.main" sx={{ mb: 1 }}>✅ تحلیل شد ({processResults.success.length})</Typography>
+                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                    {processResults.success.map((name, i) => (
+                      <Chip key={i} label={name} size="small" color="success" variant="outlined" />
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+              {processResults.skipped.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>⏭️ بدون پست جدید ({processResults.skipped.length})</Typography>
+                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                    {processResults.skipped.map((name, i) => (
+                      <Chip key={i} label={name} size="small" variant="outlined" />
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+              {processResults.failed.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" color="error.main" sx={{ mb: 1 }}>❌ ناموفق ({processResults.failed.length})</Typography>
+                  <Stack spacing={0.5}>
+                    {processResults.failed.map((item, i) => (
+                      <Chip key={i} label={`${item.name}: ${item.error}`} size="small" color="error" variant="outlined" />
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setProcessResults(null)}>بستن</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Import Result Dialog (shows skipped duplicates) */}
+      <Dialog open={!!importResult} onClose={() => setImportResult(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Iconify icon="solar:upload-bold-duotone" width={24} sx={{ color: 'info.main' }} />
+            <span>نتیجه ایمپورت</span>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          {importResult && (
+            <Stack spacing={2}>
+              {importResult.created?.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" color="success.main" sx={{ mb: 1 }}>✅ اضافه شد ({importResult.created.length})</Typography>
+                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                    {importResult.created.map((p, i) => (
+                      <Chip key={i} label={`@${p.username}`} size="small" color="success" variant="outlined" />
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+              {importResult.skipped?.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" color="warning.main" sx={{ mb: 1 }}>⏭️ تکراری — رد شد ({importResult.skipped.length})</Typography>
+                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                    {importResult.skipped.map((p, i) => (
+                      <Chip key={i} label={`@${p.username} (${p.platform})`} size="small" color="warning" variant="outlined" />
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportResult(null)}>بستن</Button>
         </DialogActions>
       </Dialog>
     </DashboardContent>

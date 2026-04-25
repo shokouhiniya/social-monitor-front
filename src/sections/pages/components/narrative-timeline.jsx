@@ -15,9 +15,13 @@ import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import CircularProgress from '@mui/material/CircularProgress';
 import InputAdornment from '@mui/material/InputAdornment';
 
 import { toJalaliDate, toJalaliShort } from 'src/utils/format-jalali';
+
+import axiosInstance, { endpoints } from 'src/lib/axios';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -76,6 +80,9 @@ export function NarrativeTimeline({ posts, fieldReports, page: pageInfo }) {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [sentimentFilter, setSentimentFilter] = useState('');
+  const [contextOpen, setContextOpen] = useState(false);
+  const [contextText, setContextText] = useState('');
+  const [contextSaving, setContextSaving] = useState(false);
 
   const allEvents = useMemo(() => {
     const evts = [];
@@ -89,7 +96,7 @@ export function NarrativeTimeline({ posts, fieldReports, page: pageInfo }) {
     let f = allEvents;
     if (typeFilter !== 'all') f = f.filter((e) => e.type === typeFilter);
     if (sentimentFilter) f = f.filter((e) => e.type === 'post' && e.data.sentiment_label === sentimentFilter);
-    if (search) f = f.filter((e) => { const t = e.type === 'post' ? e.data.caption : e.data.content; return t?.toLowerCase().includes(search.toLowerCase()); });
+    if (search) f = f.filter((e) => { const t = e.type === 'post' ? `${e.data.caption || ''} ${e.data.transcription || ''} ${e.data.ocr_text || ''} ${e.data.manual_context || ''}` : e.data.content; return t?.toLowerCase().includes(search.toLowerCase()); });
     return f;
   }, [allEvents, typeFilter, sentimentFilter, search]);
 
@@ -175,6 +182,46 @@ export function NarrativeTimeline({ posts, fieldReports, page: pageInfo }) {
                           </Typography>
                         </div>
                       )}
+                      {isPost && d.transcription && (
+                        <div dir="rtl" style={{ marginTop: 4, paddingTop: 4, borderTop: '1px dashed #e0e0e0', textAlign: 'right', direction: 'rtl' }}>
+                          <Typography variant="caption" sx={{ fontSize: 9, fontWeight: 700, color: '#7c4dff' }}>🎙️ رونوشت صوتی:</Typography>
+                          <Typography variant="body2" style={{ textAlign: 'right', direction: 'rtl' }} sx={{ fontSize: 11, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            <HighlightText text={d.transcription} search={search} />
+                          </Typography>
+                          {d.transcription_fa && (
+                            <Box sx={{ mt: 0.5 }}>
+                              <Typography variant="caption" color="info.main" sx={{ fontSize: 9, fontWeight: 700 }}>🔤 ترجمه فارسی رونوشت:</Typography>
+                              <Typography variant="body2" style={{ textAlign: 'right', direction: 'rtl' }} sx={{ fontSize: 11, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                <HighlightText text={d.transcription_fa} search={search} />
+                              </Typography>
+                            </Box>
+                          )}
+                        </div>
+                      )}
+                      {isPost && d.ocr_text && (
+                        <div dir="rtl" style={{ marginTop: 4, paddingTop: 4, borderTop: '1px dashed #e0e0e0', textAlign: 'right', direction: 'rtl' }}>
+                          <Typography variant="caption" sx={{ fontSize: 9, fontWeight: 700, color: '#ff6d00' }}>📝 متن روی تصویر:</Typography>
+                          <Typography variant="body2" style={{ textAlign: 'right', direction: 'rtl' }} sx={{ fontSize: 11, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            <HighlightText text={d.ocr_text} search={search} />
+                          </Typography>
+                          {d.ocr_text_fa && (
+                            <Box sx={{ mt: 0.5 }}>
+                              <Typography variant="caption" color="info.main" sx={{ fontSize: 9, fontWeight: 700 }}>🔤 ترجمه فارسی:</Typography>
+                              <Typography variant="body2" style={{ textAlign: 'right', direction: 'rtl' }} sx={{ fontSize: 11, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                <HighlightText text={d.ocr_text_fa} search={search} />
+                              </Typography>
+                            </Box>
+                          )}
+                        </div>
+                      )}
+                      {isPost && d.manual_context && (
+                        <div dir="rtl" style={{ marginTop: 4, paddingTop: 4, borderTop: '1px dashed #e0e0e0', textAlign: 'right', direction: 'rtl' }}>
+                          <Typography variant="caption" sx={{ fontSize: 9, fontWeight: 700, color: '#2e7d32' }}>✍️ توضیح دستی:</Typography>
+                          <Typography variant="body2" style={{ textAlign: 'right', direction: 'rtl' }} sx={{ fontSize: 11, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            <HighlightText text={d.manual_context} search={search} />
+                          </Typography>
+                        </div>
+                      )}
                       {isPost && (
                         <Stack direction="row" spacing={1.5} sx={{ mt: 0.5 }}>
                           <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>❤️ {d.likes_count?.toLocaleString()}</Typography>
@@ -229,6 +276,32 @@ export function NarrativeTimeline({ posts, fieldReports, page: pageInfo }) {
                 </div>
               )}
 
+              {selectedPost.transcription && (
+                <div dir="rtl" style={{ marginBottom: 16, padding: 12, borderRadius: 8, backgroundColor: '#f3e5f5', border: '1px solid #ce93d8', textAlign: 'right', direction: 'rtl' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5, color: '#7c4dff' }}>🎙️ رونوشت صوتی/تصویری:</Typography>
+                  <Typography variant="body2" style={{ textAlign: 'right', direction: 'rtl' }} sx={{ lineHeight: 2 }}>{selectedPost.transcription}</Typography>
+                  {selectedPost.transcription_fa && (
+                    <Box sx={{ mt: 1, pt: 1, borderTop: '1px dashed #ce93d8' }}>
+                      <Typography variant="caption" color="info.dark" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>🔤 ترجمه فارسی رونوشت:</Typography>
+                      <Typography variant="body2" style={{ textAlign: 'right', direction: 'rtl' }} sx={{ lineHeight: 2 }}>{selectedPost.transcription_fa}</Typography>
+                    </Box>
+                  )}
+                </div>
+              )}
+
+              {selectedPost.ocr_text && (
+                <div dir="rtl" style={{ marginBottom: 16, padding: 12, borderRadius: 8, backgroundColor: '#fff3e0', border: '1px solid #ffcc80', textAlign: 'right', direction: 'rtl' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5, color: '#ff6d00' }}>📝 متن روی تصویر:</Typography>
+                  <Typography variant="body2" style={{ textAlign: 'right', direction: 'rtl' }} sx={{ lineHeight: 2 }}>{selectedPost.ocr_text}</Typography>
+                  {selectedPost.ocr_text_fa && (
+                    <Box sx={{ mt: 1, pt: 1, borderTop: '1px dashed #ffcc80' }}>
+                      <Typography variant="caption" color="info.dark" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>🔤 ترجمه فارسی:</Typography>
+                      <Typography variant="body2" style={{ textAlign: 'right', direction: 'rtl' }} sx={{ lineHeight: 2 }}>{selectedPost.ocr_text_fa}</Typography>
+                    </Box>
+                  )}
+                </div>
+              )}
+
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
                 <Chip label={`❤️ ${selectedPost.likes_count?.toLocaleString()}`} size="small" />
                 <Chip label={`💬 ${selectedPost.comments_count?.toLocaleString()}`} size="small" />
@@ -250,17 +323,78 @@ export function NarrativeTimeline({ posts, fieldReports, page: pageInfo }) {
                   url = `https://t.me/${pageInfo.username}/${selectedPost.external_id}`;
                 }
 
-                return url ? (
-                  <Button variant="outlined" fullWidth href={url} target="_blank" rel="noopener noreferrer" sx={{ mb: 2 }}
-                    startIcon={<Iconify icon={platform === 'instagram' ? 'mdi:instagram' : platform === 'twitter' ? 'mdi:twitter' : 'mdi:telegram'} />}
-                  >
-                    مشاهده پست اصلی
-                  </Button>
-                ) : null;
+                return (
+                  <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                    {url && (
+                      <Button variant="outlined" fullWidth href={url} target="_blank" rel="noopener noreferrer"
+                        startIcon={<Iconify icon={platform === 'instagram' ? 'mdi:instagram' : platform === 'twitter' ? 'mdi:twitter' : 'mdi:telegram'} />}
+                      >
+                        مشاهده پست اصلی
+                      </Button>
+                    )}
+                    <Button variant="outlined" fullWidth color="warning"
+                      startIcon={<Iconify icon="solar:pen-new-square-bold-duotone" />}
+                      onClick={() => { setContextText(selectedPost.manual_context || ''); setContextOpen(true); }}
+                    >
+                      {selectedPost.manual_context ? 'ویرایش توضیح دستی' : 'افزودن توضیح دستی'}
+                    </Button>
+                  </Stack>
+                );
               })()}
+
+              {selectedPost.manual_context && (
+                <div dir="rtl" style={{ marginBottom: 16, padding: 12, borderRadius: 8, backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7', textAlign: 'right', direction: 'rtl' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5, color: '#2e7d32' }}>✍️ توضیح دستی تحلیل‌گر:</Typography>
+                  <Typography variant="body2" style={{ textAlign: 'right', direction: 'rtl' }} sx={{ lineHeight: 2 }}>{selectedPost.manual_context}</Typography>
+                </div>
+              )}
             </DialogContent>
           </>
         )}
+      </Dialog>
+
+      {/* Manual Context Dialog */}
+      <Dialog open={contextOpen} onClose={() => setContextOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Iconify icon="solar:pen-new-square-bold-duotone" width={22} sx={{ color: 'warning.main' }} />
+            <span>توضیح دستی محتوا</span>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            اطلاعاتی که فقط با دیدن ویدیو یا تفسیر تصویر قابل درک است را اینجا بنویسید. این متن در تحلیل هوشمند بعدی لحاظ خواهد شد.
+          </Typography>
+          <TextField
+            fullWidth multiline rows={4}
+            placeholder="مثال: در این ویدیو شخص در حال سخنرانی درباره ... است و تصاویری از ... نشان داده می‌شود"
+            value={contextText}
+            onChange={(e) => setContextText(e.target.value)}
+            dir="rtl"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setContextOpen(false)}>انصراف</Button>
+          <Button
+            variant="contained" color="warning"
+            disabled={contextSaving}
+            startIcon={contextSaving ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:check-circle-bold" />}
+            onClick={async () => {
+              setContextSaving(true);
+              try {
+                await axiosInstance.patch(endpoints.posts.context(selectedPost.id), { manual_context: contextText });
+                selectedPost.manual_context = contextText;
+                setContextOpen(false);
+              } catch (err) {
+                console.error('Failed to save context:', err);
+              } finally {
+                setContextSaving(false);
+              }
+            }}
+          >
+            ذخیره
+          </Button>
+        </DialogActions>
       </Dialog>
     </ChartCard>
   );
