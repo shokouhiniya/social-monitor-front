@@ -18,18 +18,31 @@ export const paths = {
   // DASHBOARD
   dashboard: {
     root: ROOTS.DASHBOARD,
-    // Instagram
-    instagram: {
-      root: `${ROOTS.DASHBOARD}/instagram`,
-      macro: `${ROOTS.DASHBOARD}/instagram/macro`,
+    // My Network (was instagram)
+    mynetwork: {
+      root: `${ROOTS.DASHBOARD}/mynetwork`,
+      macro: `${ROOTS.DASHBOARD}/mynetwork/macro`,
       pages: {
-        root: `${ROOTS.DASHBOARD}/instagram/pages`,
-        profile: (id) => `${ROOTS.DASHBOARD}/instagram/pages/${id}`,
+        root: `${ROOTS.DASHBOARD}/mynetwork/pages`,
+        profile: (id) => `${ROOTS.DASHBOARD}/mynetwork/pages/${id}`,
       },
-      posts: `${ROOTS.DASHBOARD}/instagram/posts`,
-      alerts: `${ROOTS.DASHBOARD}/instagram/alerts`,
-      fieldReports: `${ROOTS.DASHBOARD}/instagram/field-reports`,
-      settings: `${ROOTS.DASHBOARD}/instagram/settings`,
+      posts: `${ROOTS.DASHBOARD}/mynetwork/posts`,
+      alerts: `${ROOTS.DASHBOARD}/mynetwork/alerts`,
+      fieldReports: `${ROOTS.DASHBOARD}/mynetwork/field-reports`,
+      settings: `${ROOTS.DASHBOARD}/mynetwork/settings`,
+    },
+    // Keep instagram as alias for backward compatibility
+    instagram: {
+      root: `${ROOTS.DASHBOARD}/mynetwork`,
+      macro: `${ROOTS.DASHBOARD}/mynetwork/macro`,
+      pages: {
+        root: `${ROOTS.DASHBOARD}/mynetwork/pages`,
+        profile: (id) => `${ROOTS.DASHBOARD}/mynetwork/pages/${id}`,
+      },
+      posts: `${ROOTS.DASHBOARD}/mynetwork/posts`,
+      alerts: `${ROOTS.DASHBOARD}/mynetwork/alerts`,
+      fieldReports: `${ROOTS.DASHBOARD}/mynetwork/field-reports`,
+      settings: `${ROOTS.DASHBOARD}/mynetwork/settings`,
     },
     // Telegram
     telegram: {

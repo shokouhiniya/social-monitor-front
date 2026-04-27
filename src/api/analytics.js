@@ -44,7 +44,18 @@ export function useNetworkPulse() {
       const res = await axiosInstance.get(endpoints.analytics.networkPulse);
       return res.data?.data;
     },
-    refetchInterval: 60000, // refresh every minute
+    refetchInterval: 60000,
+  });
+}
+
+export function useNetworkPulseWeekly() {
+  return useQuery({
+    queryKey: ['analytics', 'network-pulse-weekly'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.networkPulseWeekly);
+      return res.data?.data;
+    },
+    refetchInterval: 300000, // 5 min
   });
 }
 
@@ -68,14 +79,24 @@ export function useGhostPages() {
   });
 }
 
-export function usePeriodicReport() {
+export function useActivityIndex() {
   return useQuery({
-    queryKey: ['analytics', 'periodic-report'],
+    queryKey: ['analytics', 'activity-index'],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.periodicReport);
+      const res = await axiosInstance.get(endpoints.analytics.activityIndex);
       return res.data?.data;
     },
-    refetchInterval: 6 * 60 * 60 * 1000, // refresh every 6 hours
+  });
+}
+
+export function usePeriodicReport(hours = 6) {
+  return useQuery({
+    queryKey: ['analytics', 'periodic-report', hours],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.analytics.periodicReport, { params: { hours } });
+      return res.data?.data;
+    },
+    refetchInterval: false, // manual refresh only
   });
 }
 
@@ -175,8 +196,8 @@ export function useGenerateAlerts() {
 export function useGenerateReport() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const res = await axiosInstance.post(endpoints.analytics.generateReport);
+    mutationFn: async (hours = 6) => {
+      const res = await axiosInstance.post(endpoints.analytics.generateReport, { hours });
       return res.data?.data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['analytics'] }),

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -9,17 +9,26 @@ import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
 import Tooltip from '@mui/material/Tooltip';
 import { alpha } from '@mui/material/styles';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import Pagination from '@mui/material/Pagination';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 import ToggleButton from '@mui/material/ToggleButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import CircularProgress from '@mui/material/CircularProgress';
+import LinearProgress from '@mui/material/LinearProgress';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
 import { proxyImage } from 'src/utils/proxy-image';
+import { toJalaliDate } from 'src/utils/format-jalali';
 
+import axiosInstance, { endpoints } from 'src/lib/axios';
 import { useHighImpactPosts } from 'src/api/analytics';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { usePostsFeed, useTopicClusters } from 'src/api/posts';
@@ -35,13 +44,47 @@ const SENTIMENT_CONFIG = {
   sad: { color: 'info', icon: 'solar:cloud-bold', label: 'غمگین' },
 };
 
+const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://127.0.0.1:3000';
+
+function getMediaUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('/static/')) return `${SERVER_URL}${url}`;
+  return url;
+}
+
+function mediaIdToShortcode(mediaId) {
+  try {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    let id = BigInt(mediaId);
+    let shortcode = '';
+    while (id > 0n) {
+      shortcode = alphabet[Number(id % 64n)] + shortcode;
+      id = id / 64n;
+    }
+    return shortcode;
+  } catch {
+    return null;
+  }
+}
+
+
 export function PostsListView() {
   const [search, setSearch] = useState('');
   const [sentimentFilter, setSentimentFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [outliersOnly, setOutliersOnly] = useState(false);
-  const [viewMode, setViewMode] = useState('feed'); // feed | cluster
+  const [viewMode, setViewMode] = useState('feed');
   const [page, setPage] = useState(1);
+  const [loadMoreCount, setLoadMoreCount] = useState(0); // tracks how many times "load more" was clicked
+  const [accumulatedPosts, setAccumulatedPosts] = useState([]); // posts from previous pages
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [contextOpen, setContextOpen] = useState(false);
+  const [contextText, setContextText] = useState('');
+  const [contextSaving, setContextSaving] = useState(false);
+
+  const POSTS_PER_PAGE = 20;
+  const MAX_LOAD_MORE = 5; // after 5 clicks, switch to pagination
+  const usePagination = loadMoreCount >= MAX_LOAD_MORE;
 
   const { data: feedData, isLoading: feedLoading } = usePostsFeed({
     search: search || undefined,
@@ -49,14 +92,58 @@ export function PostsListView() {
     post_type: typeFilter || undefined,
     outliers_only: outliersOnly ? 'true' : undefined,
     page,
-    limit: 20,
+    limit: POSTS_PER_PAGE,
   });
 
   const { data: spikePosts } = useHighImpactPosts(3);
   const { data: clusters, isLoading: clustersLoading } = useTopicClusters();
 
-  const posts = feedData?.data || [];
+  const currentPagePosts = feedData?.data || [];
   const total = feedData?.total || 0;
+  const totalPages = Math.ceil(total / POSTS_PER_PAGE);
+
+  // Combine accumulated + current page posts, deduplicate by external_id, merge pages
+  const allPosts = useMemo(() => {
+    const combined = usePagination ? currentPagePosts : [...accumulatedPosts, ...currentPagePosts];
+    const map = new Map();
+    for (const p of combined) {
+      const key = p.external_id || p.id;
+      if (map.has(key)) {
+        // Merge: collect all pages that share this post
+        const existing = map.get(key);
+        if (p.page && !existing._allPages.some((pg) => pg.id === p.page.id)) {
+          existing._allPages.push(p.page);
+        }
+      } else {
+        map.set(key, { ...p, _allPages: p.page ? [p.page] : [] });
+      }
+    }
+    return Array.from(map.values());
+  }, [accumulatedPosts, currentPagePosts, usePagination]);
+
+  const hasMore = !usePagination && page * POSTS_PER_PAGE < total;
+
+  const resetFilters = useCallback(() => {
+    setPage(1);
+    setLoadMoreCount(0);
+    setAccumulatedPosts([]);
+  }, []);
+
+  const handleLoadMore = () => {
+    // Save current posts before loading next page
+    setAccumulatedPosts((prev) => {
+      const seen = new Set(prev.map((p) => p.external_id || p.id));
+      const newPosts = currentPagePosts.filter((p) => !seen.has(p.external_id || p.id));
+      return [...prev, ...newPosts];
+    });
+    setPage((prev) => prev + 1);
+    setLoadMoreCount((prev) => prev + 1);
+  };
+
+  const handlePageChange = (_, newPage) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <DashboardContent maxWidth="xl">
@@ -80,7 +167,26 @@ export function PostsListView() {
           </Stack>
           <Stack direction="row" spacing={2} sx={{ overflow: 'auto', pb: 1 }}>
             {spikePosts.map((post) => (
-              <SpikeCard key={post.id} post={post} />
+              <Card key={post.id} onClick={() => setSelectedPost(post)}
+                sx={(theme) => ({
+                  p: 2, minWidth: 280, flexShrink: 0, cursor: 'pointer',
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.08)} 0%, transparent 100%)`,
+                  border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
+                  '&:hover': { borderColor: alpha(theme.palette.warning.main, 0.5) },
+                })}
+              >
+                <Stack direction="row" alignItems="center" spacing={1.5}>
+                  <Iconify icon="solar:bolt-circle-bold-duotone" width={24} sx={{ color: 'warning.main' }} />
+                  <Avatar src={proxyImage(post.page?.profile_image_url)} sx={{ width: 32, height: 32 }}>{post.page?.name?.[0]}</Avatar>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700 }}>{post.page?.name}</Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: 10 }} noWrap>
+                      {post.caption?.slice(0, 60)}
+                    </Typography>
+                  </Box>
+                  <Chip label={`${((post.likes_count || 0) + (post.comments_count || 0) + (post.shares_count || 0)).toLocaleString()}`} size="small" color="warning" sx={{ fontWeight: 700 }} />
+                </Stack>
+              </Card>
             ))}
           </Stack>
         </Box>
@@ -90,7 +196,7 @@ export function PostsListView() {
       <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }} useFlexGap>
         <TextField
           size="small" placeholder="جستجو در کپشن‌ها..." value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          onChange={(e) => { setSearch(e.target.value); resetFilters(); }}
           InputProps={{ startAdornment: <InputAdornment position="start"><Iconify icon="solar:magnifer-bold-duotone" sx={{ color: 'text.disabled' }} /></InputAdornment> }}
           sx={{ minWidth: 250 }}
         />
@@ -98,42 +204,64 @@ export function PostsListView() {
           <Chip key={key} label={conf.label} variant={sentimentFilter === key ? 'filled' : 'outlined'}
             color={sentimentFilter === key ? conf.color : 'default'}
             icon={<Iconify icon={conf.icon} width={14} />}
-            onClick={() => { setSentimentFilter(sentimentFilter === key ? '' : key); setPage(1); }}
+            onClick={() => { setSentimentFilter(sentimentFilter === key ? '' : key); resetFilters(); }}
           />
         ))}
         <Chip label="وایرال" variant={outliersOnly ? 'filled' : 'outlined'} color={outliersOnly ? 'warning' : 'default'}
           icon={<Iconify icon="solar:fire-bold" width={14} />}
-          onClick={() => { setOutliersOnly(!outliersOnly); setPage(1); }}
+          onClick={() => { setOutliersOnly(!outliersOnly); resetFilters(); }}
         />
-        {['image', 'video', 'reel', 'story'].map((t) => (
+        {['image', 'video', 'reel', 'story', 'carousel'].map((t) => (
           <Chip key={t} label={t} variant={typeFilter === t ? 'filled' : 'outlined'} size="small"
-            onClick={() => { setTypeFilter(typeFilter === t ? '' : t); setPage(1); }}
+            onClick={() => { setTypeFilter(typeFilter === t ? '' : t); resetFilters(); }}
           />
         ))}
       </Stack>
 
       {viewMode === 'feed' ? (
-        /* Feed View */
-        feedLoading ? (
+        feedLoading && allPosts.length === 0 ? (
           <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
         ) : (
           <>
             <Grid container spacing={2}>
-              {posts.map((post) => (
+              {allPosts.map((post) => (
                 <Grid key={post.id} size={{ xs: 12, sm: 6, lg: 4 }}>
-                  <PostCard post={post} />
+                  <PostCard post={post} onClick={() => setSelectedPost(post)} />
                 </Grid>
               ))}
             </Grid>
-            {posts.length > 0 && posts.length < total && (
+
+            {/* Loading indicator for next page */}
+            {feedLoading && allPosts.length > 0 && (
+              <Box sx={{ py: 3, textAlign: 'center' }}><CircularProgress size={28} /></Box>
+            )}
+
+            {/* Load more button (first 5 pages) */}
+            {!feedLoading && hasMore && (
               <Box sx={{ textAlign: 'center', mt: 3 }}>
-                <Button variant="outlined" onClick={() => setPage(page + 1)}>بارگذاری بیشتر</Button>
+                <Button variant="outlined" onClick={handleLoadMore} startIcon={<Iconify icon="solar:arrow-down-bold" />}>
+                  بارگذاری بیشتر
+                </Button>
               </Box>
+            )}
+
+            {/* Pagination (after 5 load-mores) */}
+            {usePagination && totalPages > 1 && (
+              <Stack alignItems="center" sx={{ mt: 3 }}>
+                <Pagination
+                  count={totalPages}
+                  page={page}
+                  onChange={handlePageChange}
+                  color="primary"
+                  shape="rounded"
+                  showFirstButton
+                  showLastButton
+                />
+              </Stack>
             )}
           </>
         )
       ) : (
-        /* Cluster View */
         clustersLoading ? (
           <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
         ) : (
@@ -148,7 +276,7 @@ export function PostsListView() {
                 <Grid container spacing={2}>
                   {(cluster.posts || []).slice(0, 3).map((post) => (
                     <Grid key={post.id} size={{ xs: 12, sm: 4 }}>
-                      <PostCard post={post} compact />
+                      <PostCard post={post} compact onClick={() => setSelectedPost(post)} />
                     </Grid>
                   ))}
                 </Grid>
@@ -157,129 +285,389 @@ export function PostsListView() {
           </Stack>
         )
       )}
+
+      {/* Post Detail Dialog */}
+      <PostDetailDialog
+        post={selectedPost}
+        onClose={() => setSelectedPost(null)}
+        onOpenContext={() => { setContextText(selectedPost?.manual_context || ''); setContextOpen(true); }}
+      />
+
+      {/* Manual Context Dialog */}
+      <Dialog open={contextOpen} onClose={() => setContextOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Iconify icon="solar:pen-new-square-bold-duotone" width={22} sx={{ color: 'warning.main' }} />
+            <span>توضیح دستی محتوا</span>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            اطلاعاتی که فقط با دیدن ویدیو یا تفسیر تصویر قابل درک است را اینجا بنویسید.
+          </Typography>
+          <TextField fullWidth multiline rows={4} placeholder="مثال: در این ویدیو شخص در حال سخنرانی درباره ... است"
+            value={contextText} onChange={(e) => setContextText(e.target.value)} dir="rtl" />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setContextOpen(false)}>انصراف</Button>
+          <Button variant="contained" color="warning" disabled={contextSaving}
+            startIcon={contextSaving ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:check-circle-bold" />}
+            onClick={async () => {
+              if (!selectedPost) return;
+              setContextSaving(true);
+              try {
+                await axiosInstance.patch(endpoints.posts.context(selectedPost.id), { manual_context: contextText });
+                selectedPost.manual_context = contextText;
+                setContextOpen(false);
+              } catch (err) { console.error('Failed to save context:', err); }
+              finally { setContextSaving(false); }
+            }}
+          >
+            ذخیره
+          </Button>
+        </DialogActions>
+      </Dialog>
     </DashboardContent>
   );
 }
 
-// --- Sub Components ---
+// --- Post Card ---
 
-function SpikeCard({ post }) {
-  const engagement = (post.likes_count || 0) + (post.comments_count || 0) + (post.shares_count || 0);
+function PostCard({ post, compact, onClick }) {
+  const sentConf = SENTIMENT_CONFIG[post.sentiment_label] || SENTIMENT_CONFIG.neutral;
+  const hasMedia = !!post.media_url;
+  const isVideo = post.media_url?.endsWith('.mp4');
+
   return (
     <Card
+      onClick={onClick}
       sx={(theme) => ({
-        p: 2, minWidth: 280, flexShrink: 0,
-        background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.08)} 0%, transparent 100%)`,
-        border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
+        height: '100%', cursor: 'pointer', overflow: 'hidden',
+        display: 'flex', flexDirection: 'column',
+        border: post.is_outlier ? `1px solid ${alpha(theme.palette.warning.main, 0.3)}` : `1px solid ${alpha(theme.palette.grey[500], 0.08)}`,
+        transition: 'all 0.2s',
+        '&:hover': { borderColor: alpha(theme.palette.primary.main, 0.3), boxShadow: theme.shadows[4] },
       })}
     >
-      <Stack direction="row" alignItems="center" spacing={1.5}>
-        <Iconify icon="solar:bolt-circle-bold-duotone" width={24} sx={{ color: 'warning.main' }} />
-        <Avatar src={proxyImage(post.page?.profile_image_url)} sx={{ width: 32, height: 32 }}>{post.page?.name?.[0]}</Avatar>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="caption" sx={{ fontWeight: 700 }}>{post.page?.name}</Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: 10 }} noWrap>
-            {post.caption?.slice(0, 60)}
-          </Typography>
+      {/* Media */}
+      {hasMedia && (
+        <Box sx={{ position: 'relative', aspectRatio: '3/4', overflow: 'hidden', bgcolor: 'grey.100' }}>
+          {isVideo ? (
+            <Box component="video" src={getMediaUrl(post.media_url)} muted
+              onMouseEnter={(e) => e.target.play()} onMouseLeave={(e) => { e.target.pause(); e.target.currentTime = 0; }}
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          ) : (
+            <Box component="img" src={getMediaUrl(post.media_url)}
+              onError={(e) => { e.target.parentElement.style.display = 'none'; }}
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          )}
+          {/* Post type badge */}
+          {post.post_type && (
+            <Chip label={post.post_type} size="small"
+              sx={{ position: 'absolute', top: 8, left: 8, height: 20, fontSize: 9, bgcolor: 'rgba(0,0,0,0.6)', color: '#fff', '& .MuiChip-label': { px: 0.75 } }}
+            />
+          )}
         </Box>
-        <Chip label={`${engagement.toLocaleString()}`} size="small" color="warning" sx={{ fontWeight: 700 }} />
-      </Stack>
+      )}
+
+      <Box sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Header — show all pages that share this post */}
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+          {(post._allPages?.length > 1) ? (
+            <Stack direction="row" sx={{ mr: 0.5 }}>
+              {post._allPages.slice(0, 4).map((pg, i) => (
+                <Tooltip key={pg.id} title={`@${pg.username}`} arrow>
+                  <Avatar src={proxyImage(pg.profile_image_url)} sx={{ width: 26, height: 26, ml: i > 0 ? -0.8 : 0, border: '2px solid', borderColor: 'background.paper', fontSize: 11 }}>{pg.name?.[0]}</Avatar>
+                </Tooltip>
+              ))}
+              {post._allPages.length > 4 && (
+                <Avatar sx={{ width: 26, height: 26, ml: -0.8, border: '2px solid', borderColor: 'background.paper', fontSize: 10, bgcolor: 'grey.300' }}>+{post._allPages.length - 4}</Avatar>
+              )}
+            </Stack>
+          ) : (
+            <Avatar src={proxyImage(post.page?.profile_image_url)} sx={{ width: 28, height: 28 }}>{post.page?.name?.[0]}</Avatar>
+          )}
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 11 }} noWrap>
+              {post._allPages?.length > 1 ? `${post._allPages.length} پیج` : post.page?.name}
+            </Typography>
+            <Typography variant="caption" color="text.disabled" sx={{ display: 'block', fontSize: 9 }}>
+              {post.published_at ? toJalaliDate(post.published_at) : ''}
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={0.5}>
+            {post.is_outlier && <Tooltip title="تعامل غیرعادی" arrow><Box><Iconify icon="solar:bolt-circle-bold-duotone" width={16} sx={{ color: 'warning.main' }} /></Box></Tooltip>}
+            {post.is_viral && <Tooltip title="وایرال" arrow><Box><Iconify icon="solar:fire-bold-duotone" width={16} sx={{ color: 'error.main' }} /></Box></Tooltip>}
+          </Stack>
+        </Stack>
+
+        {/* Caption */}
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11, lineHeight: 1.7, mb: 1, display: '-webkit-box', WebkitLineClamp: compact ? 2 : 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          {post.caption || '—'}
+        </Typography>
+
+        {/* Tags */}
+        <Stack direction="row" spacing={0.5} sx={{ mb: 1, flexWrap: 'wrap' }} useFlexGap>
+          <Chip label={sentConf.label} size="small" color={sentConf.color} variant="outlined" sx={{ height: 20, fontSize: 9 }} icon={<Iconify icon={sentConf.icon} width={12} />} />
+          {post.transcription && <Chip label="🎙️" size="small" sx={{ height: 20, fontSize: 9 }} title="دارای رونوشت صوتی" />}
+          {post.ocr_text && <Chip label="📝" size="small" sx={{ height: 20, fontSize: 9 }} title="دارای متن تصویر" />}
+          {post.manual_context && <Chip label="✍️" size="small" sx={{ height: 20, fontSize: 9 }} title="دارای توضیح دستی" />}
+        </Stack>
+
+        {/* Engagement */}
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ mt: 'auto', pt: 1 }}>
+          <Typography variant="caption" color="text.disabled" sx={{ fontSize: 10 }}>❤️ {post.likes_count?.toLocaleString()}</Typography>
+          <Typography variant="caption" color="text.disabled" sx={{ fontSize: 10 }}>💬 {post.comments_count?.toLocaleString()}</Typography>
+          {post.views_count > 0 && <Typography variant="caption" color="text.disabled" sx={{ fontSize: 10 }}>👁 {post.views_count?.toLocaleString()}</Typography>}
+        </Stack>
+      </Box>
     </Card>
   );
 }
 
-function PostCard({ post, compact }) {
+// --- Post Detail Dialog ---
+
+function PostDetailDialog({ post, onClose, onOpenContext }) {
+  const [processing, setProcessing] = useState(false);
+  const [processStep, setProcessStep] = useState(''); // current step label
+  const [processPercent, setProcessPercent] = useState(0);
+  const [processError, setProcessError] = useState(null);
+  const [processDone, setProcessDone] = useState(false);
+
+  if (!post) return null;
+
   const sentConf = SENTIMENT_CONFIG[post.sentiment_label] || SENTIMENT_CONFIG.neutral;
-  const engagement = (post.likes_count || 0) + (post.comments_count || 0) + (post.shares_count || 0);
+  const platform = post.page?.platform;
+  const isStory = post.post_type === 'story';
 
-  // Generate Instagram post URL
-  const getInstagramUrl = () => {
-    if (!post.external_id) return null;
-    
-    // If external_id is a number (media_id), we need shortcode
-    // For now, we'll use the external_id as is (assuming it's shortcode)
-    // In production, you should store shortcode separately
-    const shortcode = post.shortcode || post.external_id;
-    
-    // Only create URL if shortcode looks valid (not a long number)
-    if (shortcode && shortcode.length < 20) {
-      return `https://www.instagram.com/p/${shortcode}/`;
+  // For stories, link to the profile page. For posts, link to the specific post.
+  let originalUrl = null;
+  if (isStory) {
+    // Stories don't have permanent links — link to the account
+    if (platform === 'instagram') originalUrl = `https://www.instagram.com/${post.page?.username}/`;
+    else if (platform === 'twitter') originalUrl = `https://x.com/${post.page?.username}`;
+    else if (platform === 'telegram') originalUrl = `https://t.me/${post.page?.username}`;
+  } else {
+    if (platform === 'instagram' && post.external_id) {
+      const shortcode = post.shortcode || mediaIdToShortcode(post.external_id);
+      if (shortcode) originalUrl = `https://www.instagram.com/p/${shortcode}/`;
+    } else if (platform === 'twitter') {
+      originalUrl = `https://twitter.com/i/status/${post.external_id}`;
+    } else if (platform === 'telegram' && post.page?.username) {
+      originalUrl = `https://t.me/${post.page.username}/${post.external_id}`;
     }
-    return null;
-  };
+  }
 
-  const handleClick = () => {
-    const url = getInstagramUrl();
-    if (url) window.open(url, '_blank');
-  };
+  const allPages = post._allPages || (post.page ? [post.page] : []);
 
   return (
-    <Card
-      onClick={handleClick}
-      sx={(theme) => ({
-        p: 2, height: '100%',
-        border: post.is_outlier ? `1px solid ${alpha(theme.palette.warning.main, 0.3)}` : `1px solid ${alpha(theme.palette.grey[500], 0.08)}`,
-        transition: 'all 0.2s',
-        cursor: getInstagramUrl() ? 'pointer' : 'default',
-        '&:hover': { borderColor: alpha(theme.palette.primary.main, 0.3), boxShadow: theme.shadows[2] },
-      })}
-    >
-      {/* Header */}
-      <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.5 }}>
-        <Avatar src={proxyImage(post.page?.profile_image_url)} sx={{ width: 32, height: 32 }}>{post.page?.name?.[0]}</Avatar>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="caption" sx={{ fontWeight: 700 }}>{post.page?.name}</Typography>
-          <Typography variant="caption" color="text.disabled" sx={{ display: 'block', fontSize: 10 }}>
-            {post.published_at ? new Date(post.published_at).toLocaleDateString('fa-IR') : ''}
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={0.5}>
-          {post.is_outlier && (
-            <Tooltip title="انحراف از معیار — تعامل غیرعادی" arrow>
-              <Box><Iconify icon="solar:bolt-circle-bold-duotone" width={18} sx={{ color: 'warning.main' }} /></Box>
-            </Tooltip>
+    <Dialog open onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2, maxHeight: '90vh' } }}>
+      <DialogTitle sx={{ pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          {allPages.length > 1 ? (
+            <Stack direction="row">
+              {allPages.slice(0, 3).map((pg, i) => (
+                <Avatar key={pg.id} src={proxyImage(pg.profile_image_url)} sx={{ width: 32, height: 32, ml: i > 0 ? -0.8 : 0, border: '2px solid', borderColor: 'background.paper' }}>{pg.name?.[0]}</Avatar>
+              ))}
+            </Stack>
+          ) : (
+            <Avatar src={proxyImage(post.page?.profile_image_url)} sx={{ width: 32, height: 32 }}>{post.page?.name?.[0]}</Avatar>
           )}
-          {post.is_viral && (
-            <Tooltip title="وایرال شده!" arrow>
-              <Box><Iconify icon="solar:fire-bold-duotone" width={18} sx={{ color: 'error.main' }} /></Box>
-            </Tooltip>
-          )}
+          <Box>
+            <Typography variant="subtitle2">
+              {allPages.length > 1 ? `${allPages.length} پیج` : post.page?.name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {allPages.length > 1
+                ? allPages.map((pg) => `@${pg.username}`).join(' • ')
+                : `@${post.page?.username}`}
+            </Typography>
+          </Box>
         </Stack>
-      </Stack>
-
-      {/* Caption */}
-      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12, lineHeight: 1.8, mb: 1.5, display: '-webkit-box', WebkitLineClamp: compact ? 2 : 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-        {post.caption || '—'}
-      </Typography>
-
-      {/* Tags */}
-      <Stack direction="row" spacing={0.5} sx={{ mb: 1.5, flexWrap: 'wrap' }} useFlexGap>
-        <Chip label={sentConf.label} size="small" color={sentConf.color} variant="outlined" sx={{ height: 22, fontSize: 10 }} icon={<Iconify icon={sentConf.icon} width={12} />} />
-        {post.post_type && <Chip label={post.post_type} size="small" variant="outlined" sx={{ height: 22, fontSize: 10 }} />}
-        {post.extracted_topics?.slice(0, 2).map((t) => (
-          <Chip key={t} label={t} size="small" sx={{ height: 22, fontSize: 10, bgcolor: 'action.hover' }} />
-        ))}
-      </Stack>
-
-      {/* Engagement */}
-      <Stack direction="row" alignItems="center" spacing={2}>
-        <Stack direction="row" alignItems="center" spacing={0.5}>
-          <Iconify icon="solar:heart-bold" width={14} sx={{ color: 'error.main' }} />
-          <Typography variant="caption" sx={{ fontSize: 11 }}>{post.likes_count?.toLocaleString()}</Typography>
-        </Stack>
-        <Stack direction="row" alignItems="center" spacing={0.5}>
-          <Iconify icon="solar:chat-round-dots-bold" width={14} sx={{ color: 'info.main' }} />
-          <Typography variant="caption" sx={{ fontSize: 11 }}>{post.comments_count?.toLocaleString()}</Typography>
-        </Stack>
-        {post.engagement_ratio > 1 && (
-          <Chip
-            label={`${post.engagement_ratio > 1 ? '+' : ''}${Math.round((post.engagement_ratio - 1) * 100)}%`}
-            size="small"
-            color={post.engagement_ratio > 2 ? 'warning' : 'default'}
-            sx={{ height: 20, fontSize: 10, ml: 'auto' }}
-          />
+        <IconButton size="small" onClick={onClose}>
+          <Iconify icon="solar:close-circle-bold" width={22} />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent>
+        {/* Media */}
+        {post.media_url && (
+          post.media_url.endsWith('.mp4') ? (
+            <Box component="video" src={getMediaUrl(post.media_url)} controls sx={{ width: '100%', maxHeight: 500, borderRadius: 1, mb: 2 }} />
+          ) : (
+            <Box component="img" src={getMediaUrl(post.media_url)} sx={{ width: '100%', maxHeight: 500, objectFit: 'contain', borderRadius: 1, mb: 2 }} onError={(e) => { e.target.style.display = 'none'; }} />
+          )
         )}
-      </Stack>
-    </Card>
+
+        {/* Caption */}
+        <Typography variant="body2" sx={{ lineHeight: 2, mb: 1 }}>
+          {post.caption || 'بدون کپشن'}
+        </Typography>
+
+        {/* Farsi translation */}
+        {post.caption_fa && (
+          <div dir="rtl" style={{ marginBottom: 16, padding: 12, borderRadius: 8, backgroundColor: '#e0f7fa', border: '1px solid #b2ebf2', textAlign: 'right' }}>
+            <Typography variant="caption" color="info.dark" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>🔤 ترجمه فارسی:</Typography>
+            <Typography variant="body2" sx={{ lineHeight: 2 }}>{post.caption_fa}</Typography>
+          </div>
+        )}
+
+        {/* Transcription */}
+        {post.transcription && (
+          <div dir="rtl" style={{ marginBottom: 16, padding: 12, borderRadius: 8, backgroundColor: '#f3e5f5', border: '1px solid #ce93d8', textAlign: 'right' }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5, color: '#7c4dff' }}>🎙️ رونوشت صوتی/تصویری:</Typography>
+            <Typography variant="body2" sx={{ lineHeight: 2 }}>{post.transcription}</Typography>
+            {post.transcription_fa && (
+              <Box sx={{ mt: 1, pt: 1, borderTop: '1px dashed #ce93d8' }}>
+                <Typography variant="caption" color="info.dark" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>🔤 ترجمه فارسی رونوشت:</Typography>
+                <Typography variant="body2" sx={{ lineHeight: 2 }}>{post.transcription_fa}</Typography>
+              </Box>
+            )}
+          </div>
+        )}
+
+        {/* OCR text */}
+        {post.ocr_text && (
+          <div dir="rtl" style={{ marginBottom: 16, padding: 12, borderRadius: 8, backgroundColor: '#fff3e0', border: '1px solid #ffcc80', textAlign: 'right' }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5, color: '#ff6d00' }}>📝 متن روی تصویر:</Typography>
+            <Typography variant="body2" sx={{ lineHeight: 2 }}>{post.ocr_text}</Typography>
+            {post.ocr_text_fa && (
+              <Box sx={{ mt: 1, pt: 1, borderTop: '1px dashed #ffcc80' }}>
+                <Typography variant="caption" color="info.dark" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>🔤 ترجمه فارسی:</Typography>
+                <Typography variant="body2" sx={{ lineHeight: 2 }}>{post.ocr_text_fa}</Typography>
+              </Box>
+            )}
+          </div>
+        )}
+
+        {/* Manual context */}
+        {post.manual_context && (
+          <div dir="rtl" style={{ marginBottom: 16, padding: 12, borderRadius: 8, backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7', textAlign: 'right' }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5, color: '#2e7d32' }}>✍️ توضیح دستی تحلیل‌گر:</Typography>
+            <Typography variant="body2" sx={{ lineHeight: 2 }}>{post.manual_context}</Typography>
+          </div>
+        )}
+
+        {/* Chips */}
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+          <Chip label={`❤️ ${post.likes_count?.toLocaleString()}`} size="small" />
+          <Chip label={`💬 ${post.comments_count?.toLocaleString()}`} size="small" />
+          {post.views_count > 0 && <Chip label={`👁 ${post.views_count?.toLocaleString()}`} size="small" />}
+          {post.post_type && <Chip label={post.post_type} size="small" variant="outlined" />}
+          <Chip label={sentConf.label} size="small" color={sentConf.color} icon={<Iconify icon={sentConf.icon} width={12} />} />
+          {post.published_at && <Chip label={toJalaliDate(post.published_at)} size="small" variant="outlined" />}
+        </Stack>
+
+        {/* Topics & Keywords */}
+        {post.extracted_topics?.length > 0 && (
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10, mr: 0.5 }}>موضوعات:</Typography>
+            {post.extracted_topics.map((t) => <Chip key={t} label={t} size="small" sx={{ height: 20, fontSize: 9, bgcolor: 'action.hover' }} />)}
+          </Stack>
+        )}
+        {post.extracted_keywords?.length > 0 && (
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10, mr: 0.5 }}>کلمات:</Typography>
+            {post.extracted_keywords.map((k) => <Chip key={k} label={k} size="small" variant="outlined" sx={{ height: 20, fontSize: 9 }} />)}
+          </Stack>
+        )}
+
+        {/* Action buttons */}
+        <Stack spacing={1} sx={{ mt: 2, pb: 1 }}>
+          <Stack direction="row" spacing={1}>
+            {originalUrl && (
+              <Button variant="outlined" fullWidth href={originalUrl} target="_blank" rel="noopener noreferrer" sx={{ fontSize: 12 }}
+                startIcon={<Iconify icon={platform === 'instagram' ? 'mdi:instagram' : platform === 'twitter' ? 'mdi:twitter' : 'mdi:telegram'} />}
+              >
+                {isStory ? 'مشاهده پروفایل' : 'مشاهده پست اصلی'}
+              </Button>
+            )}
+            <Button variant="outlined" fullWidth color="warning" sx={{ fontSize: 12 }}
+              startIcon={<Iconify icon="solar:pen-new-square-bold-duotone" />}
+              onClick={onOpenContext}
+            >
+              {post.manual_context ? 'ویرایش توضیح' : 'توضیح دستی'}
+            </Button>
+          </Stack>
+          <Button
+            variant="contained" fullWidth color="secondary" sx={{ fontSize: 12 }}
+            startIcon={processing ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:cpu-bolt-bold-duotone" />}
+            disabled={processing}
+            onClick={async () => {
+              setProcessing(true);
+              setProcessDone(false);
+              setProcessError(null);
+              setProcessStep('شروع پردازش...');
+              setProcessPercent(5);
+              try {
+                // Simulate step progress while waiting for the backend
+                const isVideo = ['video', 'reel', 'story'].includes(post.post_type);
+                const isImage = post.media_url && ['.jpg', '.jpeg', '.png', '.webp'].some(e => post.media_url.toLowerCase().endsWith(e));
+
+                if (isVideo && !post.is_transcribed) {
+                  setProcessStep('رونوشت‌برداری صوتی...');
+                  setProcessPercent(15);
+                } else if (isImage && !post.ocr_text) {
+                  setProcessStep('استخراج متن تصویر...');
+                  setProcessPercent(30);
+                } else {
+                  setProcessStep('ارسال به هوش مصنوعی...');
+                  setProcessPercent(40);
+                }
+
+                const res = await axiosInstance.post(endpoints.posts.process(post.id));
+                const data = res.data?.data;
+
+                setProcessStep('ذخیره نتایج...');
+                setProcessPercent(90);
+
+                if (data?.post) Object.assign(post, data.post);
+
+                setProcessPercent(100);
+                setProcessStep('تکمیل شد');
+                setProcessDone(true);
+              } catch (err) {
+                setProcessError(err.message);
+              } finally {
+                setProcessing(false);
+              }
+            }}
+          >
+            {processing ? processStep : 'پردازش هوشمند پست'}
+          </Button>
+
+          {/* Progress bar while processing */}
+          {processing && (
+            <Box sx={(theme) => ({ px: 0.5, py: 1, borderRadius: 1, bgcolor: alpha(theme.palette.secondary.main, 0.06), border: `1px solid ${alpha(theme.palette.secondary.main, 0.15)}` })}>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+                <CircularProgress size={12} color="secondary" thickness={5} />
+                <Typography variant="caption" sx={{ fontWeight: 600, fontSize: 10, flex: 1 }} color="secondary.main">{processStep}</Typography>
+                <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 10 }} color="secondary.main">{processPercent}%</Typography>
+              </Stack>
+              <LinearProgress variant={processPercent === 0 ? 'indeterminate' : 'determinate'} value={processPercent} color="secondary" sx={{ height: 4, borderRadius: 1 }} />
+            </Box>
+          )}
+
+          {/* Done state */}
+          {processDone && !processing && (
+            <Box sx={(theme) => ({ px: 1.5, py: 1, borderRadius: 1, bgcolor: alpha(theme.palette.success.main, 0.06), border: `1px solid ${alpha(theme.palette.success.main, 0.2)}` })}>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Iconify icon="solar:check-circle-bold" width={16} sx={{ color: 'success.main' }} />
+                <Typography variant="caption" color="success.main" sx={{ fontWeight: 600, fontSize: 11 }}>پردازش با موفقیت انجام شد</Typography>
+              </Stack>
+              <LinearProgress variant="determinate" value={100} color="success" sx={{ height: 4, borderRadius: 1, mt: 0.5 }} />
+            </Box>
+          )}
+
+          {/* Error state */}
+          {processError && !processing && (
+            <Box sx={(theme) => ({ px: 1.5, py: 1, borderRadius: 1, bgcolor: alpha(theme.palette.error.main, 0.06), border: `1px solid ${alpha(theme.palette.error.main, 0.2)}` })}>
+              <Typography variant="caption" color="error.main" sx={{ fontSize: 11 }}>❌ {processError}</Typography>
+            </Box>
+          )}
+        </Stack>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -51,13 +51,13 @@ export function SilenceRadar() {
   });
 
   useEffect(() => {
-    const topics = DEFAULT_TOPICS.split(',').map((t) => t.trim()).filter(Boolean);
+    const topics = DEFAULT_TOPICS.split(/[,،]/).map((t) => t.trim()).filter(Boolean);
     mutation.mutate(topics);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAnalyze = () => {
-    const topics = topicsInput.split(',').map((t) => t.trim()).filter(Boolean);
+    const topics = topicsInput.split(/[,،]/).map((t) => t.trim()).filter(Boolean);
     if (topics.length > 0) mutation.mutate(topics);
   };
 

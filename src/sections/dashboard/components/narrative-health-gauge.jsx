@@ -28,7 +28,7 @@ export function NarrativeHealthGauge() {
   if (!data) return null;
 
   const score = data.score ?? 0;
-  const rotation = -90 + (score / 100) * 180; // -90 to 90 degrees
+  const rotation = -90 + (score / 100) * 180;
   const color = score > 70 ? theme.palette.success.main : score > 40 ? theme.palette.warning.main : theme.palette.error.main;
 
   return (
@@ -42,37 +42,21 @@ export function NarrativeHealthGauge() {
         <Box sx={{ position: 'relative', width: 200, height: 110 }}>
           <svg viewBox="0 0 200 110" width="200" height="110">
             {/* Background arc */}
-            <path
-              d="M 20 100 A 80 80 0 0 1 180 100"
-              fill="none"
-              stroke={alpha(theme.palette.grey[500], 0.15)}
-              strokeWidth="14"
-              strokeLinecap="round"
-            />
-            {/* Colored segments */}
-            <path d="M 20 100 A 80 80 0 0 1 60 32" fill="none" stroke={alpha(theme.palette.error.main, 0.3)} strokeWidth="14" strokeLinecap="round" />
+            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke={alpha(theme.palette.grey[500], 0.15)} strokeWidth="14" strokeLinecap="round" />
+            {/* Colored segments — left=green(good), middle=warning, right=red(bad) swapped per user request */}
+            <path d="M 20 100 A 80 80 0 0 1 60 32" fill="none" stroke={alpha(theme.palette.success.main, 0.3)} strokeWidth="14" strokeLinecap="round" />
             <path d="M 60 32 A 80 80 0 0 1 140 32" fill="none" stroke={alpha(theme.palette.warning.main, 0.3)} strokeWidth="14" strokeLinecap="round" />
-            <path d="M 140 32 A 80 80 0 0 1 180 100" fill="none" stroke={alpha(theme.palette.success.main, 0.3)} strokeWidth="14" strokeLinecap="round" />
+            <path d="M 140 32 A 80 80 0 0 1 180 100" fill="none" stroke={alpha(theme.palette.error.main, 0.3)} strokeWidth="14" strokeLinecap="round" />
             {/* Needle */}
             <line
-              x1="100"
-              y1="100"
+              x1="100" y1="100"
               x2={100 + 60 * Math.cos((rotation * Math.PI) / 180)}
               y2={100 + 60 * Math.sin((rotation * Math.PI) / 180)}
-              stroke={color}
-              strokeWidth="3"
-              strokeLinecap="round"
+              stroke={color} strokeWidth="3" strokeLinecap="round"
             />
             <circle cx="100" cy="100" r="6" fill={color} />
             <circle cx="100" cy="100" r="3" fill={theme.palette.background.paper} />
           </svg>
-
-          {/* Score text */}
-          <Box sx={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)' }}>
-            <Typography variant="h4" sx={{ fontWeight: 800, color, textAlign: 'center', lineHeight: 1 }}>
-              {score}%
-            </Typography>
-          </Box>
         </Box>
       </Box>
 
@@ -85,44 +69,29 @@ export function NarrativeHealthGauge() {
 
       <Chip label={data.label} size="small" color={score > 70 ? 'success' : score > 40 ? 'warning' : 'error'} sx={{ display: 'flex', mb: 1.5 }} />
 
-      {/* Matched keywords */}
       {data.matched_keywords?.length > 0 && (
         <Box sx={{ mb: 1 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-            کلمات کلیدی منطبق:
-          </Typography>
-          <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
-            {data.matched_keywords.map((kw) => (
-              <Chip key={kw} label={kw} size="small" color="success" variant="outlined" sx={{ fontSize: 11 }} />
-            ))}
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>کلمات کلیدی منطبق:</Typography>
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            {data.matched_keywords.map((kw) => <Chip key={kw} label={kw} size="small" color="success" variant="outlined" sx={{ fontSize: 11 }} />)}
           </Stack>
         </Box>
       )}
 
-      {/* Unmatched keywords */}
       {data.unmatched_keywords?.length > 0 && (
         <Box sx={{ mb: 1 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-            کلمات کلیدی بدون پوشش:
-          </Typography>
-          <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
-            {data.unmatched_keywords.map((kw) => (
-              <Chip key={kw} label={kw} size="small" color="warning" variant="outlined" sx={{ fontSize: 11 }} />
-            ))}
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>کلمات کلیدی بدون پوشش:</Typography>
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            {data.unmatched_keywords.map((kw) => <Chip key={kw} label={kw} size="small" color="warning" variant="outlined" sx={{ fontSize: 11 }} />)}
           </Stack>
         </Box>
       )}
 
-      {/* Deviation keywords */}
       {data.deviation_keywords?.length > 0 && (
         <Box>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-            کلمات کلیدی منحرف‌کننده:
-          </Typography>
-          <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
-            {data.deviation_keywords.map((kw) => (
-              <Chip key={kw} label={kw} size="small" color="error" variant="outlined" sx={{ fontSize: 11 }} />
-            ))}
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>کلمات کلیدی منحرف‌کننده:</Typography>
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            {data.deviation_keywords.map((kw) => <Chip key={kw} label={kw} size="small" color="error" variant="outlined" sx={{ fontSize: 11 }} />)}
           </Stack>
         </Box>
       )}
@@ -130,7 +99,7 @@ export function NarrativeHealthGauge() {
       {data.total_network_terms === 0 && (
         <Box sx={(t) => ({ p: 1.5, borderRadius: 1, bgcolor: alpha(t.palette.warning.main, 0.06), border: `1px dashed ${alpha(t.palette.warning.main, 0.3)}`, mt: 1 })}>
           <Typography variant="caption" color="warning.main">
-            ⚠ هنوز هیچ پستی توسط LLM تحلیل نشده. ابتدا از صفحه پیج‌ها دکمه «تحلیل هوشمند» را بزنید تا کلمات کلیدی و موضوعات استخراج شوند.
+            ⚠ هنوز هیچ پستی توسط LLM تحلیل نشده. ابتدا از صفحه پیج‌ها دکمه «تحلیل هوشمند» را بزنید.
           </Typography>
         </Box>
       )}

@@ -28,6 +28,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import TableContainer from '@mui/material/TableContainer';
+import TableSortLabel from '@mui/material/TableSortLabel';
 import InputAdornment from '@mui/material/InputAdornment';
 import LinearProgress from '@mui/material/LinearProgress';
 import TablePagination from '@mui/material/TablePagination';
@@ -36,8 +37,11 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
+import { proxyImage } from 'src/utils/proxy-image';
+
 import { DashboardContent } from 'src/layouts/dashboard';
-import { usePages, useCreatePage, useDeletePage, useBulkCreatePages, useFetchPageData, useProcessPageData, usePageProgress } from 'src/api/pages';
+import { usePages, useCreatePage, useUpdatePage, useDeletePage, useBulkCreatePages, useFetchPageData, useProcessPageData, usePageProgress } from 'src/api/pages';
+import { usePulseByPage } from 'src/api/posts';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -63,27 +67,26 @@ function HealthBadge({ page }) {
   );
 }
 
-// Mini sparkline based on page metrics
-function MiniSparkline({ page }) {
-  // Generate trend from actual metrics
-  const base = page.followers_count || 100;
-  const influence = page.influence_score || 5;
-  const consistency = page.consistency_rate || 5;
-  const seed = page.id || 1;
-  const points = Array.from({ length: 7 }, (_, i) => {
-    const trend = consistency > 5 ? 0.02 : -0.01;
-    return base * (1 + trend * (i - 3)) * (1 + Math.sin(seed + i * 1.5) * 0.03);
-  });
-  const max = Math.max(...points);
-  const min = Math.min(...points);
-  const range = max - min || 1;
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${i * 8} ${28 - ((p - min) / range) * 24}`).join(' ');
-  const trending = points[6] > points[0];
+// Pulse mini bar — shows daily post count for last 7 days
+function PulseMiniBar({ data }) {
+  const items = data || [];
+  if (items.length === 0) {
+    return <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>—</Typography>;
+  }
+  const maxCount = Math.max(...items.map((i) => Number(i.count)), 1);
+  const total = items.reduce((s, i) => s + Number(i.count), 0);
 
   return (
-    <svg width="56" height="30" viewBox="0 0 48 30">
-      <path d={path} fill="none" stroke={trending ? '#22C55E' : '#FF5630'} strokeWidth="2" strokeLinecap="round" />
-    </svg>
+    <Tooltip title={`${total} پست در ۷ روز`} arrow>
+      <Stack direction="row" alignItems="flex-end" spacing="2px" sx={{ height: 24 }}>
+        {items.map((item, idx) => {
+          const h = (Number(item.count) / maxCount) * 20;
+          return (
+            <Box key={idx} sx={{ width: 5, minHeight: 2, height: Math.max(h, 2), bgcolor: h > 15 ? 'error.main' : h > 8 ? 'warning.main' : 'success.main', borderRadius: 0.5, transition: 'height 0.3s' }} />
+          );
+        })}
+      </Stack>
+    </Tooltip>
   );
 }
 
@@ -101,6 +104,10 @@ export function PagesListView() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [filterCluster, setFilterCluster] = useState('');
   const [filterInfluence, setFilterInfluence] = useState([0, 10]);
+  const [orderBy, setOrderBy] = useState('influence_score');
+  const [order, setOrder] = useState('desc');
+  const [quickEditRow, setQuickEditRow] = useState(null);
+  const [quickEditForm, setQuickEditForm] = useState(EMPTY_FORM);
 
   const params = {
     search: search || undefined,
@@ -110,11 +117,27 @@ export function PagesListView() {
   };
 
   const { data, isLoading } = usePages(params);
+  const { data: pulseData } = usePulseByPage(7);
   const createMutation = useCreatePage();
+  const updateMutation = useUpdatePage();
   const bulkMutation = useBulkCreatePages();
   const deleteMutation = useDeletePage();
   const fetchMutation = useFetchPageData();
-  const rows = data?.data || [];
+
+  const handleSort = (column) => {
+    const isAsc = orderBy === column && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(column);
+  };
+
+  const sortedRows = [...(data?.data || [])].sort((a, b) => {
+    const aVal = a[orderBy] ?? 0;
+    const bVal = b[orderBy] ?? 0;
+    if (typeof aVal === 'string') return order === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    return order === 'asc' ? aVal - bVal : bVal - aVal;
+  });
+
+  const rows = sortedRows;
   const total = data?.total || 0;
   const [fetchingAll, setFetchingAll] = useState(false);
   const [fetchProgress, setFetchProgress] = useState({ current: 0, total: 0, currentPage: '', currentPageId: null, skipped: 0, status: '' });
@@ -197,6 +220,20 @@ export function PagesListView() {
   const handleCreate = () => {
     createMutation.mutate(form, {
       onSuccess: () => { setOpenAdd(false); setForm(EMPTY_FORM); },
+    });
+  };
+
+  const handleQuickEdit = (row) => {
+    setQuickEditRow(row);
+    setQuickEditForm({
+      name: row.name || '', username: row.username || '', platform: row.platform || 'instagram',
+      category: row.category || '', country: row.country || '', language: row.language || '', bio: row.bio || '',
+    });
+  };
+
+  const handleQuickEditSave = () => {
+    updateMutation.mutate({ id: quickEditRow.id, data: quickEditForm }, {
+      onSuccess: () => setQuickEditRow(null),
     });
   };
 
@@ -471,13 +508,13 @@ export function PagesListView() {
                 <TableHead>
                   <TableRow>
                     <TableCell padding="checkbox"><Checkbox checked={selected.length === rows.length && rows.length > 0} indeterminate={selected.length > 0 && selected.length < rows.length} onChange={handleSelectAll} /></TableCell>
-                    <TableCell>پیج</TableCell>
-                    <TableCell>دسته‌بندی</TableCell>
-                    <TableCell>فالوور</TableCell>
-                    <TableCell>روند</TableCell>
-                    <TableCell>نفوذ</TableCell>
-                    <TableCell>همراهی</TableCell>
-                    <TableCell>آخرین فعالیت</TableCell>
+                    <TableCell><TableSortLabel active={orderBy === 'name'} direction={orderBy === 'name' ? order : 'asc'} onClick={() => handleSort('name')}>پیج</TableSortLabel></TableCell>
+                    <TableCell><TableSortLabel active={orderBy === 'category'} direction={orderBy === 'category' ? order : 'asc'} onClick={() => handleSort('category')}>دسته‌بندی</TableSortLabel></TableCell>
+                    <TableCell><TableSortLabel active={orderBy === 'followers_count'} direction={orderBy === 'followers_count' ? order : 'asc'} onClick={() => handleSort('followers_count')}>فالوور</TableSortLabel></TableCell>
+                    <TableCell>ضربان ۷ روز</TableCell>
+                    <TableCell><TableSortLabel active={orderBy === 'influence_score'} direction={orderBy === 'influence_score' ? order : 'asc'} onClick={() => handleSort('influence_score')}>نفوذ</TableSortLabel></TableCell>
+                    <TableCell><TableSortLabel active={orderBy === 'credibility_score'} direction={orderBy === 'credibility_score' ? order : 'asc'} onClick={() => handleSort('credibility_score')}>همراهی</TableSortLabel></TableCell>
+                    <TableCell><TableSortLabel active={orderBy === 'updated_at'} direction={orderBy === 'updated_at' ? order : 'asc'} onClick={() => handleSort('updated_at')}>آخرین فعالیت</TableSortLabel></TableCell>
                     <TableCell />
                   </TableRow>
                 </TableHead>
@@ -492,7 +529,7 @@ export function PagesListView() {
                       <TableCell>
                         <Stack direction="row" alignItems="center" spacing={1.5}>
                           <Box sx={{ position: 'relative' }}>
-                            <Avatar src={row.profile_image_url} sx={{ width: 36, height: 36 }}>{row.name?.[0]}</Avatar>
+                            <Avatar src={proxyImage(row.profile_image_url)} sx={{ width: 36, height: 36 }}>{row.name?.[0]}</Avatar>
                             <HealthBadge page={row} />
                           </Box>
                           <Box>
@@ -505,13 +542,24 @@ export function PagesListView() {
                         </Stack>
                       </TableCell>
                       <TableCell>
-                        <Chip label={CATEGORY_LABELS[row.category] || row.category || '—'} size="small" variant="outlined" sx={{ fontSize: 11 }} />
+                        <Chip
+                          label={CATEGORY_LABELS[row.category] || row.category || '—'}
+                          size="small"
+                          variant={row.category_source === 'ai' ? 'filled' : 'outlined'}
+                          color={row.category_source === 'ai' ? 'secondary' : 'default'}
+                          sx={{
+                            fontSize: 11,
+                            ...(row.category_source === 'manual' && { borderColor: 'warning.main', borderWidth: 2 }),
+                            ...(!row.category_source && !row.category && { opacity: 0.5 }),
+                          }}
+                          icon={row.category_source === 'ai' ? <Iconify icon="solar:cpu-bolt-bold" width={12} /> : row.category_source === 'manual' ? <Iconify icon="solar:pen-bold" width={12} /> : undefined}
+                        />
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>{row.followers_count?.toLocaleString()}</Typography>
                       </TableCell>
                       <TableCell>
-                        <MiniSparkline page={row} />
+                        <PulseMiniBar data={pulseData?.[row.id]} />
                       </TableCell>
                       <TableCell>
                         <Stack spacing={0.25}>
@@ -532,9 +580,21 @@ export function PagesListView() {
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Stack direction="row" spacing={0.5}>
+                          <Tooltip title="ویرایش سریع" arrow>
+                            <IconButton size="small" onClick={() => handleQuickEdit(row)}>
+                              <Iconify icon="solar:pen-bold" width={16} />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title="مشاهده پروفایل" arrow>
                             <IconButton size="small" onClick={() => router.push(paths.dashboard.instagram.pages.profile(row.id))}>
                               <Iconify icon="solar:eye-bold" width={18} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="باز کردن در شبکه اجتماعی" arrow>
+                            <IconButton size="small" component="a" target="_blank" rel="noopener noreferrer"
+                              href={row.platform === 'telegram' ? `https://t.me/${row.username}` : row.platform === 'twitter' ? `https://x.com/${row.username}` : `https://instagram.com/${row.username}`}
+                            >
+                              <Iconify icon={PLATFORM_ICONS[row.platform] || 'mdi:web'} width={16} />
                             </IconButton>
                           </Tooltip>
                         </Stack>
@@ -826,6 +886,41 @@ export function PagesListView() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setImportResult(null)}>بستن</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Quick Edit Dialog */}
+      <Dialog open={!!quickEditRow} onClose={() => setQuickEditRow(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Iconify icon="solar:pen-bold-duotone" width={22} sx={{ color: 'warning.main' }} />
+            <span>ویرایش سریع {quickEditRow?.name}</span>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="نام پیج" value={quickEditForm.name} onChange={(e) => setQuickEditForm({ ...quickEditForm, name: e.target.value })} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="یوزرنیم" value={quickEditForm.username} onChange={(e) => setQuickEditForm({ ...quickEditForm, username: e.target.value })} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select fullWidth size="small" label="پلتفرم" value={quickEditForm.platform} onChange={(e) => setQuickEditForm({ ...quickEditForm, platform: e.target.value })}>
+                <MenuItem value="instagram">اینستاگرام</MenuItem><MenuItem value="twitter">توییتر</MenuItem><MenuItem value="telegram">تلگرام</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select fullWidth size="small" label="دسته‌بندی" value={quickEditForm.category} onChange={(e) => setQuickEditForm({ ...quickEditForm, category: e.target.value })}>
+                <MenuItem value="">— بدون دسته‌بندی —</MenuItem>
+                {Object.entries(CATEGORY_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="کشور" value={quickEditForm.country} onChange={(e) => setQuickEditForm({ ...quickEditForm, country: e.target.value })} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="زبان" value={quickEditForm.language} onChange={(e) => setQuickEditForm({ ...quickEditForm, language: e.target.value })} /></Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setQuickEditRow(null)}>انصراف</Button>
+          <Button variant="contained" color="warning" onClick={handleQuickEditSave} disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? 'ذخیره...' : 'ذخیره'}
+          </Button>
         </DialogActions>
       </Dialog>
     </DashboardContent>

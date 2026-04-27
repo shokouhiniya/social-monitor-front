@@ -75,3 +75,13 @@ export function useTopicClusters() {
     },
   });
 }
+
+export function usePulseByPage(days = 7) {
+  return useQuery({
+    queryKey: ['posts', 'pulse-by-page', days],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.posts.pulseByPage, { params: { days } });
+      return res.data?.data;
+    },
+  });
+}

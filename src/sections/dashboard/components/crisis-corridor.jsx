@@ -10,6 +10,8 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
+import { proxyImage } from 'src/utils/proxy-image';
+
 import { useCrisisCorridor } from 'src/api/analytics';
 
 import { Iconify } from 'src/components/iconify';
@@ -22,7 +24,10 @@ export function CrisisCorridor() {
   const router = useRouter();
   const { data, isLoading } = useCrisisCorridor();
 
-  const items = data || [];
+  const allItems = data || [];
+  // Only show pages fetched within the last 24 hours
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const items = allItems.filter((p) => p.last_fetched_at && new Date(p.last_fetched_at) >= oneDayAgo);
 
   return (
     <ChartCard
@@ -56,7 +61,7 @@ export function CrisisCorridor() {
               })}
             >
               <Avatar
-                src={page.profile_image_url}
+                src={proxyImage(page.profile_image_url)}
                 sx={(theme) => ({
                   width: 36, height: 36,
                   border: `2px solid ${theme.palette.error.main}`,

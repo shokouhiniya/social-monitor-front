@@ -9,6 +9,7 @@ import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import Tooltip from '@mui/material/Tooltip';
+import Collapse from '@mui/material/Collapse';
 import { alpha } from '@mui/material/styles';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
@@ -28,6 +29,8 @@ import { Iconify } from 'src/components/iconify';
 // ----------------------------------------------------------------------
 
 const PRIORITY_COLORS = { critical: 'error', high: 'warning', medium: 'info', low: 'default' };
+const PRIORITY_LABELS = { critical: 'بحرانی', high: 'بالا', medium: 'متوسط', low: 'پایین' };
+const CATEGORY_LABELS = { silence_gap: 'شکاف سکوت', trend_shift: 'تغییر ترند', crisis: 'بحران', opportunity: 'فرصت' };
 
 function timeAgo(date) {
   if (!date) return '';
@@ -40,13 +43,23 @@ function timeAgo(date) {
 
 export function StrategicAlertsWidget() {
   const [open, setOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [form, setForm] = useState({ title: '', message: '', priority: 'medium', category: '' });
 
   const { data: alerts, isLoading } = useStrategicAlerts();
   const createMutation = useCreateStrategicAlert();
   const updateMutation = useUpdateAlertStatus();
 
-  const items = alerts || [];
+  const allItems = alerts || [];
+
+  // Apply filters
+  const items = allItems.filter((a) => {
+    if (priorityFilter && a.priority !== priorityFilter) return false;
+    if (categoryFilter && a.category !== categoryFilter) return false;
+    return true;
+  });
 
   const handleCreate = () => {
     createMutation.mutate({ ...form, created_by: 1 }, {
@@ -62,51 +75,104 @@ export function StrategicAlertsWidget() {
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
           <Stack direction="row" alignItems="center" spacing={1}>
             <Iconify icon="solar:bell-bold-duotone" width={20} sx={{ color: 'warning.main' }} />
-            <Typography variant="subtitle2">هشدارهای استراتژیک ({items.length})</Typography>
+            <Typography variant="subtitle2">هشدارهای استراتژیک ({items.length}{items.length !== allItems.length ? `/${allItems.length}` : ''})</Typography>
           </Stack>
           <Button size="small" startIcon={<Iconify icon="solar:add-circle-bold" />} onClick={() => setOpen(true)}>جدید</Button>
         </Stack>
 
+        {/* Filters */}
+        <Stack direction="row" spacing={0.5} sx={{ mb: 1.5, flexWrap: 'wrap' }} useFlexGap>
+          {Object.entries(PRIORITY_LABELS).map(([key, label]) => (
+            <Chip key={key} label={label} size="small"
+              variant={priorityFilter === key ? 'filled' : 'outlined'}
+              color={priorityFilter === key ? (PRIORITY_COLORS[key] || 'default') : 'default'}
+              onClick={() => setPriorityFilter(priorityFilter === key ? '' : key)}
+              sx={{ height: 22, fontSize: 9 }}
+            />
+          ))}
+          <Box sx={{ width: 1, borderRight: '1px solid', borderColor: 'divider', mx: 0.5 }} />
+          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+            <Chip key={key} label={label} size="small"
+              variant={categoryFilter === key ? 'filled' : 'outlined'}
+              onClick={() => setCategoryFilter(categoryFilter === key ? '' : key)}
+              sx={{ height: 22, fontSize: 9 }}
+            />
+          ))}
+        </Stack>
+
         {items.length === 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>هشدار فعالی وجود ندارد</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+            {allItems.length > 0 ? 'هشداری با این فیلتر یافت نشد' : 'هشدار فعالی وجود ندارد'}
+          </Typography>
         ) : (
-          <Stack spacing={1} sx={{ maxHeight: 340, overflow: 'auto' }}>
-            {items.map((alert) => (
-              <Box key={alert.id}
-                sx={(theme) => ({
-                  p: 1.5, borderRadius: 1,
-                  bgcolor: alert.priority === 'critical' ? alpha(theme.palette.error.main, 0.06) : alpha(theme.palette.grey[500], 0.04),
-                  border: `1px solid ${alpha(theme.palette[PRIORITY_COLORS[alert.priority] || 'primary']?.main || theme.palette.grey[300], 0.15)}`,
-                })}
-              >
-                <Stack direction="row" alignItems="flex-start" spacing={1}>
-                  <Box sx={{ flex: 1 }}>
-                    <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.5 }}>
-                      <Chip label={alert.priority} size="small" color={PRIORITY_COLORS[alert.priority] || 'default'} sx={{ height: 20, fontSize: 9 }} />
-                      {alert.category && <Chip label={alert.category} size="small" variant="outlined" sx={{ height: 20, fontSize: 9 }} />}
-                      <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 11 }}>{alert.title}</Typography>
+          <Stack spacing={1} sx={{ maxHeight: 400, overflow: 'auto' }}>
+            {items.map((alert) => {
+              const isExpanded = expandedId === alert.id;
+              return (
+                <Box key={alert.id}
+                  sx={(theme) => ({
+                    p: 1.5, borderRadius: 1, cursor: 'pointer',
+                    bgcolor: alert.priority === 'critical' ? alpha(theme.palette.error.main, 0.06) : alpha(theme.palette.grey[500], 0.04),
+                    border: `1px solid ${alpha(theme.palette[PRIORITY_COLORS[alert.priority] || 'primary']?.main || theme.palette.grey[300], isExpanded ? 0.4 : 0.15)}`,
+                    transition: 'all 0.2s',
+                    '&:hover': { borderColor: alpha(theme.palette[PRIORITY_COLORS[alert.priority] || 'primary']?.main || theme.palette.grey[300], 0.3) },
+                  })}
+                  onClick={() => setExpandedId(isExpanded ? null : alert.id)}
+                >
+                  <Stack direction="row" alignItems="flex-start" spacing={1}>
+                    <Box sx={{ flex: 1 }}>
+                      <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.5 }}>
+                        <Chip label={PRIORITY_LABELS[alert.priority] || alert.priority} size="small" color={PRIORITY_COLORS[alert.priority] || 'default'} sx={{ height: 20, fontSize: 9 }} />
+                        {alert.category && <Chip label={CATEGORY_LABELS[alert.category] || alert.category} size="small" variant="outlined" sx={{ height: 20, fontSize: 9 }} />}
+                        <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 11 }}>{alert.title}</Typography>
+                      </Stack>
+
+                      {/* Preview (always visible) */}
+                      {!isExpanded && (
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {alert.message}
+                        </Typography>
+                      )}
+
+                      {/* Full content (expanded) */}
+                      <Collapse in={isExpanded}>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11, lineHeight: 1.8, mt: 0.5, mb: 1 }}>
+                          {alert.message}
+                        </Typography>
+
+                        {alert.playbook?.length > 0 && (
+                          <Box sx={{ mb: 1 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 10, display: 'block', mb: 0.5 }}>📋 اقدامات پیشنهادی:</Typography>
+                            {alert.playbook.map((action, i) => (
+                              <Typography key={i} variant="caption" color="text.secondary" sx={{ fontSize: 10, display: 'block', pr: 1 }}>
+                                {i + 1}. {action}
+                              </Typography>
+                            ))}
+                          </Box>
+                        )}
+                      </Collapse>
+
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>{timeAgo(alert.created_at)}</Typography>
+                        {isExpanded && <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>• {toJalali(alert.created_at)}</Typography>}
+                      </Stack>
+                    </Box>
+                    <Stack spacing={0.25} onClick={(e) => e.stopPropagation()}>
+                      <Tooltip title="تایید و بستن" arrow>
+                        <IconButton size="small" onClick={() => updateMutation.mutate({ id: alert.id, status: 'acknowledged' })}>
+                          <Iconify icon="solar:check-circle-bold" width={18} sx={{ color: 'success.main' }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="آرشیو" arrow>
+                        <IconButton size="small" onClick={() => updateMutation.mutate({ id: alert.id, status: 'archived' })}>
+                          <Iconify icon="solar:archive-bold" width={16} sx={{ color: 'text.disabled' }} />
+                        </IconButton>
+                      </Tooltip>
                     </Stack>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10, display: 'block', mb: 0.5 }}>{alert.message?.slice(0, 100)}</Typography>
-                    <Stack direction="row" alignItems="center" spacing={1}>
-                      <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>{toJalali(alert.created_at)}</Typography>
-                      <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>• {timeAgo(alert.created_at)}</Typography>
-                    </Stack>
-                  </Box>
-                  <Stack spacing={0.25}>
-                    <Tooltip title="تایید و بستن" arrow>
-                      <IconButton size="small" onClick={() => updateMutation.mutate({ id: alert.id, status: 'acknowledged' })}>
-                        <Iconify icon="solar:check-circle-bold" width={18} sx={{ color: 'success.main' }} />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="آرشیو" arrow>
-                      <IconButton size="small" onClick={() => updateMutation.mutate({ id: alert.id, status: 'archived' })}>
-                        <Iconify icon="solar:archive-bold" width={16} sx={{ color: 'text.disabled' }} />
-                      </IconButton>
-                    </Tooltip>
                   </Stack>
-                </Stack>
-              </Box>
-            ))}
+                </Box>
+              );
+            })}
           </Stack>
         )}
       </Card>

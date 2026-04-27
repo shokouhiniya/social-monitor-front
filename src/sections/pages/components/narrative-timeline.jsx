@@ -17,6 +17,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import CircularProgress from '@mui/material/CircularProgress';
+import LinearProgress from '@mui/material/LinearProgress';
 import InputAdornment from '@mui/material/InputAdornment';
 
 import { toJalaliDate, toJalaliShort } from 'src/utils/format-jalali';
@@ -83,6 +84,11 @@ export function NarrativeTimeline({ posts, fieldReports, page: pageInfo }) {
   const [contextOpen, setContextOpen] = useState(false);
   const [contextText, setContextText] = useState('');
   const [contextSaving, setContextSaving] = useState(false);
+  const [postProcessing, setPostProcessing] = useState(false);
+  const [postProcessStep, setPostProcessStep] = useState('');
+  const [postProcessPercent, setPostProcessPercent] = useState(0);
+  const [postProcessError, setPostProcessError] = useState(null);
+  const [postProcessDone, setPostProcessDone] = useState(false);
 
   const allEvents = useMemo(() => {
     const evts = [];
@@ -312,32 +318,105 @@ export function NarrativeTimeline({ posts, fieldReports, page: pageInfo }) {
 
               {(() => {
                 const platform = pageInfo?.platform;
+                const isStory = selectedPost.post_type === 'story';
                 let url = null;
 
-                if (platform === 'instagram' && selectedPost.external_id) {
-                  const shortcode = mediaIdToShortcode(selectedPost.external_id);
-                  if (shortcode) url = `https://www.instagram.com/p/${shortcode}/`;
-                } else if (platform === 'twitter') {
-                  url = `https://twitter.com/i/status/${selectedPost.external_id}`;
-                } else if (platform === 'telegram' && pageInfo?.username) {
-                  url = `https://t.me/${pageInfo.username}/${selectedPost.external_id}`;
+                if (isStory) {
+                  if (platform === 'instagram') url = `https://www.instagram.com/${pageInfo?.username}/`;
+                  else if (platform === 'twitter') url = `https://x.com/${pageInfo?.username}`;
+                  else if (platform === 'telegram') url = `https://t.me/${pageInfo?.username}`;
+                } else {
+                  if (platform === 'instagram' && selectedPost.external_id) {
+                    const shortcode = mediaIdToShortcode(selectedPost.external_id);
+                    if (shortcode) url = `https://www.instagram.com/p/${shortcode}/`;
+                  } else if (platform === 'twitter') {
+                    url = `https://twitter.com/i/status/${selectedPost.external_id}`;
+                  } else if (platform === 'telegram' && pageInfo?.username) {
+                    url = `https://t.me/${pageInfo.username}/${selectedPost.external_id}`;
+                  }
                 }
 
                 return (
-                  <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-                    {url && (
-                      <Button variant="outlined" fullWidth href={url} target="_blank" rel="noopener noreferrer"
-                        startIcon={<Iconify icon={platform === 'instagram' ? 'mdi:instagram' : platform === 'twitter' ? 'mdi:twitter' : 'mdi:telegram'} />}
+                  <Stack spacing={1} sx={{ mt: 2, pb: 1 }}>
+                    <Stack direction="row" spacing={1}>
+                      {url && (
+                        <Button variant="outlined" fullWidth href={url} target="_blank" rel="noopener noreferrer" sx={{ fontSize: 12 }}
+                          startIcon={<Iconify icon={platform === 'instagram' ? 'mdi:instagram' : platform === 'twitter' ? 'mdi:twitter' : 'mdi:telegram'} />}
+                        >
+                          {isStory ? 'مشاهده پروفایل' : 'مشاهده پست اصلی'}
+                        </Button>
+                      )}
+                      <Button variant="outlined" fullWidth color="warning" sx={{ fontSize: 12 }}
+                        startIcon={<Iconify icon="solar:pen-new-square-bold-duotone" />}
+                        onClick={() => { setContextText(selectedPost.manual_context || ''); setContextOpen(true); }}
                       >
-                        مشاهده پست اصلی
+                        {selectedPost.manual_context ? 'ویرایش توضیح' : 'توضیح دستی'}
                       </Button>
-                    )}
-                    <Button variant="outlined" fullWidth color="warning"
-                      startIcon={<Iconify icon="solar:pen-new-square-bold-duotone" />}
-                      onClick={() => { setContextText(selectedPost.manual_context || ''); setContextOpen(true); }}
+                    </Stack>
+                    <Button
+                      variant="contained" fullWidth color="secondary" sx={{ fontSize: 12 }}
+                      startIcon={postProcessing ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:cpu-bolt-bold-duotone" />}
+                      disabled={postProcessing}
+                      onClick={async () => {
+                        setPostProcessing(true);
+                        setPostProcessDone(false);
+                        setPostProcessError(null);
+                        setPostProcessStep('شروع پردازش...');
+                        setPostProcessPercent(5);
+                        try {
+                          const isVideo = ['video', 'reel', 'story'].includes(selectedPost.post_type);
+                          const isImage = selectedPost.media_url && ['.jpg', '.jpeg', '.png', '.webp'].some(e => selectedPost.media_url.toLowerCase().endsWith(e));
+                          if (isVideo && !selectedPost.is_transcribed) {
+                            setPostProcessStep('رونوشت‌برداری صوتی...');
+                            setPostProcessPercent(15);
+                          } else if (isImage && !selectedPost.ocr_text) {
+                            setPostProcessStep('استخراج متن تصویر...');
+                            setPostProcessPercent(30);
+                          } else {
+                            setPostProcessStep('ارسال به هوش مصنوعی...');
+                            setPostProcessPercent(40);
+                          }
+                          const res = await axiosInstance.post(endpoints.posts.process(selectedPost.id));
+                          const data = res.data?.data;
+                          setPostProcessStep('ذخیره نتایج...');
+                          setPostProcessPercent(90);
+                          if (data?.post) Object.assign(selectedPost, data.post);
+                          setPostProcessPercent(100);
+                          setPostProcessStep('تکمیل شد');
+                          setPostProcessDone(true);
+                        } catch (err) {
+                          setPostProcessError(err.message);
+                        } finally {
+                          setPostProcessing(false);
+                        }
+                      }}
                     >
-                      {selectedPost.manual_context ? 'ویرایش توضیح دستی' : 'افزودن توضیح دستی'}
+                      {postProcessing ? postProcessStep : 'پردازش هوشمند پست'}
                     </Button>
+                    {postProcessing && (
+                      <Box sx={(theme) => ({ px: 0.5, py: 1, borderRadius: 1, bgcolor: alpha(theme.palette.secondary.main, 0.06), border: `1px solid ${alpha(theme.palette.secondary.main, 0.15)}` })}>
+                        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+                          <CircularProgress size={12} color="secondary" thickness={5} />
+                          <Typography variant="caption" sx={{ fontWeight: 600, fontSize: 10, flex: 1 }} color="secondary.main">{postProcessStep}</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 10 }} color="secondary.main">{postProcessPercent}%</Typography>
+                        </Stack>
+                        <LinearProgress variant={postProcessPercent === 0 ? 'indeterminate' : 'determinate'} value={postProcessPercent} color="secondary" sx={{ height: 4, borderRadius: 1 }} />
+                      </Box>
+                    )}
+                    {postProcessDone && !postProcessing && (
+                      <Box sx={(theme) => ({ px: 1.5, py: 1, borderRadius: 1, bgcolor: alpha(theme.palette.success.main, 0.06), border: `1px solid ${alpha(theme.palette.success.main, 0.2)}` })}>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <Iconify icon="solar:check-circle-bold" width={16} sx={{ color: 'success.main' }} />
+                          <Typography variant="caption" color="success.main" sx={{ fontWeight: 600, fontSize: 11 }}>پردازش با موفقیت انجام شد</Typography>
+                        </Stack>
+                        <LinearProgress variant="determinate" value={100} color="success" sx={{ height: 4, borderRadius: 1, mt: 0.5 }} />
+                      </Box>
+                    )}
+                    {postProcessError && !postProcessing && (
+                      <Box sx={(theme) => ({ px: 1.5, py: 1, borderRadius: 1, bgcolor: alpha(theme.palette.error.main, 0.06), border: `1px solid ${alpha(theme.palette.error.main, 0.2)}` })}>
+                        <Typography variant="caption" color="error.main" sx={{ fontSize: 11 }}>❌ {postProcessError}</Typography>
+                      </Box>
+                    )}
                   </Stack>
                 );
               })()}

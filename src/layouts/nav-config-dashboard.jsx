@@ -20,28 +20,28 @@ const ICONS = {
 
 // ----------------------------------------------------------------------
 
-// Instagram nav items
+// Instagram/MyNetwork nav items
 export const instagramNavData = [
   {
     subheader: 'پایش',
     items: [
-      { title: 'داشبورد کلان', path: paths.dashboard.instagram.root, icon: ICONS.dashboard },
-      { title: 'نمای ماکرو', path: paths.dashboard.instagram.macro, icon: ICONS.analytics },
-      { title: 'هشدارهای استراتژیک', path: paths.dashboard.instagram.alerts, icon: ICONS.lock },
+      { title: 'داشبورد کلان', path: paths.dashboard.mynetwork.root, icon: ICONS.dashboard },
+      { title: 'نمای ماکرو', path: paths.dashboard.mynetwork.macro, icon: ICONS.analytics },
+      { title: 'هشدارهای استراتژیک', path: paths.dashboard.mynetwork.alerts, icon: ICONS.lock },
     ],
   },
   {
     subheader: 'مدیریت',
     items: [
-      { title: 'پیج‌ها', path: paths.dashboard.instagram.pages.root, icon: ICONS.user },
-      { title: 'پست‌ها', path: paths.dashboard.instagram.posts, icon: ICONS.blog },
-      { title: 'گزارش‌های میدانی', path: paths.dashboard.instagram.fieldReports, icon: ICONS.file },
+      { title: 'پیج‌ها', path: paths.dashboard.mynetwork.pages.root, icon: ICONS.user },
+      { title: 'پست‌ها', path: paths.dashboard.mynetwork.posts, icon: ICONS.blog },
+      { title: 'گزارش‌های میدانی', path: paths.dashboard.mynetwork.fieldReports, icon: ICONS.file },
     ],
   },
   {
     subheader: 'سیستم',
     items: [
-      { title: 'تنظیمات', path: paths.dashboard.instagram.settings, icon: ICONS.params },
+      { title: 'تنظیمات', path: paths.dashboard.mynetwork.settings, icon: ICONS.params },
     ],
   },
 ];
@@ -80,6 +80,7 @@ export function getNavDataByNetwork(network) {
   switch (network) {
     case 'telegram':
       return telegramNavData;
+    case 'mynetwork':
     case 'instagram':
     default:
       return instagramNavData;
