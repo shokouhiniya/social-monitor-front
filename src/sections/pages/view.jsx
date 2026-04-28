@@ -39,9 +39,9 @@ import { useRouter } from 'src/routes/hooks';
 
 import { proxyImage } from 'src/utils/proxy-image';
 
-import { DashboardContent } from 'src/layouts/dashboard';
-import { usePages, useCreatePage, useUpdatePage, useDeletePage, useBulkCreatePages, useFetchPageData, useProcessPageData, usePageProgress } from 'src/api/pages';
 import { usePulseByPage } from 'src/api/posts';
+import { DashboardContent } from 'src/layouts/dashboard';
+import { usePages, useCreatePage, useUpdatePage, useDeletePage, usePageProgress, useFetchPageData, useBulkCreatePages, useProcessPageData } from 'src/api/pages';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -312,11 +312,11 @@ export function PagesListView() {
 
   const handleBulkImport = () => {
     bulkMutation.mutate(importPreview, {
-      onSuccess: (data) => {
+      onSuccess: (d) => {
         setOpenImport(false);
         setImportPreview([]);
-        if (data?.skipped?.length > 0) {
-          setImportResult(data);
+        if (d?.skipped?.length > 0) {
+          setImportResult(d);
         }
       },
     });

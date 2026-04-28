@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 
 import { DashboardContent } from 'src/layouts/dashboard';
-import { useMacroDashboard, useAlignmentIndex, useNarrativeHealth, useActivityIndex } from 'src/api/analytics';
+import { useActivityIndex, useMacroDashboard, useAlignmentIndex, useNarrativeHealth } from 'src/api/analytics';
 
 import { StatCard } from './components/stat-card';
 import { DebugBox } from './components/debug-box';

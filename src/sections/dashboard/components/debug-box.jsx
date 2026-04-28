@@ -1,8 +1,8 @@
 import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
-import Typography from '@mui/material/Typography';
+import Stack from '@mui/material/Stack';
 import { alpha } from '@mui/material/styles';
+import Typography from '@mui/material/Typography';
 
 /**
  * Debug info box — shows data source, endpoint, prompt info for each dashboard card.

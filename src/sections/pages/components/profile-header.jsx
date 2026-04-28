@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -10,18 +10,18 @@ import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
+import { alpha } from '@mui/material/styles';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import CircularProgress from '@mui/material/CircularProgress';
-import { alpha } from '@mui/material/styles';
 
 import { toJalali } from 'src/utils/format-jalali';
 import { proxyImage } from 'src/utils/proxy-image';
 
 import axiosInstance, { endpoints } from 'src/lib/axios';
-import { useFetchPageData, useProcessPageData, usePageProgress } from 'src/api/pages';
+import { usePageProgress, useFetchPageData, useProcessPageData } from 'src/api/pages';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -164,15 +164,23 @@ export function ProfileHeader({ page, onEdit, timeRange }) {
     <Card sx={{ p: 3 }}>
       <Stack direction={{ xs: 'column', md: 'row' }} alignItems="center" spacing={3}>
         <Box sx={{ position: 'relative' }}>
-          <Avatar src={proxyImage(page.profile_image_url)} sx={{ width: 80, height: 80, fontSize: 32 }}>
+          <Avatar
+            src={proxyImage(page.profile_image_url)}
+            sx={{ width: 80, height: 80, fontSize: 32 }}
+          >
             {page.name?.[0]}
           </Avatar>
           {onEdit && (
             <Tooltip title="ویرایش پروفایل" arrow>
-              <IconButton size="small" onClick={onEdit}
+              <IconButton
+                size="small"
+                onClick={onEdit}
                 sx={(theme) => ({
-                  position: 'absolute', bottom: -4, right: -4,
-                  width: 28, height: 28,
+                  position: 'absolute',
+                  bottom: -4,
+                  right: -4,
+                  width: 28,
+                  height: 28,
                   bgcolor: 'background.paper',
                   border: `1px solid ${theme.palette.divider}`,
                   boxShadow: theme.shadows[2],
@@ -187,8 +195,17 @@ export function ProfileHeader({ page, onEdit, timeRange }) {
 
         <Box sx={{ flex: 1 }}>
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>{page.name}</Typography>
-            {page.is_active === false && <Chip label="غیرفعال" size="small" color="error" icon={<Iconify icon="solar:ghost-bold" width={14} />} />}
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {page.name}
+            </Typography>
+            {page.is_active === false && (
+              <Chip
+                label="غیرفعال"
+                size="small"
+                color="error"
+                icon={<Iconify icon="solar:ghost-bold" width={14} />}
+              />
+            )}
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             <Box
@@ -202,29 +219,52 @@ export function ProfileHeader({ page, onEdit, timeRange }) {
               }
               target="_blank"
               rel="noopener noreferrer"
-              sx={{ color: 'primary.main', textDecoration: 'none', fontWeight: 600, fontSize: 'inherit', '&:hover': { textDecoration: 'underline' } }}
+              sx={{
+                color: 'primary.main',
+                textDecoration: 'none',
+                fontWeight: 600,
+                fontSize: 'inherit',
+                '&:hover': { textDecoration: 'underline' },
+              }}
             >
               @{page.username}
             </Box>
-            {' • '}{page.platform}
+            {' • '}
+            {page.platform}
           </Typography>
-          {page.bio && <Typography variant="body2" color="text.secondary" sx={{ mb: 1, maxWidth: 500 }}>{page.bio}</Typography>}
+          {page.bio && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1, maxWidth: 500 }}>
+              {page.bio}
+            </Typography>
+          )}
           <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-            {page.category && <Chip label={page.category} size="small" color="primary" variant="outlined" />}
+            {page.category && (
+              <Chip label={page.category} size="small" color="primary" variant="outlined" />
+            )}
             {page.country && <Chip label={page.country} size="small" variant="outlined" />}
             {page.language && <Chip label={page.language} size="small" variant="outlined" />}
-            {page.cluster && <Chip label={`خوشه: ${page.cluster}`} size="small" color="info" variant="outlined" />}
+            {page.cluster && (
+              <Chip label={`خوشه: ${page.cluster}`} size="small" color="info" variant="outlined" />
+            )}
           </Stack>
         </Box>
 
         <Stack direction="row" spacing={3}>
           <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>{page.followers_count?.toLocaleString()}</Typography>
-            <Typography variant="caption" color="text.secondary">فالوور</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {page.followers_count?.toLocaleString()}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              فالوور
+            </Typography>
           </Box>
           <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>{page.following_count?.toLocaleString()}</Typography>
-            <Typography variant="caption" color="text.secondary">فالووینگ</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {page.following_count?.toLocaleString()}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              فالووینگ
+            </Typography>
           </Box>
         </Stack>
 
@@ -237,16 +277,30 @@ export function ProfileHeader({ page, onEdit, timeRange }) {
             </Box>
           ) : !hasFetched && !fetchMutation.isSuccess ? (
             <Button
-              variant="contained" color="info" size="small" fullWidth
-              startIcon={fetchMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:cloud-download-bold-duotone" />}
-              onClick={handleFetch} disabled={fetchMutation.isPending}
+              variant="contained"
+              color="info"
+              size="small"
+              fullWidth
+              startIcon={
+                fetchMutation.isPending ? (
+                  <CircularProgress size={16} color="inherit" />
+                ) : (
+                  <Iconify icon="solar:cloud-download-bold-duotone" />
+                )
+              }
+              onClick={handleFetch}
+              disabled={fetchMutation.isPending}
             >
               {fetchMutation.isPending ? 'در حال واکشی...' : 'بارگیری'}
             </Button>
           ) : (
             <Stack direction="row" alignItems="center" spacing={0.5} sx={{ width: '100%' }}>
               <Box sx={{ flex: 1 }}>
-                <Typography variant="caption" color="success.main" sx={{ fontWeight: 600, fontSize: 10, display: 'block' }}>
+                <Typography
+                  variant="caption"
+                  color="success.main"
+                  sx={{ fontWeight: 600, fontSize: 10, display: 'block' }}
+                >
                   ✓ واکشی شد
                 </Typography>
                 <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>
@@ -256,9 +310,14 @@ export function ProfileHeader({ page, onEdit, timeRange }) {
               <IconButton size="small" onClick={(e) => setFetchMenuAnchor(e.currentTarget)}>
                 <Iconify icon="solar:menu-dots-bold" width={16} />
               </IconButton>
-              <Menu anchorEl={fetchMenuAnchor} open={Boolean(fetchMenuAnchor)} onClose={() => setFetchMenuAnchor(null)}>
+              <Menu
+                anchorEl={fetchMenuAnchor}
+                open={Boolean(fetchMenuAnchor)}
+                onClose={() => setFetchMenuAnchor(null)}
+              >
                 <MenuItem onClick={handleFetch} sx={{ fontSize: 12 }}>
-                  <Iconify icon="solar:cloud-download-bold" width={16} sx={{ mr: 1 }} />بارگیری مجدد
+                  <Iconify icon="solar:cloud-download-bold" width={16} sx={{ mr: 1 }} />
+                  بارگیری مجدد
                 </MenuItem>
               </Menu>
             </Stack>
@@ -266,24 +325,40 @@ export function ProfileHeader({ page, onEdit, timeRange }) {
 
           {/* Fetch error */}
           {fetchMutation.isError && (
-            <Button variant="outlined" color="error" size="small" fullWidth onClick={handleFetch}
-              startIcon={<Iconify icon="solar:refresh-bold" />} sx={{ fontSize: 11 }}
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              fullWidth
+              onClick={handleFetch}
+              startIcon={<Iconify icon="solar:refresh-bold" />}
+              sx={{ fontSize: 11 }}
             >
               تلاش مجدد
             </Button>
           )}
 
           {/* Step 2: Process — only after successful fetch */}
-          {(hasFetched || fetchMutation.isSuccess) && (
-            processMutation.isPending && processProgress ? (
+          {(hasFetched || fetchMutation.isSuccess) &&
+            (processMutation.isPending && processProgress ? (
               <Box sx={{ width: '100%' }}>
                 <ProgressBar progress={processProgress} />
               </Box>
             ) : !hasProcessed && !processMutation.isSuccess ? (
               <Button
-                variant="contained" color="warning" size="small" fullWidth
-                startIcon={processMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:cpu-bolt-bold-duotone" />}
-                onClick={handleProcess} disabled={processMutation.isPending}
+                variant="contained"
+                color="warning"
+                size="small"
+                fullWidth
+                startIcon={
+                  processMutation.isPending ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    <Iconify icon="solar:cpu-bolt-bold-duotone" />
+                  )
+                }
+                onClick={handleProcess}
+                disabled={processMutation.isPending}
               >
                 {processMutation.isPending ? 'در حال پردازش...' : 'پردازش هوشمند'}
               </Button>
@@ -291,49 +366,92 @@ export function ProfileHeader({ page, onEdit, timeRange }) {
               <Stack spacing={0.5} sx={{ width: '100%' }}>
                 <Stack direction="row" alignItems="center" spacing={0.5}>
                   <Box sx={{ flex: 1 }}>
-                    <Typography variant="caption" color="warning.main" sx={{ fontWeight: 600, fontSize: 10, display: 'block' }}>
+                    <Typography
+                      variant="caption"
+                      color="warning.main"
+                      sx={{ fontWeight: 600, fontSize: 10, display: 'block' }}
+                    >
                       ✓ پردازش شد
                     </Typography>
                     <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>
-                      {toJalali(processMutation.data?.page?.last_processed_at || page.last_processed_at)}
+                      {toJalali(
+                        processMutation.data?.page?.last_processed_at || page.last_processed_at
+                      )}
                     </Typography>
                   </Box>
                   <IconButton size="small" onClick={(e) => setProcessMenuAnchor(e.currentTarget)}>
                     <Iconify icon="solar:menu-dots-bold" width={16} />
                   </IconButton>
-                  <Menu anchorEl={processMenuAnchor} open={Boolean(processMenuAnchor)} onClose={() => setProcessMenuAnchor(null)}>
+                  <Menu
+                    anchorEl={processMenuAnchor}
+                    open={Boolean(processMenuAnchor)}
+                    onClose={() => setProcessMenuAnchor(null)}
+                  >
                     <MenuItem onClick={handleProcess} sx={{ fontSize: 12 }}>
-                      <Iconify icon="solar:cpu-bolt-bold" width={16} sx={{ mr: 1 }} />پردازش مجدد
+                      <Iconify icon="solar:cpu-bolt-bold" width={16} sx={{ mr: 1 }} />
+                      پردازش مجدد
                     </MenuItem>
                   </Menu>
                 </Stack>
-                {(processMutation.data?.page?.last_processed_timeframe || page.last_processed_timeframe) && (
-                  <Box sx={(theme) => ({ px: 1, py: 0.5, bgcolor: alpha(theme.palette.warning.main, 0.08), borderRadius: 0.5, border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}` })}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: 9, display: 'block' }}>
-                      بازه زمانی: {
-                        { '24h': '۲۴ ساعت', '3d': '۳ روز', '1w': '۱ هفته', '2w': '۲ هفته', '1m': '۱ ماه', 'all': 'همه' }
-                        [processMutation.data?.page?.last_processed_timeframe || page.last_processed_timeframe] ||
-                        (processMutation.data?.page?.last_processed_timeframe || page.last_processed_timeframe)
-                      }
+                {(processMutation.data?.page?.last_processed_timeframe ||
+                  page.last_processed_timeframe) && (
+                  <Box
+                    sx={(theme) => ({
+                      px: 1,
+                      py: 0.5,
+                      bgcolor: alpha(theme.palette.warning.main, 0.08),
+                      borderRadius: 0.5,
+                      border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
+                    })}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontSize: 9, display: 'block' }}
+                    >
+                      بازه زمانی:{' '}
+                      {{
+                        '24h': '۲۴ ساعت',
+                        '3d': '۳ روز',
+                        '1w': '۱ هفته',
+                        '2w': '۲ هفته',
+                        '1m': '۱ ماه',
+                        all: 'همه',
+                      }[
+                        page.last_processed_timeframe ||
+                          processMutation.data?.page?.last_processed_timeframe
+                      ] ||
+                        processMutation.data?.page?.last_processed_timeframe ||
+                        page.last_processed_timeframe}
                     </Typography>
                   </Box>
                 )}
               </Stack>
-            )
-          )}
+            ))}
 
           {/* Process error */}
           {processMutation.isError && (
-            <Button variant="outlined" color="error" size="small" fullWidth onClick={handleProcess}
-              startIcon={<Iconify icon="solar:refresh-bold" />} sx={{ fontSize: 11 }}
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              fullWidth
+              onClick={handleProcess}
+              startIcon={<Iconify icon="solar:refresh-bold" />}
+              sx={{ fontSize: 11 }}
             >
               تلاش مجدد
             </Button>
           )}
 
           {/* Export button */}
-          <Button variant="outlined" size="small" fullWidth onClick={handleExport}
-            startIcon={<Iconify icon="solar:file-download-bold-duotone" />} sx={{ fontSize: 11 }}
+          <Button
+            variant="outlined"
+            size="small"
+            fullWidth
+            onClick={handleExport}
+            startIcon={<Iconify icon="solar:file-download-bold-duotone" />}
+            sx={{ fontSize: 11 }}
           >
             دانلود اطلاعات اکانت
           </Button>
