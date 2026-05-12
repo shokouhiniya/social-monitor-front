@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -17,6 +17,7 @@ import Tooltip from '@mui/material/Tooltip';
 import { alpha } from '@mui/material/styles';
 import TableRow from '@mui/material/TableRow';
 import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import MenuItem from '@mui/material/MenuItem';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -123,6 +124,7 @@ export function PagesListView() {
   const bulkMutation = useBulkCreatePages();
   const deleteMutation = useDeletePage();
   const fetchMutation = useFetchPageData();
+  const processMutation = useProcessPageData();
 
   const handleSort = (column) => {
     const isAsc = orderBy === column && order === 'asc';
@@ -139,82 +141,110 @@ export function PagesListView() {
 
   const rows = sortedRows;
   const total = data?.total || 0;
-  const [fetchingAll, setFetchingAll] = useState(false);
-  const [fetchProgress, setFetchProgress] = useState({ current: 0, total: 0, currentPage: '', currentPageId: null, skipped: 0, status: '' });
-  const [fetchResults, setFetchResults] = useState(null);
 
-  // Poll per-page progress during batch fetch
-  const { data: currentPageProgress } = usePageProgress(
-    fetchProgress.currentPageId,
-    fetchingAll && !!fetchProgress.currentPageId,
+  // --- Batch operations state ---
+  const [batchRunning, setBatchRunning] = useState(false); // true when any batch op is running
+  const [batchType, setBatchType] = useState(''); // 'fetch' or 'process'
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, currentPage: '', currentPageId: null });
+  const [batchResults, setBatchResults] = useState(null);
+  const [batchCancelled, setBatchCancelled] = useState(false);
+  const cancelRef = useRef(false);
+
+  // Process options dialog
+  const [processDialogOpen, setProcessDialogOpen] = useState(false);
+  const [processDialogTarget, setProcessDialogTarget] = useState([]); // page IDs to process
+  const [processOptions, setProcessOptions] = useState({
+    transcription: true, ocr: true, translation: true, analysis: true, force: false,
+  });
+
+  // Poll per-page progress
+  const { data: currentBatchPageProgress } = usePageProgress(
+    batchProgress.currentPageId,
+    batchRunning && !!batchProgress.currentPageId,
   );
-  const activePageProgress = Array.isArray(currentPageProgress)
-    ? currentPageProgress.find((p) => p.operation === 'fetch' && p.status === 'running')
-    : currentPageProgress?.status === 'running' ? currentPageProgress : null;
+  const activeBatchProgress = Array.isArray(currentBatchPageProgress)
+    ? currentBatchPageProgress.find((p) => p.operation === batchType && p.status === 'running')
+    : currentBatchPageProgress?.status === 'running' ? currentBatchPageProgress : null;
 
-  const handleFetchAll = async () => {
-    if (rows.length === 0) return;
-    setFetchingAll(true);
-    setFetchProgress({ current: 0, total: rows.length, currentPage: '', currentPageId: null, skipped: 0, status: '' });
-    const results = { success: [], failed: [] };
+  // Fetch ALL page IDs (not just current page) for batch operations
+  const { data: allPagesData } = usePages({ page: 1, limit: 9999 });
+  const allPageRows = [...(allPagesData?.data || [])].sort((a, b) => {
+    const aVal = a[orderBy] ?? 0;
+    const bVal = b[orderBy] ?? 0;
+    if (typeof aVal === 'string') return order === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    return order === 'asc' ? aVal - bVal : bVal - aVal;
+  });
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      setFetchProgress({ current: i + 1, total: rows.length, currentPage: row.name, currentPageId: row.id, skipped: 0, status: '' });
+  const runBatchFetch = async (targetRows) => {
+    setBatchRunning(true);
+    setBatchType('fetch');
+    cancelRef.current = false;
+    setBatchCancelled(false);
+    setBatchProgress({ current: 0, total: targetRows.length, currentPage: '', currentPageId: null });
+    const results = { success: [], failed: [], skipped: [] };
+
+    for (let i = 0; i < targetRows.length; i++) {
+      if (cancelRef.current) { results.skipped.push(...targetRows.slice(i).map((r) => r.name)); break; }
+      const row = targetRows[i];
+      setBatchProgress({ current: i + 1, total: targetRows.length, currentPage: row.name, currentPageId: row.id });
       try {
         await fetchMutation.mutateAsync(row.id);
         results.success.push(row.name);
       } catch (err) {
-        console.error(`Failed to fetch ${row.name}:`, err);
-        results.failed.push({ name: row.name, error: err.message || 'خطای ناشناخته' });
+        results.failed.push({ name: row.name, error: err.message || 'خطا' });
       }
     }
 
-    setFetchingAll(false);
-    setFetchProgress({ current: 0, total: 0, currentPage: '', currentPageId: null, skipped: 0, status: '' });
-    setFetchResults(results);
+    setBatchRunning(false);
+    setBatchProgress({ current: 0, total: 0, currentPage: '', currentPageId: null });
+    setBatchResults({ type: 'fetch', ...results });
   };
 
-  // --- Process All (AI analysis) ---
-  const processMutation = useProcessPageData();
-  const [processingAll, setProcessingAll] = useState(false);
-  const [processProgress, setProcessProgress] = useState({ current: 0, total: 0, currentPage: '', currentPageId: null });
-  const [processResults, setProcessResults] = useState(null);
+  const runBatchProcess = async (targetRows) => {
+    const services = Object.entries(processOptions).filter(([k, v]) => v && k !== 'force').map(([k]) => k);
+    const force = processOptions.force;
 
-  // Poll per-page progress during batch process
-  const { data: currentProcessPageProgress } = usePageProgress(
-    processProgress.currentPageId,
-    processingAll && !!processProgress.currentPageId,
-  );
-  const activeProcessProgress = Array.isArray(currentProcessPageProgress)
-    ? currentProcessPageProgress.find((p) => p.operation === 'process' && p.status === 'running')
-    : currentProcessPageProgress?.status === 'running' ? currentProcessPageProgress : null;
-
-  const handleProcessAll = async () => {
-    if (rows.length === 0) return;
-    setProcessingAll(true);
-    setProcessProgress({ current: 0, total: rows.length, currentPage: '', currentPageId: null });
+    setBatchRunning(true);
+    setBatchType('process');
+    cancelRef.current = false;
+    setBatchCancelled(false);
+    setBatchProgress({ current: 0, total: targetRows.length, currentPage: '', currentPageId: null });
     const results = { success: [], skipped: [], failed: [] };
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      setProcessProgress({ current: i + 1, total: rows.length, currentPage: row.name, currentPageId: row.id });
+    for (let i = 0; i < targetRows.length; i++) {
+      if (cancelRef.current) { results.skipped.push(...targetRows.slice(i).map((r) => r.name)); break; }
+      const row = targetRows[i];
+      setBatchProgress({ current: i + 1, total: targetRows.length, currentPage: row.name, currentPageId: row.id });
       try {
-        const result = await processMutation.mutateAsync({ id: row.id, timeRange: '1w' });
-        if (result?.status === 'skipped') {
-          results.skipped.push(row.name);
-        } else {
-          results.success.push(row.name);
-        }
+        const result = await processMutation.mutateAsync({ id: row.id, timeRange: '1w', services, force });
+        if (result?.status === 'skipped') { results.skipped.push(row.name); }
+        else { results.success.push(row.name); }
       } catch (err) {
-        console.error(`Failed to process ${row.name}:`, err);
-        results.failed.push({ name: row.name, error: err.message || 'خطای ناشناخته' });
+        results.failed.push({ name: row.name, error: err.message || 'خطا' });
       }
     }
 
-    setProcessingAll(false);
-    setProcessProgress({ current: 0, total: 0, currentPage: '', currentPageId: null });
-    setProcessResults(results);
+    setBatchRunning(false);
+    setBatchProgress({ current: 0, total: 0, currentPage: '', currentPageId: null });
+    setBatchResults({ type: 'process', ...results });
+  };
+
+  const handleFetchAll = () => runBatchFetch(allPageRows);
+  const handleProcessAll = () => {
+    setProcessDialogTarget(allPageRows);
+    setProcessDialogOpen(true);
+  };
+  const handleFetchSelected = () => runBatchFetch(rows.filter((r) => selected.includes(r.id)));
+  const handleProcessSelected = () => {
+    setProcessDialogTarget(rows.filter((r) => selected.includes(r.id)));
+    setProcessDialogOpen(true);
+  };
+  const handleCancelBatch = () => { cancelRef.current = true; setBatchCancelled(true); };
+  const handleSkipCurrent = () => { /* The current request can't be cancelled, but we skip the next */ };
+
+  const handleStartProcess = () => {
+    setProcessDialogOpen(false);
+    runBatchProcess(processDialogTarget);
   };
 
   const handleCreate = () => {
@@ -330,24 +360,23 @@ export function PagesListView() {
           <Typography variant="body2" color="text.secondary">مدیریت و تحلیل {total} پیج تحت پایش</Typography>
         </Box>
         <Stack direction="row" spacing={1}>
-          <Button
-            variant="contained"
-            color="warning"
-            startIcon={fetchingAll ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:download-bold" />}
-            onClick={handleFetchAll}
-            disabled={fetchingAll || processingAll || rows.length === 0}
+          <Button variant="contained" color="warning"
+            startIcon={batchRunning && batchType === 'fetch' ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:download-bold" />}
+            onClick={handleFetchAll} disabled={batchRunning}
           >
-            {fetchingAll ? `بارگیری ${fetchProgress.current} از ${fetchProgress.total}` : 'بارگیری همه'}
+            {batchRunning && batchType === 'fetch' ? `بارگیری ${batchProgress.current}/${batchProgress.total}` : `بارگیری همه (${allPagesData?.total || 0})`}
           </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            startIcon={processingAll ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:cpu-bolt-bold" />}
-            onClick={handleProcessAll}
-            disabled={processingAll || fetchingAll || rows.length === 0}
+          <Button variant="contained" color="secondary"
+            startIcon={batchRunning && batchType === 'process' ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:cpu-bolt-bold" />}
+            onClick={handleProcessAll} disabled={batchRunning}
           >
-            {processingAll ? `تحلیل ${processProgress.current} از ${processProgress.total}` : 'تحلیل همه'}
+            {batchRunning && batchType === 'process' ? `تحلیل ${batchProgress.current}/${batchProgress.total}` : `تحلیل همه (${allPagesData?.total || 0})`}
           </Button>
+          {batchRunning && (
+            <Button variant="outlined" color="error" startIcon={<Iconify icon="solar:stop-bold" />} onClick={handleCancelBatch}>
+              {batchCancelled ? 'در حال توقف...' : 'لغو'}
+            </Button>
+          )}
           <Button variant="outlined" startIcon={<Iconify icon="solar:filter-bold" />} onClick={() => setOpenFilter(true)}>
             فیلتر پیشرفته
           </Button>
@@ -363,105 +392,36 @@ export function PagesListView() {
         </Stack>
       </Stack>
 
-      {/* Fetch Progress */}
-      {fetchingAll && (
-        <Card sx={{ p: 2, mb: 2, bgcolor: 'warning.lighter' }}>
+      {/* Batch Progress */}
+      {batchRunning && (
+        <Card sx={{ p: 2, mb: 2, bgcolor: (theme) => alpha(theme.palette[batchType === 'fetch' ? 'warning' : 'secondary'].main, 0.08) }}>
           <Stack spacing={1.5}>
-            {/* Overall batch progress */}
             <Stack direction="row" alignItems="center" spacing={2}>
-              <CircularProgress size={20} color="warning" />
+              <CircularProgress size={20} color={batchType === 'fetch' ? 'warning' : 'secondary'} />
               <Box sx={{ flex: 1 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    بارگیری: {fetchProgress.currentPage} ({fetchProgress.current} از {fetchProgress.total})
+                    {batchType === 'fetch' ? 'بارگیری' : 'تحلیل'}: {batchProgress.currentPage} ({batchProgress.current}/{batchProgress.total})
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {Math.round((fetchProgress.current / fetchProgress.total) * 100)}%
+                    {batchProgress.total > 0 ? Math.round((batchProgress.current / batchProgress.total) * 100) : 0}%
                   </Typography>
                 </Stack>
-                <LinearProgress variant="determinate" value={(fetchProgress.current / fetchProgress.total) * 100} color="warning" sx={{ mt: 0.5, height: 6, borderRadius: 1 }} />
+                <LinearProgress variant="determinate" value={batchProgress.total > 0 ? (batchProgress.current / batchProgress.total) * 100 : 0} color={batchType === 'fetch' ? 'warning' : 'secondary'} sx={{ mt: 0.5, height: 6, borderRadius: 1 }} />
               </Box>
+              <Button size="small" variant="outlined" color="error" onClick={handleCancelBatch} disabled={batchCancelled}>
+                {batchCancelled ? 'توقف...' : 'لغو'}
+              </Button>
             </Stack>
-
-            {/* Per-page progress from backend */}
-            {activePageProgress && (
+            {activeBatchProgress && (
               <Box sx={{ px: 1.5, py: 1, borderRadius: 1, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
                 <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
                   <CircularProgress size={12} color="info" thickness={5} />
-                  <Typography variant="caption" sx={{ fontWeight: 600, fontSize: 10, flex: 1 }} color="info.main">
-                    {activePageProgress.step}
-                  </Typography>
-                  {activePageProgress.detail && (
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: 9 }}>
-                      {activePageProgress.detail}
-                    </Typography>
-                  )}
-                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 10 }} color="info.main">
-                    {activePageProgress.percent}%
-                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 600, fontSize: 10, flex: 1 }} color="info.main">{activeBatchProgress.step}</Typography>
+                  {activeBatchProgress.detail && <Typography variant="caption" color="text.secondary" sx={{ fontSize: 9 }}>{activeBatchProgress.detail}</Typography>}
+                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 10 }} color="info.main">{activeBatchProgress.percent}%</Typography>
                 </Stack>
-                <LinearProgress
-                  variant={activePageProgress.percent === 0 ? 'indeterminate' : 'determinate'}
-                  value={activePageProgress.percent}
-                  color="info"
-                  sx={{ height: 4, borderRadius: 1 }}
-                />
-              </Box>
-            )}
-
-            {/* Skipped info */}
-            {fetchProgress.skipped > 0 && (
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>
-                ⏭️ {fetchProgress.skipped} پیج قبلاً واکشی شده — رد شد
-              </Typography>
-            )}
-          </Stack>
-        </Card>
-      )}
-
-      {/* Process Progress */}
-      {processingAll && (
-        <Card sx={{ p: 2, mb: 2, bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.08) }}>
-          <Stack spacing={1.5}>
-            {/* Overall batch progress */}
-            <Stack direction="row" alignItems="center" spacing={2}>
-              <CircularProgress size={20} color="secondary" />
-              <Box sx={{ flex: 1 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    تحلیل: {processProgress.currentPage} ({processProgress.current} از {processProgress.total})
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {Math.round((processProgress.current / processProgress.total) * 100)}%
-                  </Typography>
-                </Stack>
-                <LinearProgress variant="determinate" value={(processProgress.current / processProgress.total) * 100} color="secondary" sx={{ mt: 0.5, height: 6, borderRadius: 1 }} />
-              </Box>
-            </Stack>
-
-            {/* Per-page process progress from backend */}
-            {activeProcessProgress && (
-              <Box sx={{ px: 1.5, py: 1, borderRadius: 1, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
-                  <CircularProgress size={12} color="warning" thickness={5} />
-                  <Typography variant="caption" sx={{ fontWeight: 600, fontSize: 10, flex: 1 }} color="warning.main">
-                    {activeProcessProgress.step}
-                  </Typography>
-                  {activeProcessProgress.detail && (
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: 9 }}>
-                      {activeProcessProgress.detail}
-                    </Typography>
-                  )}
-                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 10 }} color="warning.main">
-                    {activeProcessProgress.percent}%
-                  </Typography>
-                </Stack>
-                <LinearProgress
-                  variant={activeProcessProgress.percent === 0 ? 'indeterminate' : 'determinate'}
-                  value={activeProcessProgress.percent}
-                  color="warning"
-                  sx={{ height: 4, borderRadius: 1 }}
-                />
+                <LinearProgress variant={activeBatchProgress.percent === 0 ? 'indeterminate' : 'determinate'} value={activeBatchProgress.percent} color="info" sx={{ height: 4, borderRadius: 1 }} />
               </Box>
             )}
           </Stack>
@@ -629,6 +589,14 @@ export function PagesListView() {
           <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>
             {selected.length} پیج انتخاب شده
           </Typography>
+          <Button size="small" variant="outlined" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} startIcon={<Iconify icon="solar:download-bold" />}
+            onClick={handleFetchSelected} disabled={batchRunning}>
+            بارگیری
+          </Button>
+          <Button size="small" variant="outlined" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} startIcon={<Iconify icon="solar:cpu-bolt-bold" />}
+            onClick={handleProcessSelected} disabled={batchRunning}>
+            تحلیل
+          </Button>
           <Button size="small" variant="outlined" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} startIcon={<Iconify icon="solar:file-download-bold" />} onClick={handleExportExcel}>
             خروجی اکسل
           </Button>
@@ -762,34 +730,38 @@ export function PagesListView() {
         </DialogActions>
       </Dialog>
 
-      {/* Fetch All Results Dialog */}
-      <Dialog open={!!fetchResults} onClose={() => setFetchResults(null)} maxWidth="sm" fullWidth>
+      {/* Batch Results Dialog */}
+      <Dialog open={!!batchResults} onClose={() => setBatchResults(null)} maxWidth="sm" fullWidth>
         <DialogTitle>
           <Stack direction="row" alignItems="center" spacing={1}>
-            <Iconify icon="solar:download-bold-duotone" width={24} sx={{ color: 'warning.main' }} />
-            <span>نتیجه بارگیری</span>
+            <Iconify icon={batchResults?.type === 'fetch' ? 'solar:download-bold-duotone' : 'solar:cpu-bolt-bold-duotone'} width={24} sx={{ color: batchResults?.type === 'fetch' ? 'warning.main' : 'secondary.main' }} />
+            <span>{batchResults?.type === 'fetch' ? 'نتیجه بارگیری' : 'نتیجه تحلیل'}</span>
           </Stack>
         </DialogTitle>
         <DialogContent>
-          {fetchResults && (
+          {batchResults && (
             <Stack spacing={2}>
-              {fetchResults.success.length > 0 && (
+              {batchResults.success?.length > 0 && (
                 <Box>
-                  <Typography variant="subtitle2" color="success.main" sx={{ mb: 1 }}>✅ موفق ({fetchResults.success.length})</Typography>
+                  <Typography variant="subtitle2" color="success.main" sx={{ mb: 1 }}>✅ موفق ({batchResults.success.length})</Typography>
                   <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                    {fetchResults.success.map((name, i) => (
-                      <Chip key={i} label={name} size="small" color="success" variant="outlined" />
-                    ))}
+                    {batchResults.success.map((name, i) => <Chip key={i} label={name} size="small" color="success" variant="outlined" />)}
                   </Stack>
                 </Box>
               )}
-              {fetchResults.failed.length > 0 && (
+              {batchResults.skipped?.length > 0 && (
                 <Box>
-                  <Typography variant="subtitle2" color="error.main" sx={{ mb: 1 }}>❌ ناموفق ({fetchResults.failed.length})</Typography>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>⏭️ رد شد ({batchResults.skipped.length})</Typography>
+                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                    {batchResults.skipped.map((name, i) => <Chip key={i} label={name} size="small" variant="outlined" />)}
+                  </Stack>
+                </Box>
+              )}
+              {batchResults.failed?.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" color="error.main" sx={{ mb: 1 }}>❌ ناموفق ({batchResults.failed.length})</Typography>
                   <Stack spacing={0.5}>
-                    {fetchResults.failed.map((item, i) => (
-                      <Chip key={i} label={`${item.name}: ${item.error}`} size="small" color="error" variant="outlined" />
-                    ))}
+                    {batchResults.failed.map((item, i) => <Chip key={i} label={`${item.name}: ${item.error}`} size="small" color="error" variant="outlined" />)}
                   </Stack>
                 </Box>
               )}
@@ -797,60 +769,41 @@ export function PagesListView() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setFetchResults(null)}>بستن</Button>
+          <Button onClick={() => setBatchResults(null)}>بستن</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Process All Results Dialog */}
-      <Dialog open={!!processResults} onClose={() => setProcessResults(null)} maxWidth="sm" fullWidth>
+      {/* Process Options Dialog */}
+      <Dialog open={processDialogOpen} onClose={() => setProcessDialogOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
         <DialogTitle>
           <Stack direction="row" alignItems="center" spacing={1}>
-            <Iconify icon="solar:cpu-bolt-bold-duotone" width={24} sx={{ color: 'secondary.main' }} />
-            <span>نتیجه تحلیل</span>
+            <Iconify icon="solar:cpu-bolt-bold-duotone" width={22} sx={{ color: 'secondary.main' }} />
+            <span>تنظیمات تحلیل ({processDialogTarget.length} پیج)</span>
           </Stack>
         </DialogTitle>
         <DialogContent>
-          {processResults && (
-            <Stack spacing={2}>
-              {processResults.success.length > 0 && (
-                <Box>
-                  <Typography variant="subtitle2" color="success.main" sx={{ mb: 1 }}>✅ تحلیل شد ({processResults.success.length})</Typography>
-                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                    {processResults.success.map((name, i) => (
-                      <Chip key={i} label={name} size="small" color="success" variant="outlined" />
-                    ))}
-                  </Stack>
-                </Box>
-              )}
-              {processResults.skipped.length > 0 && (
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>⏭️ بدون پست جدید ({processResults.skipped.length})</Typography>
-                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                    {processResults.skipped.map((name, i) => (
-                      <Chip key={i} label={name} size="small" variant="outlined" />
-                    ))}
-                  </Stack>
-                </Box>
-              )}
-              {processResults.failed.length > 0 && (
-                <Box>
-                  <Typography variant="subtitle2" color="error.main" sx={{ mb: 1 }}>❌ ناموفق ({processResults.failed.length})</Typography>
-                  <Stack spacing={0.5}>
-                    {processResults.failed.map((item, i) => (
-                      <Chip key={i} label={`${item.name}: ${item.error}`} size="small" color="error" variant="outlined" />
-                    ))}
-                  </Stack>
-                </Box>
-              )}
-            </Stack>
-          )}
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>سرویس‌هایی که می‌خواهید اجرا شوند را انتخاب کنید:</Typography>
+          <Stack spacing={0.5}>
+            <FormControlLabel control={<Checkbox checked={processOptions.transcription} onChange={(e) => setProcessOptions({ ...processOptions, transcription: e.target.checked })} />} label="🎙️ رونوشت‌برداری صوتی (Soniox)" />
+            <FormControlLabel control={<Checkbox checked={processOptions.ocr} onChange={(e) => setProcessOptions({ ...processOptions, ocr: e.target.checked })} />} label="📝 استخراج متن تصویر (OCR)" />
+            <FormControlLabel control={<Checkbox checked={processOptions.translation} onChange={(e) => setProcessOptions({ ...processOptions, translation: e.target.checked })} />} label="🔤 ترجمه فارسی" />
+            <FormControlLabel control={<Checkbox checked={processOptions.analysis} onChange={(e) => setProcessOptions({ ...processOptions, analysis: e.target.checked })} />} label="🤖 تحلیل هوشمند (LLM)" />
+            <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+              <FormControlLabel control={<Checkbox checked={processOptions.force} onChange={(e) => setProcessOptions({ ...processOptions, force: e.target.checked })} color="warning" />}
+                label={<Typography variant="body2" color="warning.main" sx={{ fontWeight: 600 }}>⚠️ پردازش مجدد (بازنویسی نتایج قبلی)</Typography>} />
+            </Box>
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setProcessResults(null)}>بستن</Button>
+          <Button onClick={() => setProcessDialogOpen(false)}>انصراف</Button>
+          <Button variant="contained" color="secondary" onClick={handleStartProcess}
+            disabled={!processOptions.transcription && !processOptions.ocr && !processOptions.translation && !processOptions.analysis}>
+            شروع تحلیل
+          </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Import Result Dialog (shows skipped duplicates) */}
+      {/* Import Result Dialog */}
       <Dialog open={!!importResult} onClose={() => setImportResult(null)} maxWidth="sm" fullWidth>
         <DialogTitle>
           <Stack direction="row" alignItems="center" spacing={1}>
