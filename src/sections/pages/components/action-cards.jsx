@@ -20,7 +20,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 
 import { toJalali } from 'src/utils/format-jalali';
 
-import { useActionPlans, useCreateActionPlan, useUpdateActionPlan, useCreateInteraction } from 'src/api/action-plans';
+import { useActionPlans, useCreateActionPlan, useUpdateActionPlan, useDeleteActionPlan, useCreateInteraction } from 'src/api/action-plans';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -104,9 +104,10 @@ function InteractionRow({ item }) {
 
 // ----------------------------------------------------------------------
 
-function ActionPlanCard({ plan, onStatusChange, pageId }) {
+function ActionPlanCard({ plan, onStatusChange, onDelete, pageId }) {
   const [expanded, setExpanded] = useState(false);
   const [interactionOpen, setInteractionOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [interactionForm, setInteractionForm] = useState({ type: 'direct', result: 'success', responsible: '', note: '' });
   const createInteraction = useCreateInteraction();
 
@@ -179,6 +180,9 @@ function ActionPlanCard({ plan, onStatusChange, pageId }) {
               <Iconify icon="eva:checkmark-circle-2-fill" />
             </IconButton>
           )}
+          <IconButton size="small" onClick={() => setConfirmDelete(true)} title="حذف" sx={{ color: 'error.main', opacity: 0.6, '&:hover': { opacity: 1 } }}>
+            <Iconify icon="solar:trash-bin-trash-bold" width={18} />
+          </IconButton>
         </Box>
       </Box>
 
@@ -244,6 +248,22 @@ function ActionPlanCard({ plan, onStatusChange, pageId }) {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Confirm Delete Dialog */}
+      <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)} maxWidth="xs" PaperProps={{ sx: { borderRadius: 2 } }}>
+        <DialogTitle sx={{ fontSize: 14 }}>حذف عملیات</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            آیا از حذف عملیات «{plan.title}» اطمینان دارید؟ این عمل قابل بازگشت نیست.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDelete(false)}>انصراف</Button>
+          <Button variant="contained" color="error" onClick={() => { onDelete(plan.id); setConfirmDelete(false); }}>
+            حذف
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
@@ -257,6 +277,7 @@ export function ActionCards({ pageId }) {
   const { data: plans, isLoading } = useActionPlans(pageId);
   const createMutation = useCreateActionPlan();
   const updateMutation = useUpdateActionPlan();
+  const deleteMutation = useDeleteActionPlan();
 
   const items = plans || [];
 
@@ -274,6 +295,10 @@ export function ActionCards({ pageId }) {
 
   const handleStatusChange = (id, status) => {
     updateMutation.mutate({ id, data: { status } });
+  };
+
+  const handleDelete = (id) => {
+    deleteMutation.mutate(id);
   };
 
   return (
@@ -302,7 +327,7 @@ export function ActionCards({ pageId }) {
       ) : (
         <Stack spacing={1.5}>
           {items.map((plan) => (
-            <ActionPlanCard key={plan.id} plan={plan} onStatusChange={handleStatusChange} pageId={pageId} />
+            <ActionPlanCard key={plan.id} plan={plan} onStatusChange={handleStatusChange} onDelete={handleDelete} pageId={pageId} />
           ))}
         </Stack>
       )}
