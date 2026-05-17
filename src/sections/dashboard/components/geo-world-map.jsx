@@ -1,11 +1,10 @@
 'use client';
 
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import { Marker, Geography, Geographies, ComposableMap } from 'react-simple-maps';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
@@ -24,12 +23,6 @@ const COUNTRY_COORDS = {
   'ترکیه': [35.2433, 38.9637], 'مصر': [30.8025, 26.8206], 'پاکستان': [69.3451, 30.3753],
   'روسیه': [105.3188, 61.5240], 'چین': [104.1954, 35.8617],
 };
-
-const TIMEFRAMES = [
-  { value: '24h', label: '۲۴ ساعت', hours: 24 },
-  { value: '1w', label: '۱ هفته', hours: 168 },
-  { value: '1m', label: '۱ ماه', hours: 720 },
-];
 
 const MapChart = memo(function MapChart({ items, maxCount, maxViews, theme }) {
   return (
@@ -84,7 +77,6 @@ const MapChart = memo(function MapChart({ items, maxCount, maxViews, theme }) {
 
 export function GeoWorldMap({ data, loading }) {
   const theme = useTheme();
-  const [timeframe, setTimeframe] = useState('1w');
 
   if (loading) {
     return (
@@ -109,20 +101,6 @@ export function GeoWorldMap({ data, loading }) {
       <Box sx={{ height: 440, direction: 'ltr' }}>
         <MapChart items={items} maxCount={maxCount} maxViews={maxViews} theme={theme} />
       </Box>
-
-      {/* Timeframe selector */}
-      <Stack direction="row" spacing={0.75} justifyContent="center" sx={{ mt: 1.5 }}>
-        {TIMEFRAMES.map((tf) => (
-          <Button key={tf.value} size="small"
-            variant={timeframe === tf.value ? 'contained' : 'outlined'}
-            color={timeframe === tf.value ? 'primary' : 'inherit'}
-            onClick={() => setTimeframe(tf.value)}
-            sx={{ fontSize: 11, height: 26, minWidth: 0, px: 1.5 }}
-          >
-            {tf.label}
-          </Button>
-        ))}
-      </Stack>
 
       {/* Legend */}
       <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 1 }}>

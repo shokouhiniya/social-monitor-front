@@ -10,27 +10,38 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { Iconify } from 'src/components/iconify';
 
 import { ChartCard } from './chart-card';
+import { topicalLabel } from '../../pages/constants';
 
 // ----------------------------------------------------------------------
 
-const COLORS = ['#00A76F', '#8E33FF', '#00B8D9', '#FFAB00', '#FF5630', '#2065D1', '#FF6C40', '#36B37E', '#6554C0', '#FF8B00', '#00C7B1', '#B76E00'];
-
-const CATEGORY_LABELS = {
-  news: 'خبری', activist: 'فعال', celebrity: 'سلبریتی', lifestyle: 'لایف‌استایل',
-  economy: 'اقتصادی', local_news: 'محلی', politician: 'سیاستمدار', documentary: 'مستند',
-  religious: 'مذهبی', art: 'هنری', student: 'دانشجویی', health: 'سلامت',
-  technology: 'تکنولوژی', culture: 'فرهنگی', sports: 'ورزشی', analyst: 'تحلیل‌گر', unknown: 'نامشخص',
-};
+const COLORS = ['#00A76F', '#8E33FF', '#00B8D9', '#FFAB00', '#FF5630', '#2065D1', '#FF6C40', '#36B37E', '#6554C0', '#FF8B00', '#00C7B1', '#B76E00', '#A95EE7', '#FF6F61', '#3DD598', '#1E88E5', '#7E57C2', '#26A69A', '#FFA726', '#5C6BC0', '#EC407A', '#66BB6A', '#FFCA28', '#42A5F5', '#AB47BC'];
 
 const CATEGORY_ICONS = {
-  news: 'solar:document-text-bold-duotone', activist: 'solar:flag-bold-duotone',
-  celebrity: 'solar:star-bold-duotone', lifestyle: 'solar:heart-bold-duotone',
-  economy: 'solar:chart-bold-duotone', local_news: 'solar:map-point-bold-duotone',
-  politician: 'solar:buildings-bold-duotone', documentary: 'solar:videocamera-record-bold-duotone',
-  religious: 'solar:moon-bold-duotone', art: 'solar:palette-bold-duotone',
-  student: 'solar:square-academic-cap-bold-duotone', health: 'solar:health-bold-duotone',
-  technology: 'solar:cpu-bolt-bold-duotone', culture: 'solar:book-bold-duotone',
-  sports: 'solar:running-round-bold-duotone', analyst: 'solar:graph-bold-duotone',
+  technology: 'solar:cpu-bolt-bold-duotone',
+  marketing: 'solar:megaphone-bold-duotone',
+  science: 'solar:atom-bold-duotone',
+  quran: 'solar:book-bookmark-bold-duotone',
+  eulogy: 'solar:moon-stars-bold-duotone',
+  mysticism: 'solar:soul-bold-duotone',
+  parenting: 'solar:emoji-funny-circle-bold-duotone',
+  beauty: 'solar:gallery-favourite-bold-duotone',
+  fashion: 'solar:bag-bold-duotone',
+  art: 'solar:palette-bold-duotone',
+  music: 'solar:music-note-2-bold-duotone',
+  photography: 'solar:camera-bold-duotone',
+  anime_games: 'solar:gamepad-bold-duotone',
+  news_politics: 'solar:document-text-bold-duotone',
+  environment: 'solar:leaf-bold-duotone',
+  comedy: 'solar:emoji-funny-square-bold-duotone',
+  dance: 'solar:running-round-bold-duotone',
+  travel: 'solar:plane-bold-duotone',
+  history: 'solar:hourglass-bold-duotone',
+  sports: 'solar:running-2-bold-duotone',
+  cooking: 'solar:chef-hat-bold-duotone',
+  military: 'solar:shield-keyhole-bold-duotone',
+  business_crypto: 'solar:wallet-money-bold-duotone',
+  social_legal: 'solar:scale-bold-duotone',
+  medicine: 'solar:health-bold-duotone',
   unknown: 'solar:question-circle-bold-duotone',
 };
 
@@ -44,7 +55,7 @@ export function IdentityRadialChart({ data, loading }) {
   }
 
   const items = (data || [])
-    .map((item) => ({ key: item.category, label: CATEGORY_LABELS[item.category] || item.category || 'نامشخص', count: Number(item.count) }))
+    .map((item) => ({ key: item.category || 'unknown', label: topicalLabel(item.category) || 'نامشخص', count: Number(item.count) }))
     .sort((a, b) => b.count - a.count);
   const total = items.reduce((s, i) => s + i.count, 0);
 
@@ -52,7 +63,7 @@ export function IdentityRadialChart({ data, loading }) {
     <ChartCard
       title="دماسنج هویت"
       icon="solar:pie-chart-2-bold-duotone"
-      info="ترکیب شبکه: هر ردیف یک دسته‌بندی. آیکون + نوار رنگی + درصد"
+      info="ترکیب شبکه: هر ردیف یک خوشه موضوعی. آیکون + نوار رنگی + درصد"
       sx={{ height: '100%' }}
     >
       <Stack spacing={1.25}>

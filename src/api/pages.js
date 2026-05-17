@@ -109,6 +109,20 @@ export function useProcessPageData() {
   });
 }
 
+export function useGenerateNarrative() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const res = await axiosInstance.post(endpoints.pages.narrative(id));
+      return res.data?.data;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['pages', id] });
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'profile', id] });
+    },
+  });
+}
+
 export function usePageProgress(id, enabled = false) {
   return useQuery({
     queryKey: ['pages', id, 'progress'],
@@ -118,5 +132,15 @@ export function usePageProgress(id, enabled = false) {
     },
     enabled: !!id && enabled,
     refetchInterval: enabled ? 1000 : false, // Poll every second when enabled
+  });
+}
+
+export function useBlindSpots(limit = 6) {
+  return useQuery({
+    queryKey: ['pages', 'blind-spots', limit],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.pages.blindSpots, { params: { limit } });
+      return res.data?.data;
+    },
   });
 }

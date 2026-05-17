@@ -21,16 +21,38 @@ import DialogActions from '@mui/material/DialogActions';
 import LinearProgress from '@mui/material/LinearProgress';
 import CircularProgress from '@mui/material/CircularProgress';
 
-import { usePages } from 'src/api/pages';
+import { usePages, useBlindSpots } from 'src/api/pages';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { useCreateStrategicAlert } from 'src/api/strategic-alerts';
 import { useFieldReports, useFieldReportStats, useCreateFieldReport } from 'src/api/field-reports';
 
 import { Iconify } from 'src/components/iconify';
 
 import { StatCard } from '../dashboard/components/stat-card';
 import { ChartCard } from '../dashboard/components/chart-card';
+import { PageInfoBox } from '../dashboard/components/page-info-box';
 
 // ----------------------------------------------------------------------
+
+const PAGE_INFO = {
+  title: 'مرکز اطلاعات میدانی',
+  icon: 'solar:document-text-bold-duotone',
+  color: 'info',
+  shortDescription: 'لایه انسانی سامانه — اطلاعاتی که فقط با حضور میدانی یا منابع داخلی به دست می‌آید و در دیتای کراولر نیست',
+  modules: [
+    { name: 'ثبت گزارش', icon: 'solar:add-circle-bold-duotone', color: 'primary', description: 'گزارش میدانی به صورت متن دستی، ویس، یا فایل ثبت کنید. کلمات کلیدی به‌صورت خودکار استخراج می‌شوند.' },
+    { name: 'اتصال به پیج', icon: 'solar:link-bold-duotone', color: 'info', description: 'هر گزارش می‌تواند به یک پیج خاص متصل شود. سپس در پروفایل پیج، گزارش به‌عنوان «شواهد میدانی» نمایش داده می‌شود.' },
+    { name: 'تحلیل احساسات', icon: 'solar:emotional-bold-duotone', color: 'warning', description: 'وضعیت روحی صاحب پیج: عصبی، متمایل به همکاری، فراری، خنثی.' },
+    { name: 'پیج‌های کور (Blind Spots)', icon: 'solar:eye-closed-bold-duotone', color: 'error', description: 'پیج‌هایی با نفوذ بالا که هیچ گزارش میدانی ندارند. این پیج‌ها اولویت تحقیق و گزارش‌گیری هستند.' },
+    { name: 'تبدیل به هشدار', icon: 'solar:bell-bold-duotone', color: 'error', description: 'هر گزارش را می‌توانید با یک کلیک به یک هشدار استراتژیک تبدیل کنید — تا تیم اقدام کند.' },
+    { name: 'درجه اعتبار', icon: 'solar:shield-check-bold-duotone', color: 'success', description: '۳ درجه: موثق، در حد شنیده، تحلیل شخصی. به تحلیلگر کمک می‌کند منبع را ارزیابی کند.' },
+  ],
+  tips: [
+    'گزارش‌های ویس به‌صورت خودکار به متن تبدیل می‌شوند (نیاز به کلید Soniox)',
+    'گزارش‌های پردازش‌شده با علامت سبز و گزارش‌های در انتظار با نارنجی نمایش داده می‌شوند',
+    'تحلیلگر می‌تواند با «تحلیل انسانی» تحلیل ماشین را اصلاح کند',
+  ],
+};
 
 const SOURCE_CONFIG = {
   voice: { label: 'ویس', icon: 'solar:microphone-bold-duotone', color: 'warning' },
@@ -60,6 +82,7 @@ export function FieldReportsView() {
   const { data: reportsData, isLoading } = useFieldReports({ status: statusFilter || undefined });
   const { data: stats } = useFieldReportStats();
   const { data: pagesData } = usePages({ page: 1, limit: 100 });
+  const { data: blindSpots } = useBlindSpots(6);
   const createMutation = useCreateFieldReport();
 
   const reports = reportsData?.data || [];
@@ -74,6 +97,8 @@ export function FieldReportsView() {
 
   return (
     <DashboardContent maxWidth="xl">
+      <PageInfoBox {...PAGE_INFO} />
+
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 700 }}>مرکز اطلاعات میدانی</Typography>
@@ -134,23 +159,22 @@ export function FieldReportsView() {
           {/* Knowledge Gap Radar */}
           <ChartCard title="پیج‌های کور" icon="solar:eye-closed-bold-duotone" info="پیج‌هایی با نفوذ بالا که هیچ گزارش میدانی ندارند — اولویت تحقیق" sx={{ mb: 3 }}>
             <Stack spacing={1}>
-              {[
-                { name: 'Al Jazeera English', influence: 9.5 },
-                { name: 'Middle East Eye', influence: 8.8 },
-                { name: 'Roger Waters', influence: 8.5 },
-                { name: 'Quds News Network', influence: 8.3 },
-              ].map((item) => (
-                <Stack key={item.name} direction="row" alignItems="center" spacing={1.5}
-                  sx={(theme) => ({ p: 1, borderRadius: 1, bgcolor: alpha(theme.palette.error.main, 0.04), border: `1px solid ${alpha(theme.palette.error.main, 0.1)}` })}
-                >
-                  <Iconify icon="solar:eye-closed-bold" width={16} sx={{ color: 'error.main', flexShrink: 0 }} />
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 600 }}>{item.name}</Typography>
-                    <Typography variant="caption" color="text.disabled" sx={{ display: 'block', fontSize: 10 }}>نفوذ: {item.influence}</Typography>
-                  </Box>
-                  <Chip label="نیاز به تحقیق" size="small" color="error" variant="outlined" sx={{ height: 20, fontSize: 9 }} />
-                </Stack>
-              ))}
+              {(blindSpots || []).length === 0 ? (
+                <Typography variant="caption" color="text.secondary">همه پیج‌های با نفوذ بالا دارای گزارش میدانی هستند</Typography>
+              ) : (
+                (blindSpots || []).map((item) => (
+                  <Stack key={item.id} direction="row" alignItems="center" spacing={1.5}
+                    sx={(theme) => ({ p: 1, borderRadius: 1, bgcolor: alpha(theme.palette.error.main, 0.04), border: `1px solid ${alpha(theme.palette.error.main, 0.1)}` })}
+                  >
+                    <Iconify icon="solar:eye-closed-bold" width={16} sx={{ color: 'error.main', flexShrink: 0 }} />
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>{item.name}</Typography>
+                      <Typography variant="caption" color="text.disabled" sx={{ display: 'block', fontSize: 10 }}>@{item.username} • نفوذ: {item.influence?.toFixed(1)}</Typography>
+                    </Box>
+                    <Chip label="نیاز به تحقیق" size="small" color="error" variant="outlined" sx={{ height: 20, fontSize: 9 }} />
+                  </Stack>
+                ))
+              )}
             </Stack>
           </ChartCard>
 
@@ -234,10 +258,22 @@ export function FieldReportsView() {
 
 function ReportCard({ report }) {
   const srcConf = SOURCE_CONFIG[report.source_type] || SOURCE_CONFIG.manual;
+  const createAlert = useCreateStrategicAlert();
 
   // AI Summary: first 100 chars
   const summary = report.content?.length > 100 ? `${report.content.slice(0, 100)}...` : report.content;
   const [expanded, setExpanded] = useState(false);
+
+  const handleConvertToAlert = () => {
+    createAlert.mutate({
+      title: `گزارش میدانی: ${report.page?.name || 'بدون پیج'}`,
+      message: report.content,
+      priority: 'medium',
+      category: 'opportunity',
+      target_pages: report.page_id ? [report.page_id] : [],
+      created_by: report.reporter_id || 1,
+    });
+  };
 
   return (
     <Card
@@ -310,8 +346,15 @@ function ReportCard({ report }) {
           {/* Quick Actions */}
           <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
             <Tooltip title="تبدیل به هشدار استراتژیک" arrow>
-              <Button size="small" variant="outlined" startIcon={<Iconify icon="solar:bell-bold" width={14} />} sx={{ fontSize: 11 }}>
-                تبدیل به هشدار
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<Iconify icon="solar:bell-bold" width={14} />}
+                sx={{ fontSize: 11 }}
+                onClick={handleConvertToAlert}
+                disabled={createAlert.isPending || createAlert.isSuccess}
+              >
+                {createAlert.isSuccess ? 'تبدیل شد ✓' : createAlert.isPending ? 'در حال ارسال...' : 'تبدیل به هشدار'}
               </Button>
             </Tooltip>
           </Stack>

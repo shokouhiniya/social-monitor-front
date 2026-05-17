@@ -1,6 +1,5 @@
 'use client';
 
-import axios from 'axios';
 import React, { useState } from 'react';
 
 import Box from '@mui/material/Box';
@@ -19,6 +18,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import CircularProgress from '@mui/material/CircularProgress';
 
+import axiosInstance from 'src/lib/axios';
 import { twitterApi } from 'src/api/twitter';
 import { useProfileDeepDive } from 'src/api/analytics';
 import { DashboardContent } from 'src/layouts/dashboard';
@@ -28,26 +28,26 @@ import { Iconify } from 'src/components/iconify';
 
 import { ActionCards } from './components/action-cards';
 import { PersonaRadar } from './components/persona-radar';
-import { InsightPanel } from './components/insight-panel';
 import { ProfileHeader } from './components/profile-header';
 import { NetworkCircle } from './components/network-circle';
 import { DailyPostChart } from './components/daily-post-chart';
+import { Insight360Panel } from './components/insight-360-panel';
 import { ProfileStatCard } from './components/profile-stat-card';
 import { CriticalRedlines } from './components/critical-redlines';
 import { ContentHooksCard } from './components/content-hooks-card';
+import { PageIdentityCard } from './components/page-identity-card';
+import { PageSilenceRadar } from './components/page-silence-radar';
 import { SentimentTimeline } from './components/sentiment-timeline';
 import { NarrativeTimeline } from './components/narrative-timeline';
-import { InteractionLedger } from './components/interaction-ledger';
-import { InteractionCopilot } from './components/interaction-copilot';
+import {
+  GENDERS,
+  RELIGIONS,
+  AGE_RANGES,
+  TOPICAL_CLUSTERS,
+  IDENTITY_CATEGORIES,
+} from './constants';
 
 // ----------------------------------------------------------------------
-
-const CATEGORY_LABELS = {
-  news: 'خبری', activist: 'فعال', celebrity: 'سلبریتی', lifestyle: 'لایف‌استایل',
-  economy: 'اقتصادی', local_news: 'محلی', politician: 'سیاستمدار', documentary: 'مستند',
-  religious: 'مذهبی', art: 'هنری', student: 'دانشجویی', health: 'سلامت',
-  technology: 'تکنولوژی', culture: 'فرهنگی', sports: 'ورزشی', analyst: 'تحلیل‌گر',
-};
 
 const TIME_RANGES = [
   { value: '24h', label: '۲۴ ساعت گذشته', hours: 24 },
@@ -86,7 +86,21 @@ export function PageProfileView({ id }) {
   const pg = data.page;
 
   const handleEditOpen = () => {
-    setEditForm({ name: pg.name || '', username: pg.username || '', platform: pg.platform || 'instagram', category: pg.category || '', country: pg.country || '', language: pg.language || '', bio: pg.bio || '' });
+    setEditForm({
+      name: pg.name || '',
+      username: pg.username || '',
+      platform: pg.platform || 'instagram',
+      category: pg.category || '',
+      identity_category: pg.identity_category || '',
+      country: pg.country || '',
+      nationality: pg.nationality || '',
+      language: pg.language || '',
+      content_language: pg.content_language || '',
+      religion: pg.religion || '',
+      gender: pg.gender || '',
+      age_range: pg.age_range || '',
+      bio: pg.bio || '',
+    });
     setEditOpen(true);
   };
   const handleEditSave = () => { updateMutation.mutate({ id, data: editForm }, { onSuccess: () => setEditOpen(false) }); };
@@ -102,8 +116,9 @@ export function PageProfileView({ id }) {
         result = await twitterApi.fetchMoreTweets(id, 100);
         setFetchResult({ success: true, message: result.message, count: result.tweets_fetched });
       } else if (pg.platform === 'telegram') {
-        const response = await axios.post(`http://localhost:3000/telegram/fetch-more/${id}`, { messageLimit: 100 });
-        setFetchResult({ success: true, message: response.data.message, count: response.data.messages_fetched });
+        const response = await axiosInstance.post(`/telegram/fetch-more/${id}`, { messageLimit: 100 });
+        const payload = response.data?.data || response.data;
+        setFetchResult({ success: true, message: payload.message, count: payload.messages_fetched });
       } else {
         setFetchResult({ success: false, message: 'این پلتفرم پشتیبانی نمی‌شود' });
         return;
@@ -148,17 +163,65 @@ export function PageProfileView({ id }) {
           </Card>
         </Grid>
 
-        {/* KPIs */}
+        {/* === ۵ شاخص اصلی === */}
         {[
-          { title: 'اعتبار', value: data.credibility_score, prev: data.credibility_score * 0.9, icon: 'solar:shield-check-bold-duotone', color: data.credibility_score > 7 ? 'success' : data.credibility_score > 4 ? 'warning' : 'error', info: 'میزان جدی گرفته شدن', field: 'credibility_score' },
-          { title: 'نفوذ', value: data.influence_score, prev: data.influence_score * 0.85, icon: 'solar:crown-bold-duotone', color: 'primary', info: 'ضریب تاثیرگذاری', field: 'influence_score' },
-          { title: 'پایداری', value: data.consistency_rate, prev: data.consistency_rate * 0.95, icon: 'solar:clock-circle-bold-duotone', color: data.consistency_rate > 7 ? 'success' : 'warning', info: 'مداومت در انتشار', field: 'consistency_rate' },
-          { title: 'فالوور', value: pg?.followers_count || 0, prev: (pg?.followers_count || 0) * 0.92, icon: 'solar:users-group-rounded-bold-duotone', color: 'secondary', info: 'دنبال‌کنندگان', field: 'followers_count', maxValue: (pg?.followers_count || 0) * 1.2 || 100 },
+          {
+            title: 'اعتبار',
+            value: data.credibility_score,
+            icon: 'solar:shield-check-bold-duotone',
+            color: data.credibility_score > 7 ? 'success' : data.credibility_score > 4 ? 'warning' : 'error',
+            info: 'هویت، کیفیت مخاطب، اعتبار اجتماعی، ثبات محتوایی',
+            field: 'credibility_score',
+          },
+          {
+            title: 'نفوذ',
+            value: data.influence_score,
+            icon: 'solar:crown-bold-duotone',
+            color: 'primary',
+            info: 'تعامل واقعی، Reach، توان تحریک اقدام، نفوذ شبکه‌ای، عمق اثر',
+            field: 'influence_score',
+          },
+          {
+            title: 'پایداری',
+            value: data.consistency_rate,
+            icon: 'solar:clock-circle-bold-duotone',
+            color: data.consistency_rate > 7 ? 'success' : 'warning',
+            info: 'استمرار انتشار، ثبات تعامل، تنوع محتوایی، رشد ارگانیک، تاب‌آوری',
+            field: 'consistency_rate',
+          },
+          {
+            title: 'همراهی',
+            value: pg?.affinity_score ?? 0,
+            icon: 'solar:hearts-bold-duotone',
+            color: (pg?.affinity_score ?? 0) > 7 ? 'success' : (pg?.affinity_score ?? 0) > 4 ? 'info' : 'warning',
+            info: 'وفاداری مخاطب، احساس تعلق، کیفیت تعامل، نرخ مشارکت فعال، ارتباط انسانی',
+            field: 'affinity_score',
+          },
+          {
+            title: 'همسویی',
+            value: pg?.alignment_score ?? 0,
+            icon: 'solar:flag-bold-duotone',
+            color:
+              (pg?.alignment_score ?? 0) > 7
+                ? 'success'
+                : (pg?.alignment_score ?? 0) > 4
+                  ? 'info'
+                  : (pg?.alignment_score ?? 0) > 0
+                    ? 'warning'
+                    : 'error',
+            info: 'مخالفت با آمریکا/اسرائیل/امارات/عربستان و حمایت از فلسطین/لبنان/جمهوری اسلامی/یمن/مقاومت عراق',
+            field: 'alignment_score',
+          },
         ].map((kpi) => (
-          <Grid key={kpi.field} size={{ xs: 6, md: 3 }}>
-            <ProfileStatCard {...kpi} prevValue={kpi.prev} maxValue={kpi.maxValue} onRefine={() => handleRefine(kpi.field)} />
+          <Grid key={kpi.field} size={{ xs: 6, sm: 4, md: 'auto' }} sx={{ flex: { md: 1 } }}>
+            <ProfileStatCard {...kpi} maxValue={10} onRefine={() => handleRefine(kpi.field)} />
           </Grid>
         ))}
+
+        {/* === هویت و تعامل پیج === */}
+        <Grid size={{ xs: 12 }}>
+          <PageIdentityCard page={pg} />
+        </Grid>
 
         {/* === مرکز عملیات === */}
         <Grid size={{ xs: 12 }}>
@@ -168,10 +231,15 @@ export function PageProfileView({ id }) {
               <Typography variant="h6" sx={{ fontWeight: 700 }}>مرکز عملیات</Typography>
             </Stack>
             <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 6 }}><InteractionCopilot page={pg} contentHooks={data.content_hooks} /></Grid>
-              <Grid size={{ xs: 12, md: 6 }}><ActionCards pageId={id} /></Grid>
-              <Grid size={{ xs: 12, md: 6 }}><InsightPanel painPoints={data.pain_points} keywords={data.keywords} fieldReports={pg?.field_reports} /></Grid>
-              <Grid size={{ xs: 12, md: 6 }}><InteractionLedger pageId={id} /></Grid>
+              <Grid size={{ xs: 12 }}>
+                <Insight360Panel
+                  page={pg}
+                  painPoints={data.pain_points}
+                  keywords={data.keywords}
+                  fieldReports={pg?.field_reports}
+                />
+              </Grid>
+              <Grid size={{ xs: 12 }}><ActionCards pageId={id} /></Grid>
             </Grid>
           </Card>
         </Grid>
@@ -179,6 +247,11 @@ export function PageProfileView({ id }) {
         {/* === تحلیل شخصیت و شبکه === */}
         <Grid size={{ xs: 12, md: 6 }}><PersonaRadar data={data.persona_radar} /></Grid>
         <Grid size={{ xs: 12, md: 6 }}><NetworkCircle page={pg} relatedPages={relatedPages} /></Grid>
+
+        {/* === رادار سکوت پیج === */}
+        <Grid size={{ xs: 12 }}>
+          <PageSilenceRadar pageId={id} />
+        </Grid>
 
         {/* === تایم‌لاین === */}
         <Grid size={{ xs: 12 }}>
@@ -232,25 +305,78 @@ export function PageProfileView({ id }) {
       </Grid>
 
       {/* Edit Dialog */}
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
         <DialogTitle>ویرایش پروفایل</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="نام" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></Grid>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="یوزرنیم" value={editForm.username} onChange={(e) => setEditForm({ ...editForm, username: e.target.value })} /></Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField select fullWidth size="small" label="پلتفرم" value={editForm.platform} onChange={(e) => setEditForm({ ...editForm, platform: e.target.value })}>
-                <MenuItem value="instagram">اینستاگرام</MenuItem><MenuItem value="twitter">توییتر</MenuItem><MenuItem value="telegram">تلگرام</MenuItem>
+              <TextField fullWidth size="small" label="نام" value={editForm.name || ''} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField fullWidth size="small" label="یوزرنیم" value={editForm.username || ''} onChange={(e) => setEditForm({ ...editForm, username: e.target.value })} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select fullWidth size="small" label="پلتفرم" value={editForm.platform || ''} onChange={(e) => setEditForm({ ...editForm, platform: e.target.value })}>
+                <MenuItem value="instagram">اینستاگرام</MenuItem>
+                <MenuItem value="twitter">توییتر</MenuItem>
+                <MenuItem value="telegram">تلگرام</MenuItem>
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField select fullWidth size="small" label="دسته‌بندی" value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}>
-                {Object.entries(CATEGORY_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
+              <TextField select fullWidth size="small" label="خوشه موضوعی" value={editForm.category || ''} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}>
+                <MenuItem value="">— بدون انتخاب —</MenuItem>
+                {Object.entries(TOPICAL_CLUSTERS).map(([k, v]) => (
+                  <MenuItem key={k} value={k}>{v.label}</MenuItem>
+                ))}
               </TextField>
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="کشور" value={editForm.country} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })} /></Grid>
-            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="زبان" value={editForm.language} onChange={(e) => setEditForm({ ...editForm, language: e.target.value })} /></Grid>
-            <Grid size={{ xs: 12 }}><TextField fullWidth size="small" label="بیو" multiline rows={2} value={editForm.bio} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select fullWidth size="small" label="کیستی صفحه (دسته هویتی)" value={editForm.identity_category || ''} onChange={(e) => setEditForm({ ...editForm, identity_category: e.target.value })}>
+                <MenuItem value="">— بدون انتخاب —</MenuItem>
+                {Object.entries(IDENTITY_CATEGORIES).map(([k, v]) => (
+                  <MenuItem key={k} value={k}>{v.label}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select fullWidth size="small" label="دین و مذهب" value={editForm.religion || ''} onChange={(e) => setEditForm({ ...editForm, religion: e.target.value })}>
+                <MenuItem value="">— بدون انتخاب —</MenuItem>
+                {Object.entries(RELIGIONS).map(([k, v]) => (
+                  <MenuItem key={k} value={k}>{v}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select fullWidth size="small" label="جنسیت" value={editForm.gender || ''} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}>
+                <MenuItem value="">— بدون انتخاب —</MenuItem>
+                {Object.entries(GENDERS).map(([k, v]) => (
+                  <MenuItem key={k} value={k}>{v}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select fullWidth size="small" label="رده سنی" value={editForm.age_range || ''} onChange={(e) => setEditForm({ ...editForm, age_range: e.target.value })}>
+                <MenuItem value="">— بدون انتخاب —</MenuItem>
+                {Object.entries(AGE_RANGES).map(([k, v]) => (
+                  <MenuItem key={k} value={k}>{v}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField fullWidth size="small" label="ملیت" value={editForm.nationality || ''} onChange={(e) => setEditForm({ ...editForm, nationality: e.target.value })} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField fullWidth size="small" label="کشور" value={editForm.country || ''} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField fullWidth size="small" label="زبان اصلی" value={editForm.language || ''} onChange={(e) => setEditForm({ ...editForm, language: e.target.value })} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField fullWidth size="small" label="زبان تولیدی (۸۰٪)" value={editForm.content_language || ''} onChange={(e) => setEditForm({ ...editForm, content_language: e.target.value })} placeholder="فارسی، عربی، چندزبانه..." />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField fullWidth size="small" label="بیو" multiline rows={2} value={editForm.bio || ''} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} />
+            </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>

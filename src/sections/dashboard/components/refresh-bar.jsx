@@ -40,9 +40,9 @@ export function RefreshBar() {
           <Typography variant="caption" sx={{ fontWeight: 600, fontSize: 11 }}>
             آخرین بروزرسانی: {status?.last_refreshed_at ? toJalali(status.last_refreshed_at) : 'هنوز انجام نشده'}
           </Typography>
-          <Typography variant="caption" color="text.disabled" sx={{ display: 'block', fontSize: 9 }}>
+          {/* <Typography variant="caption" color="text.disabled" sx={{ display: 'block', fontSize: 9 }}>
             بروزرسانی خودکار: ۰۰:۰۰ • ۰۶:۰۰ • ۱۲:۰۰ • ۱۸:۰۰
-          </Typography>
+          </Typography> */}
         </Box>
       </Stack>
 

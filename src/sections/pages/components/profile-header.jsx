@@ -232,41 +232,13 @@ export function ProfileHeader({ page, onEdit, timeRange }) {
             {' • '}
             {page.platform}
           </Typography>
-          {page.bio && (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1, maxWidth: 500 }}>
-              {page.bio}
-            </Typography>
-          )}
+
           <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-            {page.category && (
-              <Chip label={page.category} size="small" color="primary" variant="outlined" />
-            )}
-            {page.country && <Chip label={page.country} size="small" variant="outlined" />}
-            {page.language && <Chip label={page.language} size="small" variant="outlined" />}
             {page.cluster && (
               <Chip label={`خوشه: ${page.cluster}`} size="small" color="info" variant="outlined" />
             )}
           </Stack>
         </Box>
-
-        <Stack direction="row" spacing={3}>
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              {page.followers_count?.toLocaleString()}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              فالوور
-            </Typography>
-          </Box>
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              {page.following_count?.toLocaleString()}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              فالووینگ
-            </Typography>
-          </Box>
-        </Stack>
 
         {/* Actions */}
         <Stack spacing={1} alignItems="flex-end" sx={{ minWidth: 200 }}>

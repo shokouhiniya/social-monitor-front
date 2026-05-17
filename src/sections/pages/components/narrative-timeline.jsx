@@ -44,6 +44,13 @@ function getMediaUrl(url) {
   return url;
 }
 
+function isVideoMedia(url, postType) {
+  if (postType === 'video' || postType === 'reel') return true;
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.webm');
+}
+
 // Convert Instagram media ID to shortcode for URL
 function mediaIdToShortcode(mediaId) {
   try {
@@ -237,11 +244,13 @@ export function NarrativeTimeline({ posts, fieldReports, page: pageInfo }) {
                     </Box>
 
                     {isPost && d.media_url && (
-                      d.media_url.endsWith('.mp4') ? (
-                        <Box component="video" src={getMediaUrl(d.media_url)} sx={{ width: '45%', borderRadius: 1, objectFit: 'cover', flexShrink: 0 }} muted loop
-                          onMouseEnter={(e) => e.target.play()} onMouseLeave={(e) => { e.target.pause(); e.target.currentTime = 0; }} />
+                      isVideoMedia(d.media_url, d.post_type) ? (
+                        <Box component="video" src={getMediaUrl(d.media_url)} sx={{ width: '45%', borderRadius: 1, objectFit: 'cover', flexShrink: 0 }} muted loop playsInline preload="metadata"
+                          onMouseEnter={(e) => e.target.play().catch(() => {})} onMouseLeave={(e) => { e.target.pause(); e.target.currentTime = 0; }}
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
                       ) : (
-                        <Box component="img" src={getMediaUrl(d.media_url)} sx={{ width: '45%', borderRadius: 1, objectFit: 'cover', flexShrink: 0 }} onError={(e) => { e.target.style.display = 'none'; }} />
+                        <Box component="img" src={getMediaUrl(d.media_url)} loading="lazy" sx={{ width: '45%', borderRadius: 1, objectFit: 'cover', flexShrink: 0 }} onError={(e) => { e.target.style.display = 'none'; }} />
                       )
                     )}
                   </Stack>
@@ -264,7 +273,7 @@ export function NarrativeTimeline({ posts, fieldReports, page: pageInfo }) {
             </DialogTitle>
             <DialogContent>
               {selectedPost.media_url && (
-                selectedPost.media_url.endsWith('.mp4') ? (
+                isVideoMedia(selectedPost.media_url, selectedPost.post_type) ? (
                   <Box component="video" src={getMediaUrl(selectedPost.media_url)} controls sx={{ width: '100%', maxHeight: 500, borderRadius: 1, mb: 2 }} />
                 ) : (
                   <Box component="img" src={getMediaUrl(selectedPost.media_url)} sx={{ width: '100%', maxHeight: 500, objectFit: 'contain', borderRadius: 1, mb: 2 }} onError={(e) => { e.target.style.display = 'none'; }} />

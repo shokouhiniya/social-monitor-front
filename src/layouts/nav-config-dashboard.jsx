@@ -25,14 +25,15 @@ export const instagramNavData = [
   {
     subheader: 'پایش',
     items: [
-      { title: 'داشبورد کلان', path: paths.dashboard.mynetwork.root, icon: ICONS.dashboard },
-      { title: 'نمای ماکرو', path: paths.dashboard.mynetwork.macro, icon: ICONS.analytics },
-      { title: 'هشدارهای استراتژیک', path: paths.dashboard.mynetwork.alerts, icon: ICONS.lock },
+      { title: 'اتاق وضعیت کنشگران', path: paths.dashboard.mynetwork.root, icon: ICONS.dashboard },
+      { title: 'اتاق وضعیت محتوا', path: paths.dashboard.mynetwork.macro, icon: ICONS.analytics },
+      { title: 'مرکز عملیات', path: paths.dashboard.mynetwork.alerts, icon: ICONS.lock },
     ],
   },
   {
     subheader: 'مدیریت',
     items: [
+      { title: 'خوشه‌ها', path: paths.dashboard.mynetwork.clusters.root, icon: ICONS.analytics },
       { title: 'پیج‌ها', path: paths.dashboard.mynetwork.pages.root, icon: ICONS.user },
       { title: 'پست‌ها', path: paths.dashboard.mynetwork.posts, icon: ICONS.blog },
       { title: 'گزارش‌های میدانی', path: paths.dashboard.mynetwork.fieldReports, icon: ICONS.file },
@@ -42,6 +43,7 @@ export const instagramNavData = [
     subheader: 'سیستم',
     items: [
       { title: 'تنظیمات', path: paths.dashboard.mynetwork.settings, icon: ICONS.params },
+      { title: 'راهنمای سامانه', path: paths.dashboard.mynetwork.guide, icon: ICONS.file },
     ],
   },
 ];
@@ -51,9 +53,9 @@ export const telegramNavData = [
   {
     subheader: 'پایش',
     items: [
-      { title: 'داشبورد کلان', path: paths.dashboard.telegram.root, icon: ICONS.dashboard },
-      { title: 'نمای ماکرو', path: paths.dashboard.telegram.macro, icon: ICONS.analytics },
-      { title: 'هشدارهای استراتژیک', path: paths.dashboard.telegram.alerts, icon: ICONS.lock },
+      { title: 'اتاق وضعیت کنشگران', path: paths.dashboard.telegram.root, icon: ICONS.dashboard },
+      { title: 'اتاق وضعیت محتوا', path: paths.dashboard.telegram.macro, icon: ICONS.analytics },
+      { title: 'مرکز عملیات', path: paths.dashboard.telegram.alerts, icon: ICONS.lock },
     ],
   },
   {
@@ -68,6 +70,7 @@ export const telegramNavData = [
     subheader: 'سیستم',
     items: [
       { title: 'تنظیمات', path: paths.dashboard.telegram.settings, icon: ICONS.params },
+      { title: 'راهنمای سامانه', path: paths.dashboard.mynetwork.guide, icon: ICONS.file },
     ],
   },
 ];

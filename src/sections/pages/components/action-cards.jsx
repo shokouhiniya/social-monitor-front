@@ -3,10 +3,12 @@
 import { useState } from 'react';
 
 import Box from '@mui/material/Box';
-import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
+import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
+import { alpha } from '@mui/material/styles';
+import Collapse from '@mui/material/Collapse';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -16,7 +18,9 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import CircularProgress from '@mui/material/CircularProgress';
 
-import { useActionPlans, useCreateActionPlan, useUpdateActionPlan } from 'src/api/action-plans';
+import { toJalali } from 'src/utils/format-jalali';
+
+import { useActionPlans, useCreateActionPlan, useUpdateActionPlan, useCreateInteraction } from 'src/api/action-plans';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -36,6 +40,215 @@ const CATEGORY_OPTIONS = [
   { value: 'content_strategy', label: 'استراتژی محتوا' },
   { value: 'other', label: 'سایر' },
 ];
+
+const CONTACT_TYPES = {
+  direct: { label: 'دایرکت', icon: 'solar:chat-round-dots-bold', color: 'primary' },
+  phone: { label: 'تماس تلفنی', icon: 'solar:phone-bold', color: 'info' },
+  meeting: { label: 'جلسه', icon: 'solar:users-group-rounded-bold', color: 'success' },
+  email: { label: 'ایمیل', icon: 'solar:letter-bold', color: 'warning' },
+  comment: { label: 'کامنت', icon: 'solar:chat-line-bold', color: 'secondary' },
+};
+
+// ----------------------------------------------------------------------
+
+function InteractionRow({ item }) {
+  const typeConf = CONTACT_TYPES[item.type] || CONTACT_TYPES.direct;
+  return (
+    <Stack
+      direction="row"
+      alignItems="center"
+      spacing={1}
+      sx={(theme) => ({
+        p: 1,
+        borderRadius: 0.75,
+        bgcolor: alpha(theme.palette.grey[500], 0.04),
+        border: `1px solid ${alpha(theme.palette.grey[500], 0.08)}`,
+      })}
+    >
+      <Box
+        sx={(theme) => ({
+          width: 26,
+          height: 26,
+          borderRadius: 0.75,
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: alpha(theme.palette[typeConf.color].main, 0.1),
+        })}
+      >
+        <Iconify icon={typeConf.icon} width={14} sx={{ color: `${typeConf.color}.main` }} />
+      </Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Stack direction="row" alignItems="center" spacing={0.5}>
+          <Typography variant="caption" sx={{ fontWeight: 600, fontSize: 10 }}>{typeConf.label}</Typography>
+          <Chip
+            label={item.result === 'success' ? 'موفق' : 'ناموفق'}
+            size="small"
+            color={item.result === 'success' ? 'success' : 'error'}
+            variant="outlined"
+            sx={{ height: 16, fontSize: 9 }}
+          />
+          <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9 }}>{item.responsible}</Typography>
+        </Stack>
+        {item.note && (
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>{item.note}</Typography>
+        )}
+      </Box>
+      <Typography variant="caption" color="text.disabled" sx={{ fontSize: 9, flexShrink: 0 }}>
+        {toJalali(item.created_at)}
+      </Typography>
+    </Stack>
+  );
+}
+
+// ----------------------------------------------------------------------
+
+function ActionPlanCard({ plan, onStatusChange, pageId }) {
+  const [expanded, setExpanded] = useState(false);
+  const [interactionOpen, setInteractionOpen] = useState(false);
+  const [interactionForm, setInteractionForm] = useState({ type: 'direct', result: 'success', responsible: '', note: '' });
+  const createInteraction = useCreateInteraction();
+
+  const interactions = plan.interactions || [];
+  const pColor = PRIORITY_COLORS[plan.priority] || 'default';
+
+  const handleCreateInteraction = () => {
+    createInteraction.mutate(
+      { ...interactionForm, page_id: Number(pageId), action_plan_id: plan.id },
+      {
+        onSuccess: () => {
+          setInteractionOpen(false);
+          setInteractionForm({ type: 'direct', result: 'success', responsible: '', note: '' });
+        },
+      }
+    );
+  };
+
+  return (
+    <Box
+      sx={(theme) => ({
+        p: 2,
+        borderRadius: 1.5,
+        bgcolor: plan.status === 'done' ? alpha(theme.palette.success.main, 0.04) : alpha(theme.palette.grey[500], 0.02),
+        border: `1px solid ${alpha(theme.palette.grey[500], 0.12)}`,
+        borderRight: `4px solid ${theme.palette[pColor]?.main || theme.palette.grey[400]}`,
+        opacity: plan.status === 'done' || plan.status === 'cancelled' ? 0.7 : 1,
+        transition: 'all 0.2s',
+        '&:hover': { borderColor: alpha(theme.palette.primary.main, 0.3) },
+      })}
+    >
+      {/* Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Box sx={{ flex: 1 }}>
+          <Box sx={{ display: 'flex', gap: 0.5, mb: 0.75, flexWrap: 'wrap' }}>
+            <Chip label={PRIORITY_LABELS[plan.priority]} size="small" color={pColor} />
+            <Chip label={STATUS_LABELS[plan.status]} size="small" color={STATUS_COLORS[plan.status]} variant="outlined" />
+            {plan.category && (
+              <Chip
+                label={CATEGORY_OPTIONS.find((c) => c.value === plan.category)?.label || plan.category}
+                size="small"
+                variant="outlined"
+              />
+            )}
+            {plan.is_ai_generated && <Chip label="AI" size="small" color="secondary" />}
+            {plan.alert && (
+              <Chip
+                label={`هشدار: ${plan.alert.title?.substring(0, 20)}...`}
+                size="small"
+                variant="outlined"
+                color="warning"
+                icon={<Iconify icon="solar:danger-triangle-bold" width={12} />}
+              />
+            )}
+          </Box>
+          <Typography variant="body2" fontWeight="bold">{plan.title}</Typography>
+          {plan.description && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>{plan.description}</Typography>
+          )}
+        </Box>
+
+        <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+          {plan.status === 'todo' && (
+            <IconButton size="small" onClick={() => onStatusChange(plan.id, 'in_progress')} title="شروع">
+              <Iconify icon="eva:play-circle-fill" />
+            </IconButton>
+          )}
+          {plan.status === 'in_progress' && (
+            <IconButton size="small" onClick={() => onStatusChange(plan.id, 'done')} title="تکمیل">
+              <Iconify icon="eva:checkmark-circle-2-fill" />
+            </IconButton>
+          )}
+        </Box>
+      </Box>
+
+      {/* Interactions toggle */}
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1.5 }}>
+        <Button
+          size="small"
+          variant="text"
+          onClick={() => setExpanded(!expanded)}
+          startIcon={<Iconify icon={expanded ? 'solar:alt-arrow-up-bold' : 'solar:alt-arrow-down-bold'} width={14} />}
+          sx={{ fontSize: 11, color: 'text.secondary' }}
+        >
+          تعاملات ({interactions.length})
+        </Button>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => setInteractionOpen(true)}
+          startIcon={<Iconify icon="solar:add-circle-bold" width={14} />}
+          sx={{ fontSize: 10, py: 0.25 }}
+        >
+          ثبت تعامل
+        </Button>
+      </Stack>
+
+      {/* Nested Interactions */}
+      <Collapse in={expanded}>
+        <Box sx={{ mt: 1.5, pl: 1, borderRight: '2px solid', borderColor: 'divider', pr: 0 }}>
+          {interactions.length === 0 ? (
+            <Typography variant="caption" color="text.disabled" sx={{ py: 1, display: 'block' }}>
+              تعاملی ثبت نشده
+            </Typography>
+          ) : (
+            <Stack spacing={0.75}>
+              {interactions.map((item) => (
+                <InteractionRow key={item.id} item={item} />
+              ))}
+            </Stack>
+          )}
+        </Box>
+      </Collapse>
+
+      {/* Add Interaction Dialog */}
+      <Dialog open={interactionOpen} onClose={() => setInteractionOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+        <DialogTitle sx={{ fontSize: 14 }}>ثبت تعامل برای: {plan.title}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField select fullWidth size="small" label="نوع تماس" value={interactionForm.type} onChange={(e) => setInteractionForm({ ...interactionForm, type: e.target.value })}>
+              {Object.entries(CONTACT_TYPES).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
+            </TextField>
+            <TextField select fullWidth size="small" label="نتیجه" value={interactionForm.result} onChange={(e) => setInteractionForm({ ...interactionForm, result: e.target.value })}>
+              <MenuItem value="success">موفق</MenuItem>
+              <MenuItem value="failed">ناموفق</MenuItem>
+            </TextField>
+            <TextField fullWidth size="small" label="مسئول" value={interactionForm.responsible} onChange={(e) => setInteractionForm({ ...interactionForm, responsible: e.target.value })} />
+            <TextField fullWidth size="small" label="یادداشت" multiline rows={2} value={interactionForm.note} onChange={(e) => setInteractionForm({ ...interactionForm, note: e.target.value })} />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setInteractionOpen(false)}>انصراف</Button>
+          <Button variant="contained" onClick={handleCreateInteraction} disabled={!interactionForm.responsible || !interactionForm.note || createInteraction.isPending}>
+            {createInteraction.isPending ? <CircularProgress size={16} /> : 'ثبت'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}
+
+// ----------------------------------------------------------------------
 
 export function ActionCards({ pageId }) {
   const [open, setOpen] = useState(false);
@@ -65,81 +278,38 @@ export function ActionCards({ pageId }) {
 
   return (
     <>
-      <Card sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="subtitle2">
-            کارت‌های عملیاتی
-          </Typography>
-          <Button size="small" startIcon={<Iconify icon="eva:plus-fill" />} onClick={() => setOpen(true)}>
-            اقدام جدید
-          </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Iconify icon="solar:clipboard-check-bold-duotone" width={20} sx={{ color: 'primary.main' }} />
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>عملیات و تعاملات</Typography>
+          <Chip label={items.length} size="small" color="primary" variant="outlined" />
+        </Stack>
+        <Button size="small" startIcon={<Iconify icon="eva:plus-fill" />} onClick={() => setOpen(true)}>
+          عملیات جدید
+        </Button>
+      </Box>
+
+      {isLoading ? (
+        <Box sx={{ textAlign: 'center', py: 3 }}>
+          <CircularProgress size={24} />
         </Box>
+      ) : items.length === 0 ? (
+        <Box sx={(theme) => ({ p: 3, textAlign: 'center', borderRadius: 1.5, bgcolor: alpha(theme.palette.grey[500], 0.04), border: `1px dashed ${alpha(theme.palette.grey[500], 0.2)}` })}>
+          <Iconify icon="solar:clipboard-remove-bold-duotone" width={36} sx={{ color: 'text.disabled', mb: 1 }} />
+          <Typography variant="body2" color="text.secondary">عملیاتی ثبت نشده</Typography>
+          <Typography variant="caption" color="text.disabled">از اینجا یا از صفحه هشدارهای استراتژیک عملیات تعریف کنید</Typography>
+        </Box>
+      ) : (
+        <Stack spacing={1.5}>
+          {items.map((plan) => (
+            <ActionPlanCard key={plan.id} plan={plan} onStatusChange={handleStatusChange} pageId={pageId} />
+          ))}
+        </Stack>
+      )}
 
-        {isLoading ? (
-          <Box sx={{ textAlign: 'center', py: 3 }}>
-            <CircularProgress size={24} />
-          </Box>
-        ) : items.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            اقدام عملیاتی ثبت نشده
-          </Typography>
-        ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {items.map((plan) => (
-              <Box
-                key={plan.id}
-                sx={{
-                  p: 2,
-                  borderRadius: 1,
-                  bgcolor: plan.status === 'done' ? 'success.lighter' : 'action.hover',
-                  borderRight: '4px solid',
-                  borderColor: `${PRIORITY_COLORS[plan.priority] || 'default'}.main`,
-                  opacity: plan.status === 'done' || plan.status === 'cancelled' ? 0.6 : 1,
-                }}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5, flexWrap: 'wrap' }}>
-                      <Chip label={PRIORITY_LABELS[plan.priority]} size="small" color={PRIORITY_COLORS[plan.priority]} />
-                      <Chip label={STATUS_LABELS[plan.status]} size="small" color={STATUS_COLORS[plan.status]} variant="outlined" />
-                      {plan.category && (
-                        <Chip
-                          label={CATEGORY_OPTIONS.find((c) => c.value === plan.category)?.label || plan.category}
-                          size="small"
-                          variant="outlined"
-                        />
-                      )}
-                      {plan.is_ai_generated && (
-                        <Chip label="AI" size="small" color="secondary" />
-                      )}
-                    </Box>
-                    <Typography variant="body2" fontWeight="bold">{plan.title}</Typography>
-                    {plan.description && (
-                      <Typography variant="caption" color="text.secondary">{plan.description}</Typography>
-                    )}
-                  </Box>
-
-                  <Box sx={{ display: 'flex', gap: 0.5 }}>
-                    {plan.status === 'todo' && (
-                      <IconButton size="small" onClick={() => handleStatusChange(plan.id, 'in_progress')} title="شروع">
-                        <Iconify icon="eva:play-circle-fill" />
-                      </IconButton>
-                    )}
-                    {plan.status === 'in_progress' && (
-                      <IconButton size="small" onClick={() => handleStatusChange(plan.id, 'done')} title="تکمیل">
-                        <Iconify icon="eva:checkmark-circle-2-fill" />
-                      </IconButton>
-                    )}
-                  </Box>
-                </Box>
-              </Box>
-            ))}
-          </Box>
-        )}
-      </Card>
-
+      {/* Create Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>اقدام عملیاتی جدید</DialogTitle>
+        <DialogTitle>عملیات جدید</DialogTitle>
         <DialogContent>
           <TextField
             fullWidth

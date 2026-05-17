@@ -12,6 +12,7 @@ import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import Tooltip from '@mui/material/Tooltip';
 import { alpha } from '@mui/material/styles';
+import Checkbox from '@mui/material/Checkbox';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Accordion from '@mui/material/Accordion';
@@ -24,14 +25,19 @@ import LinearProgress from '@mui/material/LinearProgress';
 import CircularProgress from '@mui/material/CircularProgress';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
+import FormControlLabel from '@mui/material/FormControlLabel';
 
+import { usePages } from 'src/api/pages';
+import { useClusters } from 'src/api/clusters';
 import { useGenerateAlerts } from 'src/api/analytics';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { useCreateActionPlanFromAlert } from 'src/api/action-plans';
 import { useAlertStats, useGroupedAlerts, useUpdateAlertStatus, useCreateStrategicAlert } from 'src/api/strategic-alerts';
 
 import { Iconify } from 'src/components/iconify';
 
 import { StatCard } from '../dashboard/components/stat-card';
+import { PageInfoBox } from '../dashboard/components/page-info-box';
 
 // ----------------------------------------------------------------------
 
@@ -41,6 +47,27 @@ const STATUS_LABELS = { active: 'فعال', investigating: 'در حال پیگی
 const STATUS_COLORS = { active: 'error', investigating: 'warning', needs_response: 'info', acknowledged: 'success', archived: 'default' };
 const CATEGORY_LABELS = { silence_gap: 'شکاف سکوت', trend_shift: 'تغییر ترند', crisis: 'بحران', opportunity: 'فرصت', other: 'سایر' };
 const CATEGORY_ICONS = { silence_gap: 'solar:eye-bold-duotone', trend_shift: 'solar:graph-bold-duotone', crisis: 'solar:danger-triangle-bold-duotone', opportunity: 'solar:star-bold-duotone', other: 'solar:info-circle-bold-duotone' };
+
+const PAGE_INFO = {
+  title: 'مرکز عملیات',
+  icon: 'solar:command-bold-duotone',
+  color: 'error',
+  shortDescription: 'مدیریت یکپارچه هشدارهای استراتژیک و عملیات‌ها — تعریف عملیات برای پیج/خوشه، تعیین مسئول، ثبت اطلاعات ارتباطی و توصیه پیج‌های همراه',
+  modules: [
+    { name: 'هشدارهای استراتژیک', icon: 'solar:bell-bold-duotone', color: 'error', description: 'لیست هشدارها (تولیدی AI یا دستی) — هر هشدار با اولویت، دسته‌بندی، Playbook و امکان تبدیل به عملیات.' },
+    { name: 'تعریف عملیات (Action Plan)', icon: 'solar:clipboard-add-bold-duotone', color: 'primary', description: 'هر هشدار را می‌توانید به یک یا چند عملیات تبدیل کنید — برای یک پیج خاص، چند پیج، یا کل یک خوشه.' },
+    { name: 'مسئولیت', icon: 'solar:user-id-bold-duotone', color: 'info', description: 'برای هر عملیات می‌توانید یک مسئول مشخص کنید (نام، دپارتمان، یا شناسه کاربر) و وضعیت پیشرفت را پیگیری کنید.' },
+    { name: 'اطلاعات ارتباطی', icon: 'solar:phone-bold-duotone', color: 'success', description: 'برای عملیات‌های پیج‌محور، اطلاعات تماس ادمین (تلفن، ایمیل، تلگرام، یادداشت) ذخیره می‌شود تا تیم با او ارتباط بگیرد.' },
+    { name: 'توصیه پیج‌های همراه', icon: 'solar:users-group-rounded-bold-duotone', color: 'warning', description: 'برای هر عملیات، می‌توانید لیستی از پیج‌های پیشنهادی برای همراه‌سازی یا بازنشر معرفی کنید.' },
+    { name: 'ثبت تعامل (Interaction)', icon: 'solar:chat-round-dots-bold-duotone', color: 'secondary', description: 'هر تماس واقعی با ادمین پیج (کامنت، پیام، DM، تماس تلفنی) را در عملیات ثبت کنید — تا تاریخچه ارتباطات شفاف باشد.' },
+  ],
+  tips: [
+    'هشدارهای «بحرانی» با حاشیه قرمز از سایرین متمایز می‌شوند',
+    'عملیات‌ها در پروفایل هر پیج هم نمایش داده می‌شوند',
+    'برای دیدن عملیات‌های یک خوشه، به صفحه آن خوشه بروید',
+    'با تب «عملیات‌ها» می‌توانید همه‌ی عملیات‌های فعال شبکه را در یک نگاه ببینید',
+  ],
+};
 
 export function AlertsView() {
   const [open, setOpen] = useState(false);
@@ -65,10 +92,12 @@ export function AlertsView() {
 
   return (
     <DashboardContent maxWidth="xl">
+      <PageInfoBox {...PAGE_INFO} />
+
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>اتاق فرمان عملیاتی</Typography>
-          <Typography variant="body2" color="text.secondary">مدیریت هشدارها، تخصیص مسئولیت و پیگیری اقدامات</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 700 }}>مرکز عملیات</Typography>
+          <Typography variant="body2" color="text.secondary">مدیریت هشدارها، تعریف عملیات و پیگیری اقدامات روی پیج‌ها و خوشه‌ها</Typography>
         </Box>
         <Stack direction="row" spacing={1}>
           <Button
@@ -214,6 +243,7 @@ export function AlertsView() {
 function AlertCard({ alert, onStatusChange }) {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [showPlaybook, setShowPlaybook] = useState(false);
+  const [operationOpen, setOperationOpen] = useState(false);
 
   const pColor = PRIORITY_COLORS[alert.priority] || 'default';
 
@@ -294,6 +324,20 @@ function AlertCard({ alert, onStatusChange }) {
               icon={<Iconify icon="solar:users-group-rounded-bold" width={14} />}
             />
           )}
+
+          {/* Create Operation Button */}
+          <Box sx={{ mt: 1.5 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              color="primary"
+              startIcon={<Iconify icon="solar:clipboard-add-bold" width={16} />}
+              onClick={() => setOperationOpen(true)}
+              sx={{ fontSize: 12 }}
+            >
+              تعریف عملیات از این هشدار
+            </Button>
+          </Box>
         </Box>
 
         {/* Status Actions */}
@@ -315,6 +359,398 @@ function AlertCard({ alert, onStatusChange }) {
           </Menu>
         </Box>
       </Stack>
+
+      {/* Create Operation Dialog */}
+      <CreateOperationFromAlertDialog
+        open={operationOpen}
+        onClose={() => setOperationOpen(false)}
+        alert={alert}
+      />
     </Card>
   );
 }
+
+// ----------------------------------------------------------------------
+
+function CreateOperationFromAlertDialog({ open, onClose, alert }) {
+  const [form, setForm] = useState({ title: '', description: '', priority: 2, category: '', assigned_to: '' });
+  const [target, setTarget] = useState('pages'); // 'pages' or 'cluster'
+  const [selectedPages, setSelectedPages] = useState(alert.target_pages || []);
+  const [selectedCluster, setSelectedCluster] = useState('');
+  const [recommendedPages, setRecommendedPages] = useState([]);
+  const [contactInfo, setContactInfo] = useState({ phone: '', email: '', telegram: '', notes: '' });
+  const [search, setSearch] = useState('');
+  const [platformFilter, setPlatformFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+
+  const { data: pagesData } = usePages({ page: 1, limit: 100 });
+  const { data: clustersData } = useClusters();
+  const createFromAlert = useCreateActionPlanFromAlert();
+
+  const pages = pagesData?.data || pagesData || [];
+
+  // Filter pages by search and filters
+  const filteredPages = pages.filter((page) => {
+    const matchesSearch = !search ||
+      page.name?.toLowerCase().includes(search.toLowerCase()) ||
+      page.username?.toLowerCase().includes(search.toLowerCase());
+    const matchesPlatform = platformFilter === 'all' || page.platform === platformFilter;
+    const matchesCategory = categoryFilter === 'all' || page.category === categoryFilter;
+    return matchesSearch && matchesPlatform && matchesCategory;
+  });
+
+  // Get unique platforms and categories from pages
+  const platforms = [...new Set(pages.map((p) => p.platform).filter(Boolean))];
+  const categories = [...new Set(pages.map((p) => p.category).filter(Boolean))];
+
+  const handleTogglePage = (pageId) => {
+    setSelectedPages((prev) =>
+      prev.includes(pageId) ? prev.filter((id) => id !== pageId) : [...prev, pageId]
+    );
+  };
+
+  const handleToggleRecommended = (pageId) => {
+    setRecommendedPages((prev) =>
+      prev.includes(pageId) ? prev.filter((id) => id !== pageId) : [...prev, pageId]
+    );
+  };
+
+  const handleSelectAllFiltered = () => {
+    const filteredIds = filteredPages.map((p) => p.id);
+    const allSelected = filteredIds.every((id) => selectedPages.includes(id));
+    if (allSelected) {
+      setSelectedPages((prev) => prev.filter((id) => !filteredIds.includes(id)));
+    } else {
+      setSelectedPages((prev) => [...new Set([...prev, ...filteredIds])]);
+    }
+  };
+
+  const isContactInfoFilled = contactInfo.phone || contactInfo.email || contactInfo.telegram || contactInfo.notes;
+
+  const handleCreate = () => {
+    const payload = {
+      alert_id: alert.id,
+      title: form.title || alert.title,
+      description: form.description || alert.message,
+      priority: form.priority,
+      category: form.category,
+      assigned_to: form.assigned_to || undefined,
+    };
+
+    if (target === 'cluster' && selectedCluster) {
+      payload.cluster_id = Number(selectedCluster);
+    }
+    if (target === 'pages') {
+      payload.page_ids = selectedPages;
+    }
+
+    // Build the per-plan extras (will go through createFromAlert; the backend already
+    // creates one plan per page, but we inject contact_info and recommended_pages
+    // as a single update later if cluster). For now, attach them to first plan only.
+    if (recommendedPages.length > 0) {
+      payload.recommended_pages = recommendedPages;
+    }
+    if (isContactInfoFilled) {
+      payload.contact_info = contactInfo;
+    }
+
+    createFromAlert.mutate(payload, {
+      onSuccess: () => {
+        onClose();
+        setForm({ title: '', description: '', priority: 2, category: '', assigned_to: '' });
+        setSelectedPages([]);
+        setRecommendedPages([]);
+        setContactInfo({ phone: '', email: '', telegram: '', notes: '' });
+      },
+    });
+  };
+
+  const PLATFORM_LABELS = { instagram: 'اینستاگرام', telegram: 'تلگرام', twitter: 'توییتر' };
+  const PLATFORM_ICONS = { instagram: 'skill-icons:instagram', telegram: 'logos:telegram', twitter: 'pajamas:twitter' };
+
+  const isValid = target === 'cluster' ? !!selectedCluster : selectedPages.length > 0;
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Iconify icon="solar:clipboard-add-bold-duotone" width={24} sx={{ color: 'primary.main' }} />
+          <span>تعریف عملیات از هشدار</span>
+        </Stack>
+      </DialogTitle>
+      <DialogContent>
+        <Stack spacing={2.5} sx={{ mt: 1 }}>
+          {/* Alert info */}
+          <Box sx={(theme) => ({ p: 1.5, borderRadius: 1, bgcolor: alpha(theme.palette.warning.main, 0.04), border: `1px solid ${alpha(theme.palette.warning.main, 0.15)}` })}>
+            <Typography variant="caption" color="warning.main" sx={{ fontWeight: 700 }}>هشدار مبدا:</Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>{alert.title}</Typography>
+          </Box>
+
+          {/* Target selector */}
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>هدف عملیات</Typography>
+            <Stack direction="row" spacing={1}>
+              <Chip
+                label="یک یا چند پیج"
+                size="medium"
+                variant={target === 'pages' ? 'filled' : 'outlined'}
+                color={target === 'pages' ? 'primary' : 'default'}
+                icon={<Iconify icon="solar:user-id-bold" width={16} />}
+                onClick={() => setTarget('pages')}
+              />
+              <Chip
+                label="یک خوشه"
+                size="medium"
+                variant={target === 'cluster' ? 'filled' : 'outlined'}
+                color={target === 'cluster' ? 'secondary' : 'default'}
+                icon={<Iconify icon="solar:atom-bold" width={16} />}
+                onClick={() => setTarget('cluster')}
+              />
+            </Stack>
+          </Box>
+
+          {target === 'cluster' && (
+            <TextField
+              select
+              fullWidth
+              size="small"
+              label="انتخاب خوشه هدف"
+              value={selectedCluster}
+              onChange={(e) => setSelectedCluster(e.target.value)}
+            >
+              <MenuItem value="">— انتخاب —</MenuItem>
+              {(clustersData || []).map((c) => (
+                <MenuItem key={c.id} value={c.id}>{c.name} ({c.pages_count || 0} پیج)</MenuItem>
+              ))}
+            </TextField>
+          )}
+
+          <TextField
+            fullWidth
+            size="small"
+            label="عنوان عملیات"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder={alert.title}
+          />
+          <TextField
+            fullWidth
+            size="small"
+            multiline
+            rows={2}
+            label="توضیحات"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder={alert.message}
+          />
+          <Stack direction="row" spacing={2}>
+            <TextField select fullWidth size="small" label="اولویت" value={form.priority} onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })}>
+              <MenuItem value={0}>پایین</MenuItem>
+              <MenuItem value={1}>متوسط</MenuItem>
+              <MenuItem value={2}>بالا</MenuItem>
+              <MenuItem value={3}>فوری</MenuItem>
+            </TextField>
+            <TextField select fullWidth size="small" label="دسته‌بندی" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+              <MenuItem value="">— بدون انتخاب —</MenuItem>
+              <MenuItem value="reply_comments">پاسخ به کامنت‌ها</MenuItem>
+              <MenuItem value="change_bio">تغییر بیو</MenuItem>
+              <MenuItem value="publish_post">انتشار پست</MenuItem>
+              <MenuItem value="publish_story">انتشار استوری</MenuItem>
+              <MenuItem value="engage_audience">تعامل با مخاطب</MenuItem>
+              <MenuItem value="content_strategy">استراتژی محتوا</MenuItem>
+              <MenuItem value="other">سایر</MenuItem>
+            </TextField>
+          </Stack>
+
+          <TextField
+            fullWidth
+            size="small"
+            label="مسئول عملیات (اختیاری)"
+            value={form.assigned_to}
+            onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}
+            placeholder="نام، دپارتمان یا شناسه کاربر"
+            InputProps={{ startAdornment: <Iconify icon="solar:user-id-bold" width={16} sx={{ color: 'text.disabled', mr: 1 }} /> }}
+          />
+
+          {/* Contact Info (collapsible info) */}
+          <Box sx={(theme) => ({ p: 1.5, borderRadius: 1, bgcolor: alpha(theme.palette.success.main, 0.04), border: `1px solid ${alpha(theme.palette.success.main, 0.15)}` })}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+              <Iconify icon="solar:phone-bold-duotone" width={18} sx={{ color: 'success.main' }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'success.main' }}>اطلاعات ارتباطی (اختیاری)</Typography>
+            </Stack>
+            <Stack spacing={1.25}>
+              <Stack direction="row" spacing={1.25}>
+                <TextField
+                  fullWidth size="small" label="شماره تلفن"
+                  value={contactInfo.phone}
+                  onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
+                />
+                <TextField
+                  fullWidth size="small" label="ایمیل"
+                  value={contactInfo.email}
+                  onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })}
+                />
+              </Stack>
+              <TextField
+                fullWidth size="small" label="آیدی تلگرام"
+                value={contactInfo.telegram}
+                onChange={(e) => setContactInfo({ ...contactInfo, telegram: e.target.value })}
+                placeholder="@username"
+              />
+              <TextField
+                fullWidth size="small" multiline rows={2} label="یادداشت ارتباطی"
+                value={contactInfo.notes}
+                onChange={(e) => setContactInfo({ ...contactInfo, notes: e.target.value })}
+                placeholder="مثلاً: بهترین زمان تماس، نام واسطه، …"
+              />
+            </Stack>
+          </Box>
+
+          {/* Recommended pages for engagement */}
+          <Box sx={(theme) => ({ p: 1.5, borderRadius: 1, bgcolor: alpha(theme.palette.warning.main, 0.04), border: `1px solid ${alpha(theme.palette.warning.main, 0.15)}` })}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+              <Iconify icon="solar:users-group-rounded-bold-duotone" width={18} sx={{ color: 'warning.main' }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'warning.main' }}>پیج‌های پیشنهادی همراه</Typography>
+            </Stack>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+              پیج‌هایی که برای همراه‌سازی، بازنشر یا تعامل در این عملیات پیشنهاد می‌شوند
+            </Typography>
+            <Box sx={{ maxHeight: 120, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 0.75, bgcolor: 'background.paper' }}>
+              {pages.slice(0, 30).map((page) => (
+                <FormControlLabel
+                  key={page.id}
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={recommendedPages.includes(page.id)}
+                      onChange={() => handleToggleRecommended(page.id)}
+                    />
+                  }
+                  label={<Typography variant="caption">{page.name} {page.username && `(@${page.username})`}</Typography>}
+                  sx={{ display: 'flex', m: 0, py: 0.25 }}
+                />
+              ))}
+            </Box>
+            <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: 'block' }}>
+              {recommendedPages.length} پیج پیشنهادی
+            </Typography>
+          </Box>
+
+          {/* Page Selection (only when target=pages) */}
+          {target === 'pages' && (
+          <Box>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+              <Typography variant="subtitle2">انتخاب پیج‌های هدف</Typography>
+              <Button size="small" onClick={handleSelectAllFiltered} sx={{ fontSize: 11 }}>
+                {filteredPages.length > 0 && filteredPages.every((p) => selectedPages.includes(p.id)) ? 'لغو انتخاب' : 'انتخاب همه'}
+              </Button>
+            </Stack>
+
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="جستجوی نام یا یوزرنیم..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              InputProps={{
+                startAdornment: <Iconify icon="solar:magnifer-bold" width={18} sx={{ color: 'text.disabled', mr: 1 }} />,
+              }}
+              sx={{ mb: 1.5 }}
+            />
+
+            <Stack direction="row" spacing={1} sx={{ mb: 1.5, flexWrap: 'wrap' }} useFlexGap>
+              <Chip
+                label="همه پلتفرم‌ها"
+                size="small"
+                variant={platformFilter === 'all' ? 'filled' : 'outlined'}
+                color={platformFilter === 'all' ? 'primary' : 'default'}
+                onClick={() => setPlatformFilter('all')}
+              />
+              {platforms.map((p) => (
+                <Chip
+                  key={p}
+                  label={PLATFORM_LABELS[p] || p}
+                  size="small"
+                  variant={platformFilter === p ? 'filled' : 'outlined'}
+                  color={platformFilter === p ? 'primary' : 'default'}
+                  icon={PLATFORM_ICONS[p] ? <Iconify icon={PLATFORM_ICONS[p]} width={14} /> : undefined}
+                  onClick={() => setPlatformFilter(p)}
+                />
+              ))}
+
+              {categories.length > 0 && (
+                <>
+                  <Box sx={{ width: '100%', height: 0 }} />
+                  <Chip
+                    label="همه دسته‌ها"
+                    size="small"
+                    variant={categoryFilter === 'all' ? 'filled' : 'outlined'}
+                    color={categoryFilter === 'all' ? 'secondary' : 'default'}
+                    onClick={() => setCategoryFilter('all')}
+                  />
+                  {categories.slice(0, 8).map((c) => (
+                    <Chip
+                      key={c}
+                      label={c}
+                      size="small"
+                      variant={categoryFilter === c ? 'filled' : 'outlined'}
+                      color={categoryFilter === c ? 'secondary' : 'default'}
+                      onClick={() => setCategoryFilter(c)}
+                    />
+                  ))}
+                </>
+              )}
+            </Stack>
+
+            <Box sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1 }}>
+              {filteredPages.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                  پیجی یافت نشد
+                </Typography>
+              ) : (
+                filteredPages.map((page) => (
+                  <FormControlLabel
+                    key={page.id}
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={selectedPages.includes(page.id)}
+                        onChange={() => handleTogglePage(page.id)}
+                      />
+                    }
+                    label={
+                      <Stack direction="row" alignItems="center" spacing={0.75}>
+                        <Typography variant="body2">{page.name}</Typography>
+                        {page.username && <Typography variant="caption" color="text.disabled">@{page.username}</Typography>}
+                        {page.platform && (
+                          <Chip label={PLATFORM_LABELS[page.platform] || page.platform} size="small" variant="outlined" sx={{ height: 18, fontSize: 9 }} />
+                        )}
+                      </Stack>
+                    }
+                    sx={{ display: 'flex', m: 0, py: 0.5, '&:hover': { bgcolor: 'action.hover', borderRadius: 0.5 } }}
+                  />
+                ))
+              )}
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              {selectedPages.length} پیج انتخاب شده — برای هر پیج یک عملیات جداگانه ایجاد می‌شود
+            </Typography>
+          </Box>
+          )}
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>انصراف</Button>
+        <Button
+          variant="contained"
+          onClick={handleCreate}
+          disabled={!isValid || createFromAlert.isPending}
+          startIcon={createFromAlert.isPending ? <CircularProgress size={16} /> : <Iconify icon="solar:clipboard-check-bold" />}
+        >
+          {target === 'cluster' ? 'ایجاد عملیات خوشه' : `ایجاد عملیات (${selectedPages.length} پیج)`}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+

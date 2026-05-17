@@ -46,16 +46,38 @@ import { usePages, useCreatePage, useUpdatePage, useDeletePage, usePageProgress,
 
 import { Iconify } from 'src/components/iconify';
 
+import { PageInfoBox } from '../dashboard/components/page-info-box';
+import { topicalLabel, TOPICAL_CLUSTERS, IDENTITY_CATEGORIES } from './constants';
+
+// ----------------------------------------------------------------------
+
+const PAGE_INFO = {
+  title: 'مدیریت پیج‌ها',
+  icon: 'solar:users-group-rounded-bold-duotone',
+  color: 'success',
+  shortDescription: 'افزودن، ویرایش، بارگیری و تحلیل تمام پیج‌های تحت پایش — جدول هوشمند با ضربان‌نگار، segmentation و عملیات گروهی',
+  modules: [
+    { name: 'بارگیری همه / تکی', icon: 'solar:download-bold-duotone', color: 'warning', description: 'دکمه «بارگیری همه» تمام پیج‌ها را sequential از اینستاگرام/توییتر/تلگرام می‌گیرد. هر ردیف هم دکمه بارگیری مستقل دارد.' },
+    { name: 'تحلیل همه / تکی', icon: 'solar:cpu-bolt-bold-duotone', color: 'secondary', description: 'تحلیل هوشمند با AI: شامل رونوشت‌برداری ویدیو، OCR تصاویر، ترجمه فارسی و تحلیل لحن. می‌توانید سرویس‌های دلخواه را انتخاب کنید.' },
+    { name: 'ضربان‌نگار ۷ روز', icon: 'solar:graph-bold-duotone', color: 'success', description: 'نمودار میله‌ای کوچک کنار هر پیج که فعالیت ۷ روز اخیر را نشان می‌دهد. سبز=کم، نارنجی=متوسط، قرمز=بالا.' },
+    { name: 'دسته‌بندی هوشمند', icon: 'solar:bookmark-square-bold-duotone', color: 'primary', description: 'هر پیج یک «دسته موضوعی» دارد که AI تشخیص داده. می‌توانید دستی هم تنظیم کنید.' },
+    { name: 'Segmentation', icon: 'solar:filter-bold-duotone', color: 'info', description: 'فیلتر سریع: همه، در معرض ریزش، نفوذ بالا/اعتبار کم، تازه‌واردها.' },
+    { name: 'فیلتر پیشرفته', icon: 'solar:settings-bold-duotone', color: 'primary', description: 'فیلتر بر اساس خوشه و بازه نفوذ.' },
+    { name: 'ایمپورت اکسل', icon: 'solar:upload-bold-duotone', color: 'info', description: 'با دانلود قالب CSV و پر کردن آن، می‌توانید چندین پیج را با هم اضافه کنید. پیج‌های تکراری به صورت خودکار رد می‌شوند.' },
+    { name: 'خروجی اکسل', icon: 'solar:file-download-bold-duotone', color: 'success', description: 'پیج‌های انتخاب‌شده را با تمام شاخص‌ها به CSV تبدیل کنید.' },
+    { name: 'ویرایش سریع', icon: 'solar:pen-bold-duotone', color: 'warning', description: 'ویرایش inline اطلاعات هر پیج بدون رفتن به صفحه پروفایل.' },
+  ],
+  tips: [
+    'برای دیدن تحلیل کامل هر پیج، روی نام آن کلیک کنید',
+    'پیج‌های غیرفعال با حلقه قرمز و کم‌فعال با حلقه نارنجی متمایز می‌شوند',
+    'برای انتخاب چندتایی روی چک‌باکس‌ها کلیک کنید — دکمه‌های گروهی پایین صفحه ظاهر می‌شوند',
+  ],
+};
+
 // ----------------------------------------------------------------------
 
 const PLATFORM_ICONS = { instagram: 'mdi:instagram', twitter: 'mdi:twitter', telegram: 'mdi:telegram' };
-const CATEGORY_LABELS = {
-  news: 'خبری', activist: 'فعال', celebrity: 'سلبریتی', lifestyle: 'لایف‌استایل',
-  economy: 'اقتصادی', local_news: 'محلی', politician: 'سیاستمدار', documentary: 'مستند',
-  religious: 'مذهبی', art: 'هنری', student: 'دانشجویی', health: 'سلامت',
-  technology: 'تکنولوژی', culture: 'فرهنگی', sports: 'ورزشی', analyst: 'تحلیل‌گر',
-};
-const EMPTY_FORM = { name: '', username: '', platform: 'instagram', category: '', country: '', language: '', bio: '' };
+const EMPTY_FORM = { name: '', username: '', platform: 'instagram', category: '', identity_category: '', country: '', language: '', bio: '' };
 
 // Health badge based on activity
 function HealthBadge({ page }) {
@@ -240,7 +262,6 @@ export function PagesListView() {
     setProcessDialogOpen(true);
   };
   const handleCancelBatch = () => { cancelRef.current = true; setBatchCancelled(true); };
-  const handleSkipCurrent = () => { /* The current request can't be cancelled, but we skip the next */ };
 
   const handleStartProcess = () => {
     setProcessDialogOpen(false);
@@ -257,7 +278,8 @@ export function PagesListView() {
     setQuickEditRow(row);
     setQuickEditForm({
       name: row.name || '', username: row.username || '', platform: row.platform || 'instagram',
-      category: row.category || '', country: row.country || '', language: row.language || '', bio: row.bio || '',
+      category: row.category || '', identity_category: row.identity_category || '',
+      country: row.country || '', language: row.language || '', bio: row.bio || '',
     });
   };
 
@@ -354,6 +376,8 @@ export function PagesListView() {
 
   return (
     <DashboardContent maxWidth="xl">
+      <PageInfoBox {...PAGE_INFO} />
+
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 700 }}>پیج‌ها</Typography>
@@ -503,7 +527,7 @@ export function PagesListView() {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={CATEGORY_LABELS[row.category] || row.category || '—'}
+                          label={topicalLabel(row.category)}
                           size="small"
                           variant={row.category_source === 'ai' ? 'filled' : 'outlined'}
                           color={row.category_source === 'ai' ? 'secondary' : 'default'}
@@ -540,6 +564,16 @@ export function PagesListView() {
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Stack direction="row" spacing={0.5}>
+                          <Tooltip title="بارگیری پست‌ها" arrow>
+                            <IconButton size="small" onClick={() => fetchMutation.mutate(row.id)} disabled={batchRunning || fetchMutation.isPending}>
+                              <Iconify icon="solar:download-bold" width={16} sx={{ color: row.last_fetched_at ? 'success.main' : 'warning.main' }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="تحلیل هوشمند" arrow>
+                            <IconButton size="small" onClick={() => { setProcessDialogTarget([row]); setProcessDialogOpen(true); }} disabled={batchRunning || processMutation.isPending}>
+                              <Iconify icon="solar:cpu-bolt-bold" width={16} sx={{ color: row.last_processed_at ? 'secondary.main' : 'text.disabled' }} />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title="ویرایش سریع" arrow>
                             <IconButton size="small" onClick={() => handleQuickEdit(row)}>
                               <Iconify icon="solar:pen-bold" width={16} />
@@ -622,8 +656,15 @@ export function PagesListView() {
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField select fullWidth size="small" label="دسته‌بندی" value={form.category} onChange={set('category')}>
-                {Object.entries(CATEGORY_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
+              <TextField select fullWidth size="small" label="خوشه موضوعی" value={form.category} onChange={set('category')}>
+                <MenuItem value="">— بدون انتخاب —</MenuItem>
+                {Object.entries(TOPICAL_CLUSTERS).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select fullWidth size="small" label="کیستی صفحه" value={form.identity_category || ''} onChange={set('identity_category')}>
+                <MenuItem value="">— بدون انتخاب —</MenuItem>
+                {Object.entries(IDENTITY_CATEGORIES).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="کشور" value={form.country} onChange={set('country')} /></Grid>
@@ -708,7 +749,7 @@ export function PagesListView() {
                         <TableCell>{row.name}</TableCell>
                         <TableCell>@{row.username}</TableCell>
                         <TableCell>{row.platform}</TableCell>
-                        <TableCell>{CATEGORY_LABELS[row.category] || row.category}</TableCell>
+                        <TableCell>{topicalLabel(row.category)}</TableCell>
                         <TableCell>{row.country}</TableCell>
                       </TableRow>
                     ))}
@@ -860,9 +901,15 @@ export function PagesListView() {
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField select fullWidth size="small" label="دسته‌بندی" value={quickEditForm.category} onChange={(e) => setQuickEditForm({ ...quickEditForm, category: e.target.value })}>
-                <MenuItem value="">— بدون دسته‌بندی —</MenuItem>
-                {Object.entries(CATEGORY_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
+              <TextField select fullWidth size="small" label="خوشه موضوعی" value={quickEditForm.category} onChange={(e) => setQuickEditForm({ ...quickEditForm, category: e.target.value })}>
+                <MenuItem value="">— بدون انتخاب —</MenuItem>
+                {Object.entries(TOPICAL_CLUSTERS).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select fullWidth size="small" label="کیستی صفحه" value={quickEditForm.identity_category || ''} onChange={(e) => setQuickEditForm({ ...quickEditForm, identity_category: e.target.value })}>
+                <MenuItem value="">— بدون انتخاب —</MenuItem>
+                {Object.entries(IDENTITY_CATEGORIES).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth size="small" label="کشور" value={quickEditForm.country} onChange={(e) => setQuickEditForm({ ...quickEditForm, country: e.target.value })} /></Grid>

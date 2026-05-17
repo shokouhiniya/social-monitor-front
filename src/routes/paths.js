@@ -26,10 +26,15 @@ export const paths = {
         root: `${ROOTS.DASHBOARD}/mynetwork/pages`,
         profile: (id) => `${ROOTS.DASHBOARD}/mynetwork/pages/${id}`,
       },
+      clusters: {
+        root: `${ROOTS.DASHBOARD}/mynetwork/clusters`,
+        detail: (id) => `${ROOTS.DASHBOARD}/mynetwork/clusters/${id}`,
+      },
       posts: `${ROOTS.DASHBOARD}/mynetwork/posts`,
       alerts: `${ROOTS.DASHBOARD}/mynetwork/alerts`,
       fieldReports: `${ROOTS.DASHBOARD}/mynetwork/field-reports`,
       settings: `${ROOTS.DASHBOARD}/mynetwork/settings`,
+      guide: `${ROOTS.DASHBOARD}/mynetwork/guide`,
     },
     // Keep instagram as alias for backward compatibility
     instagram: {
@@ -39,10 +44,15 @@ export const paths = {
         root: `${ROOTS.DASHBOARD}/mynetwork/pages`,
         profile: (id) => `${ROOTS.DASHBOARD}/mynetwork/pages/${id}`,
       },
+      clusters: {
+        root: `${ROOTS.DASHBOARD}/mynetwork/clusters`,
+        detail: (id) => `${ROOTS.DASHBOARD}/mynetwork/clusters/${id}`,
+      },
       posts: `${ROOTS.DASHBOARD}/mynetwork/posts`,
       alerts: `${ROOTS.DASHBOARD}/mynetwork/alerts`,
       fieldReports: `${ROOTS.DASHBOARD}/mynetwork/field-reports`,
       settings: `${ROOTS.DASHBOARD}/mynetwork/settings`,
+      guide: `${ROOTS.DASHBOARD}/mynetwork/guide`,
     },
     // Telegram
     telegram: {

@@ -10,8 +10,10 @@ import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
+import Drawer from '@mui/material/Drawer';
 import Tooltip from '@mui/material/Tooltip';
 import { alpha } from '@mui/material/styles';
+import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
@@ -28,6 +30,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { proxyImage } from 'src/utils/proxy-image';
 import { toJalaliDate } from 'src/utils/format-jalali';
 
+import { useClusters } from 'src/api/clusters';
 import { useHighImpactPosts } from 'src/api/analytics';
 import axiosInstance, { endpoints } from 'src/lib/axios';
 import { DashboardContent } from 'src/layouts/dashboard';
@@ -35,7 +38,31 @@ import { usePostsFeed, useTopicClusters } from 'src/api/posts';
 
 import { Iconify } from 'src/components/iconify';
 
+import { PageInfoBox } from '../dashboard/components/page-info-box';
+
 // ----------------------------------------------------------------------
+
+const PAGE_INFO = {
+  title: 'فید هوشمند رصد',
+  icon: 'solar:gallery-bold-duotone',
+  color: 'primary',
+  shortDescription: 'مرور تمام پست‌های شبکه با فیلترهای پیشرفته — تشخیص پست‌های وایرال، گروه‌بندی موضوعی، تحلیل تک‌پست با AI',
+  modules: [
+    { name: 'پست‌های فوق‌بحرانی', icon: 'solar:bolt-circle-bold-duotone', color: 'warning', description: 'نوار بالای صفحه که ۳ پست با تعامل غیرعادی را نشان می‌دهد. این پست‌ها سرعت رشد بالایی دارند.' },
+    { name: 'فیلتر سریع', icon: 'solar:filter-bold-duotone', color: 'info', description: 'فیلتر بر اساس لحن (خشمگین/امیدوار/خنثی/غمگین) و نوع پست (تصویر/ویدیو/ریل/استوری/کاروسل) و وایرال بودن.' },
+    { name: 'فیلتر پیشرفته', icon: 'solar:settings-bold-duotone', color: 'primary', description: 'فیلتر بر اساس پلتفرم، خوشه، دسته‌بندی، کشور و بازه تاریخی.' },
+    { name: 'نمای فید', icon: 'solar:list-bold-duotone', color: 'secondary', description: 'نمای پیش‌فرض — پست‌ها در گرید کارت‌ها با هاور-پلی برای ویدیوها.' },
+    { name: 'نمای خوشه‌ای', icon: 'solar:atom-bold-duotone', color: 'success', description: 'پست‌ها بر اساس موضوعات استخراج‌شده توسط AI گروه‌بندی می‌شوند. هر گروه ۳ پست برتر را نشان می‌دهد.' },
+    { name: 'دیالوگ پست', icon: 'solar:eye-bold-duotone', color: 'info', description: 'با کلیک روی هر پست: مشاهده فول مدیا، ترجمه فارسی، رونوشت صوتی، متن استخراج‌شده از تصویر، توضیحات دستی.' },
+    { name: 'پردازش هوشمند پست', icon: 'solar:cpu-bolt-bold-duotone', color: 'warning', description: 'با کلیک روی این دکمه در دیالوگ پست، AI لحن، موضوعات، کلمات کلیدی و ترجمه را استخراج می‌کند.' },
+    { name: 'توضیح دستی', icon: 'solar:pen-new-square-bold-duotone', color: 'success', description: 'برای پست‌هایی که AI نمی‌تواند تفسیر کند (مثلاً ویدیوی بدون کپشن واضح)، می‌توانید توضیح دستی اضافه کنید. این متن در تحلیل بعدی لحاظ می‌شود.' },
+  ],
+  tips: [
+    'با هاور روی ویدیوها، پلی خودکار شروع می‌شود',
+    'پست‌های وایرال با حاشیه نارنجی متمایز هستند',
+    'پست‌هایی که در چند پیج به اشتراک گذاشته شده‌اند، آواتار همه پیج‌ها را نشان می‌دهند',
+  ],
+};
 
 const SENTIMENT_CONFIG = {
   angry: { color: 'error', icon: 'solar:fire-bold', label: 'خشمگین' },
@@ -50,6 +77,15 @@ function getMediaUrl(url) {
   if (!url) return null;
   if (url.startsWith('/static/')) return `${SERVER_URL}${url}`;
   return url;
+}
+
+// Detect if media URL is a video
+function isVideoMedia(url, postType) {
+  if (postType === 'video' || postType === 'reel') return true;
+  if (!url) return false;
+  // Check extension before any query string
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.webm');
 }
 
 function mediaIdToShortcode(mediaId) {
@@ -82,6 +118,17 @@ export function PostsListView() {
   const [contextText, setContextText] = useState('');
   const [contextSaving, setContextSaving] = useState(false);
 
+  // Advanced filters
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [platformFilter, setPlatformFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [clusterFilter, setClusterFilter] = useState('');
+  const [countryFilter, setCountryFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  const { data: clustersData } = useClusters();
+
   const POSTS_PER_PAGE = 20;
   const MAX_LOAD_MORE = 5; // after 5 clicks, switch to pagination
   const usePagination = loadMoreCount >= MAX_LOAD_MORE;
@@ -91,6 +138,12 @@ export function PostsListView() {
     sentiment_label: sentimentFilter || undefined,
     post_type: typeFilter || undefined,
     outliers_only: outliersOnly ? 'true' : undefined,
+    platform: platformFilter || undefined,
+    category: categoryFilter || undefined,
+    cluster_id: clusterFilter || undefined,
+    country: countryFilter || undefined,
+    date_from: dateFrom || undefined,
+    date_to: dateTo || undefined,
     page,
     limit: POSTS_PER_PAGE,
   });
@@ -147,6 +200,8 @@ export function PostsListView() {
 
   return (
     <DashboardContent maxWidth="xl">
+      <PageInfoBox {...PAGE_INFO} />
+
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 700 }}>فید هوشمند رصد</Typography>
@@ -192,31 +247,179 @@ export function PostsListView() {
         </Box>
       )}
 
-      {/* Smart Filter Bar */}
-      <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }} useFlexGap>
-        <TextField
-          size="small" placeholder="جستجو در کپشن‌ها..." value={search}
-          onChange={(e) => { setSearch(e.target.value); resetFilters(); }}
-          InputProps={{ startAdornment: <InputAdornment position="start"><Iconify icon="solar:magnifer-bold-duotone" sx={{ color: 'text.disabled' }} /></InputAdornment> }}
-          sx={{ minWidth: 250 }}
-        />
-        {Object.entries(SENTIMENT_CONFIG).map(([key, conf]) => (
-          <Chip key={key} label={conf.label} variant={sentimentFilter === key ? 'filled' : 'outlined'}
-            color={sentimentFilter === key ? conf.color : 'default'}
-            icon={<Iconify icon={conf.icon} width={14} />}
-            onClick={() => { setSentimentFilter(sentimentFilter === key ? '' : key); resetFilters(); }}
-          />
-        ))}
-        <Chip label="وایرال" variant={outliersOnly ? 'filled' : 'outlined'} color={outliersOnly ? 'warning' : 'default'}
-          icon={<Iconify icon="solar:fire-bold" width={14} />}
-          onClick={() => { setOutliersOnly(!outliersOnly); resetFilters(); }}
-        />
-        {['image', 'video', 'reel', 'story', 'carousel'].map((t) => (
-          <Chip key={t} label={t} variant={typeFilter === t ? 'filled' : 'outlined'} size="small"
-            onClick={() => { setTypeFilter(typeFilter === t ? '' : t); resetFilters(); }}
-          />
-        ))}
-      </Stack>
+      {/* Search & Filters */}
+      <Card sx={{ p: 2, mb: 2 }}>
+        <Stack spacing={2}>
+          {/* Row 1: Search + Advanced Filter Button */}
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
+            <TextField
+              size="small"
+              placeholder="جستجو در کپشن پست‌ها..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); resetFilters(); }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Iconify icon="solar:magnifer-bold-duotone" sx={{ color: 'text.disabled' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: search ? (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => { setSearch(''); resetFilters(); }}>
+                      <Iconify icon="solar:close-circle-bold" width={18} />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
+              }}
+              sx={{ flex: 1 }}
+            />
+            <Button
+              variant={(platformFilter || categoryFilter || clusterFilter || countryFilter || dateFrom || dateTo) ? 'contained' : 'outlined'}
+              startIcon={<Iconify icon="solar:filter-bold-duotone" />}
+              onClick={() => setFilterOpen(true)}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              فیلتر پیشرفته
+              {(platformFilter || categoryFilter || clusterFilter || countryFilter || dateFrom || dateTo) && ' ●'}
+            </Button>
+          </Stack>
+
+          {/* Row 2: Sentiment Filters */}
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75, fontWeight: 600 }}>
+              لحن:
+            </Typography>
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+              <Chip
+                label="همه"
+                size="small"
+                variant={sentimentFilter === '' ? 'filled' : 'outlined'}
+                color={sentimentFilter === '' ? 'primary' : 'default'}
+                onClick={() => { setSentimentFilter(''); resetFilters(); }}
+              />
+              {Object.entries(SENTIMENT_CONFIG).map(([key, conf]) => (
+                <Chip
+                  key={key}
+                  size="small"
+                  label={conf.label}
+                  variant={sentimentFilter === key ? 'filled' : 'outlined'}
+                  color={sentimentFilter === key ? conf.color : 'default'}
+                  icon={<Iconify icon={conf.icon} width={14} />}
+                  onClick={() => { setSentimentFilter(sentimentFilter === key ? '' : key); resetFilters(); }}
+                />
+              ))}
+            </Stack>
+          </Box>
+
+          {/* Row 3: Post Type Filters */}
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75, fontWeight: 600 }}>
+              نوع پست:
+            </Typography>
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+              <Chip
+                label="همه"
+                size="small"
+                variant={typeFilter === '' ? 'filled' : 'outlined'}
+                color={typeFilter === '' ? 'primary' : 'default'}
+                onClick={() => { setTypeFilter(''); resetFilters(); }}
+              />
+              {[
+                { value: 'image', label: 'تصویر', icon: 'solar:gallery-bold' },
+                { value: 'video', label: 'ویدیو', icon: 'solar:videocamera-bold' },
+                { value: 'reel', label: 'ریل', icon: 'solar:videocamera-record-bold' },
+                { value: 'story', label: 'استوری', icon: 'solar:stories-bold' },
+                { value: 'carousel', label: 'کاروسل', icon: 'solar:gallery-wide-bold' },
+              ].map((t) => (
+                <Chip
+                  key={t.value}
+                  size="small"
+                  label={t.label}
+                  icon={<Iconify icon={t.icon} width={14} />}
+                  variant={typeFilter === t.value ? 'filled' : 'outlined'}
+                  color={typeFilter === t.value ? 'info' : 'default'}
+                  onClick={() => { setTypeFilter(typeFilter === t.value ? '' : t.value); resetFilters(); }}
+                />
+              ))}
+            </Stack>
+          </Box>
+
+          {/* Row 4: Quick Filters */}
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75, fontWeight: 600 }}>
+              فیلترهای سریع:
+            </Typography>
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+              <Chip
+                label="پست‌های وایرال"
+                size="small"
+                icon={<Iconify icon="solar:fire-bold" width={14} />}
+                variant={outliersOnly ? 'filled' : 'outlined'}
+                color={outliersOnly ? 'warning' : 'default'}
+                onClick={() => { setOutliersOnly(!outliersOnly); resetFilters(); }}
+              />
+            </Stack>
+          </Box>
+
+          {/* Active Advanced Filters Display */}
+          {(platformFilter || categoryFilter || clusterFilter || countryFilter || dateFrom || dateTo) && (
+            <Box sx={(theme) => ({ p: 1.5, borderRadius: 1, bgcolor: alpha(theme.palette.primary.main, 0.04), border: `1px dashed ${alpha(theme.palette.primary.main, 0.2)}` })}>
+              <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                  فیلترهای پیشرفته فعال:
+                </Typography>
+                {platformFilter && (
+                  <Chip size="small" color="primary" variant="outlined"
+                    label={`پلتفرم: ${platformFilter}`}
+                    onDelete={() => { setPlatformFilter(''); resetFilters(); }}
+                  />
+                )}
+                {clusterFilter && (
+                  <Chip size="small" color="primary" variant="outlined"
+                    label={`خوشه: ${(clustersData || []).find((c) => c.id === clusterFilter)?.name || clusterFilter}`}
+                    onDelete={() => { setClusterFilter(''); resetFilters(); }}
+                  />
+                )}
+                {categoryFilter && (
+                  <Chip size="small" color="primary" variant="outlined"
+                    label={`دسته: ${categoryFilter}`}
+                    onDelete={() => { setCategoryFilter(''); resetFilters(); }}
+                  />
+                )}
+                {countryFilter && (
+                  <Chip size="small" color="primary" variant="outlined"
+                    label={`کشور: ${countryFilter}`}
+                    onDelete={() => { setCountryFilter(''); resetFilters(); }}
+                  />
+                )}
+                {dateFrom && (
+                  <Chip size="small" color="primary" variant="outlined"
+                    label={`از: ${dateFrom}`}
+                    onDelete={() => { setDateFrom(''); resetFilters(); }}
+                  />
+                )}
+                {dateTo && (
+                  <Chip size="small" color="primary" variant="outlined"
+                    label={`تا: ${dateTo}`}
+                    onDelete={() => { setDateTo(''); resetFilters(); }}
+                  />
+                )}
+                <Button size="small" color="error" variant="text"
+                  startIcon={<Iconify icon="solar:close-circle-bold" width={14} />}
+                  onClick={() => {
+                    setPlatformFilter(''); setCategoryFilter(''); setClusterFilter('');
+                    setCountryFilter(''); setDateFrom(''); setDateTo('');
+                    resetFilters();
+                  }}
+                  sx={{ fontSize: 11, height: 24 }}
+                >
+                  پاک کردن همه
+                </Button>
+              </Stack>
+            </Box>
+          )}
+        </Stack>
+      </Card>
 
       {viewMode === 'feed' ? (
         feedLoading && allPosts.length === 0 ? (
@@ -327,6 +530,58 @@ export function PostsListView() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Advanced Filter Drawer */}
+      <Drawer anchor="left" open={filterOpen} onClose={() => setFilterOpen(false)}>
+        <Box sx={{ width: 320, p: 3 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>فیلتر پیشرفته</Typography>
+            <IconButton size="small" onClick={() => setFilterOpen(false)}>
+              <Iconify icon="solar:close-circle-bold" width={22} />
+            </IconButton>
+          </Stack>
+
+          <Stack spacing={2.5}>
+            <TextField select fullWidth size="small" label="پلتفرم" value={platformFilter} onChange={(e) => { setPlatformFilter(e.target.value); resetFilters(); }}>
+              <MenuItem value="">همه پلتفرم‌ها</MenuItem>
+              <MenuItem value="instagram">اینستاگرام</MenuItem>
+              <MenuItem value="twitter">توییتر</MenuItem>
+              <MenuItem value="telegram">تلگرام</MenuItem>
+            </TextField>
+
+            <TextField select fullWidth size="small" label="خوشه" value={clusterFilter} onChange={(e) => { setClusterFilter(e.target.value); resetFilters(); }}>
+              <MenuItem value="">همه خوشه‌ها</MenuItem>
+              {(clustersData || []).map((c) => (
+                <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+              ))}
+            </TextField>
+
+            <TextField fullWidth size="small" label="دسته‌بندی موضوعی" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); resetFilters(); }} placeholder="مثلاً: news, activism..." />
+
+            <TextField fullWidth size="small" label="کشور" value={countryFilter} onChange={(e) => { setCountryFilter(e.target.value); resetFilters(); }} placeholder="مثلاً: ایران، فلسطین..." />
+
+            <TextField fullWidth size="small" label="از تاریخ" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); resetFilters(); }}
+              InputLabelProps={{ shrink: true }}
+            />
+
+            <TextField fullWidth size="small" label="تا تاریخ" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); resetFilters(); }}
+              InputLabelProps={{ shrink: true }}
+            />
+
+            <Button variant="outlined" color="error" fullWidth onClick={() => {
+              setPlatformFilter(''); setCategoryFilter(''); setClusterFilter('');
+              setCountryFilter(''); setDateFrom(''); setDateTo('');
+              resetFilters();
+            }}>
+              پاک کردن فیلترها
+            </Button>
+
+            <Button variant="contained" fullWidth onClick={() => setFilterOpen(false)}>
+              اعمال
+            </Button>
+          </Stack>
+        </Box>
+      </Drawer>
     </DashboardContent>
   );
 }
@@ -336,7 +591,7 @@ export function PostsListView() {
 function PostCard({ post, compact, onClick }) {
   const sentConf = SENTIMENT_CONFIG[post.sentiment_label] || SENTIMENT_CONFIG.neutral;
   const hasMedia = !!post.media_url;
-  const isVideo = post.media_url?.endsWith('.mp4');
+  const isVideo = isVideoMedia(post.media_url, post.post_type);
 
   return (
     <Card
@@ -353,12 +608,13 @@ function PostCard({ post, compact, onClick }) {
       {hasMedia && (
         <Box sx={{ position: 'relative', aspectRatio: '3/4', overflow: 'hidden', bgcolor: 'grey.100' }}>
           {isVideo ? (
-            <Box component="video" src={getMediaUrl(post.media_url)} muted
-              onMouseEnter={(e) => e.target.play()} onMouseLeave={(e) => { e.target.pause(); e.target.currentTime = 0; }}
+            <Box component="video" src={getMediaUrl(post.media_url)} muted playsInline preload="metadata"
+              onMouseEnter={(e) => e.target.play().catch(() => {})} onMouseLeave={(e) => { e.target.pause(); e.target.currentTime = 0; }}
+              onError={(e) => { e.target.parentElement.style.display = 'none'; }}
               sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
           ) : (
-            <Box component="img" src={getMediaUrl(post.media_url)}
+            <Box component="img" src={getMediaUrl(post.media_url)} loading="lazy"
               onError={(e) => { e.target.parentElement.style.display = 'none'; }}
               sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
@@ -369,6 +625,14 @@ function PostCard({ post, compact, onClick }) {
               sx={{ position: 'absolute', top: 8, left: 8, height: 20, fontSize: 9, bgcolor: 'rgba(0,0,0,0.6)', color: '#fff', '& .MuiChip-label': { px: 0.75 } }}
             />
           )}
+        </Box>
+      )}
+
+      {/* No media placeholder */}
+      {!hasMedia && (
+        <Box sx={{ position: 'relative', aspectRatio: '3/4', overflow: 'hidden', bgcolor: 'grey.50', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 1 }}>
+          <Iconify icon="solar:gallery-bold-duotone" width={36} sx={{ color: 'text.disabled' }} />
+          <Typography variant="caption" color="text.disabled" sx={{ fontSize: 10 }}>بدون مدیا</Typography>
         </Box>
       )}
 
@@ -493,7 +757,7 @@ function PostDetailDialog({ post, onClose, onOpenContext }) {
       <DialogContent>
         {/* Media */}
         {post.media_url && (
-          post.media_url.endsWith('.mp4') ? (
+          isVideoMedia(post.media_url, post.post_type) ? (
             <Box component="video" src={getMediaUrl(post.media_url)} controls sx={{ width: '100%', maxHeight: 500, borderRadius: 1, mb: 2 }} />
           ) : (
             <Box component="img" src={getMediaUrl(post.media_url)} sx={{ width: '100%', maxHeight: 500, objectFit: 'contain', borderRadius: 1, mb: 2 }} onError={(e) => { e.target.style.display = 'none'; }} />

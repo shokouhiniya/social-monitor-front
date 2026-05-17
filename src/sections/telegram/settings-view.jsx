@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -10,7 +11,9 @@ import Button from '@mui/material/Button';
 import { alpha } from '@mui/material/styles';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
 
+import axiosInstance, { endpoints } from 'src/lib/axios';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { Iconify } from 'src/components/iconify';
@@ -18,16 +21,57 @@ import { Iconify } from 'src/components/iconify';
 // ----------------------------------------------------------------------
 
 export function TelegramSettingsView() {
+  const queryClient = useQueryClient();
   const [apiId, setApiId] = useState('');
   const [apiHash, setApiHash] = useState('');
   const [session, setSession] = useState('');
-  const [saved, setSaved] = useState(false);
+
+  // Load existing settings
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ['settings', 'telegram'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.settings.byCategory('tokens'));
+      return res.data?.data;
+    },
+  });
+
+  // Populate form from loaded settings
+  useEffect(() => {
+    if (settings) {
+      const findVal = (key) => settings.find((s) => s.key === key)?.value || '';
+      setApiId(findVal('telegram_api_id'));
+      setApiHash(findVal('telegram_api_hash'));
+      setSession(findVal('telegram_session'));
+    }
+  }, [settings]);
+
+  // Save mutation
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const updates = [
+        { key: 'telegram_api_id', value: apiId, category: 'tokens', label: 'Telegram API ID' },
+        { key: 'telegram_api_hash', value: apiHash, category: 'tokens', label: 'Telegram API Hash' },
+        { key: 'telegram_session', value: session, category: 'tokens', label: 'Telegram Session String' },
+      ];
+      const res = await axiosInstance.post(endpoints.settings.update, updates);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+    },
+  });
 
   const handleSave = () => {
-    // In production, save to backend settings
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    saveMutation.mutate();
   };
+
+  if (isLoading) {
+    return (
+      <DashboardContent maxWidth="lg">
+        <Box sx={{ py: 10, textAlign: 'center' }}><CircularProgress /></Box>
+      </DashboardContent>
+    );
+  }
 
   return (
     <DashboardContent maxWidth="lg">
@@ -93,10 +137,17 @@ export function TelegramSettingsView() {
           </Stack>
         </Card>
 
-        {saved && <Alert severity="success">تنظیمات ذخیره شد</Alert>}
+        {saveMutation.isSuccess && <Alert severity="success">تنظیمات با موفقیت ذخیره شد</Alert>}
+        {saveMutation.isError && <Alert severity="error">خطا در ذخیره تنظیمات: {saveMutation.error?.message}</Alert>}
 
-        <Button variant="contained" onClick={handleSave} startIcon={<Iconify icon="solar:check-circle-bold" />} sx={{ alignSelf: 'flex-start' }}>
-          ذخیره تنظیمات
+        <Button
+          variant="contained"
+          onClick={handleSave}
+          disabled={saveMutation.isPending}
+          startIcon={saveMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:check-circle-bold" />}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          {saveMutation.isPending ? 'در حال ذخیره...' : 'ذخیره تنظیمات'}
         </Button>
       </Stack>
     </DashboardContent>
