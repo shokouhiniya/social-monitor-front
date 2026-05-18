@@ -10,6 +10,16 @@ import { ChartCard } from '../../dashboard/components/chart-card';
 // ----------------------------------------------------------------------
 
 const DIMENSIONS = [
+  { key: 'narrative_focus', label: 'تمرکز روایی' },
+  { key: 'emotional_intensity', label: 'شدت احساسی' },
+  { key: 'mobilization_power', label: 'توان بسیج' },
+  { key: 'analytical_depth', label: 'عمق تحلیلی' },
+  { key: 'institutional_tone', label: 'لحن نهادی' },
+  { key: 'audience_closeness', label: 'نزدیکی مخاطب' },
+];
+
+// Legacy axes for backward compatibility with old data
+const LEGACY_DIMENSIONS = [
   { key: 'aggressive_defensive', label: 'تهاجمی' },
   { key: 'producer_resharer', label: 'تولیدی' },
   { key: 'visual_textual', label: 'بصری' },
@@ -32,24 +42,29 @@ function CustomTooltip({ active, payload }) {
 export function PersonaRadar({ data }) {
   const theme = useTheme();
 
-  const chartData = DIMENSIONS.map((dim) => ({
+  // Detect if data uses new axes (0-10) or legacy axes (0-100)
+  const isNewFormat = data && ('narrative_focus' in data || 'emotional_intensity' in data);
+  const dims = isNewFormat ? DIMENSIONS : LEGACY_DIMENSIONS;
+  const maxValue = isNewFormat ? 10 : 100;
+
+  const chartData = dims.map((dim) => ({
     label: dim.label,
-    value: data?.[dim.key] ?? 50,
-    fullMark: 100,
+    value: data?.[dim.key] ?? (isNewFormat ? 5 : 50),
+    fullMark: maxValue,
   }));
 
   return (
     <ChartCard
       title="رادار شخصیت رسانه‌ای"
       icon="solar:user-id-bold-duotone"
-      info="۶ بعد شخصیتی پیج: تهاجمی/تدافعی، تولیدی/بازنشر، بصری/متنی، رسمی/صمیمی، محلی/جهانی، تعاملی/یک‌طرفه"
+      info="۶ بعد شخصیتی: تمرکز روایی، شدت احساسی، توان بسیج، عمق تحلیلی، لحن نهادی، نزدیکی مخاطب"
     >
       <Box sx={{ height: 300 }}>
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart data={chartData} cx="50%" cy="50%" outerRadius="70%">
             <PolarGrid stroke={theme.palette.divider} />
             <PolarAngleAxis dataKey="label" tick={{ fontSize: 11, fill: theme.palette.text.primary }} />
-            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 9, fill: theme.palette.text.secondary }} />
+            <PolarRadiusAxis angle={30} domain={[0, maxValue]} tick={{ fontSize: 9, fill: theme.palette.text.secondary }} />
             <Tooltip content={<CustomTooltip />} />
             <Radar
               name="شخصیت"
