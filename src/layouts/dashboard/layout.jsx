@@ -2,21 +2,19 @@
 
 import { merge } from 'es-toolkit';
 import { useBoolean } from 'minimal-shared/hooks';
+import { useQueryClient } from '@tanstack/react-query';
 
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
-import { useTheme } from '@mui/material/styles';
-import { iconButtonClasses } from '@mui/material/IconButton';
-import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { useQueryClient } from '@tanstack/react-query';
-
-import { Iconify } from 'src/components/iconify';
+import { useTheme } from '@mui/material/styles';
+import IconButton, { iconButtonClasses } from '@mui/material/IconButton';
 
 import { _contacts, _notifications } from 'src/_mock';
 import { useNetworkContext } from 'src/contexts/network-context';
 
 import { Logo } from 'src/components/logo';
+import { Iconify } from 'src/components/iconify';
 import { useSettingsContext } from 'src/components/settings';
 
 import { useMockedUser } from 'src/auth/hooks';
