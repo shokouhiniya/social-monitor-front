@@ -197,6 +197,9 @@ export function PagesListView() {
     return order === 'asc' ? aVal - bVal : bVal - aVal;
   });
 
+  const FETCH_CONCURRENCY = 10; // تعداد بارگیری موازی (API سبک‌تر)
+  const PROCESS_CONCURRENCY = 5; // تعداد تحلیل موازی (LLM سنگین‌تر)
+
   const runBatchFetch = async (targetRows) => {
     setBatchRunning(true);
     setBatchType('fetch');
@@ -204,17 +207,24 @@ export function PagesListView() {
     setBatchCancelled(false);
     setBatchProgress({ current: 0, total: targetRows.length, currentPage: '', currentPageId: null });
     const results = { success: [], failed: [], skipped: [] };
+    let completed = 0;
 
-    for (let i = 0; i < targetRows.length; i++) {
+    for (let i = 0; i < targetRows.length; i += FETCH_CONCURRENCY) {
       if (cancelRef.current) { results.skipped.push(...targetRows.slice(i).map((r) => r.name)); break; }
-      const row = targetRows[i];
-      setBatchProgress({ current: i + 1, total: targetRows.length, currentPage: row.name, currentPageId: row.id });
-      try {
-        await fetchMutation.mutateAsync(row.id);
-        results.success.push(row.name);
-      } catch (err) {
-        results.failed.push({ name: row.name, error: err.message || 'خطا' });
+      const chunk = targetRows.slice(i, i + FETCH_CONCURRENCY);
+      setBatchProgress({ current: completed + 1, total: targetRows.length, currentPage: chunk.map(r => r.name).join('، '), currentPageId: chunk[0].id });
+
+      const settled = await Promise.allSettled(
+        chunk.map(row => fetchMutation.mutateAsync(row.id).then(() => ({ name: row.name, ok: true })).catch(err => ({ name: row.name, ok: false, error: err.message || 'خطا' })))
+      );
+
+      for (const res of settled) {
+        const val = res.status === 'fulfilled' ? res.value : { name: '?', ok: false, error: 'unknown' };
+        if (val.ok) results.success.push(val.name);
+        else results.failed.push({ name: val.name, error: val.error });
       }
+      completed += chunk.length;
+      setBatchProgress({ current: completed, total: targetRows.length, currentPage: '', currentPageId: null });
     }
 
     setBatchRunning(false);
@@ -232,18 +242,29 @@ export function PagesListView() {
     setBatchCancelled(false);
     setBatchProgress({ current: 0, total: targetRows.length, currentPage: '', currentPageId: null });
     const results = { success: [], skipped: [], failed: [] };
+    let completed = 0;
 
-    for (let i = 0; i < targetRows.length; i++) {
+    for (let i = 0; i < targetRows.length; i += PROCESS_CONCURRENCY) {
       if (cancelRef.current) { results.skipped.push(...targetRows.slice(i).map((r) => r.name)); break; }
-      const row = targetRows[i];
-      setBatchProgress({ current: i + 1, total: targetRows.length, currentPage: row.name, currentPageId: row.id });
-      try {
-        const result = await processMutation.mutateAsync({ id: row.id, timeRange: '1w', services, force });
-        if (result?.status === 'skipped') { results.skipped.push(row.name); }
-        else { results.success.push(row.name); }
-      } catch (err) {
-        results.failed.push({ name: row.name, error: err.message || 'خطا' });
+      const chunk = targetRows.slice(i, i + PROCESS_CONCURRENCY);
+      setBatchProgress({ current: completed + 1, total: targetRows.length, currentPage: chunk.map(r => r.name).join('، '), currentPageId: chunk[0].id });
+
+      const settled = await Promise.allSettled(
+        chunk.map(row =>
+          processMutation.mutateAsync({ id: row.id, timeRange: '1w', services, force })
+            .then(result => ({ name: row.name, ok: true, skipped: result?.status === 'skipped' }))
+            .catch(err => ({ name: row.name, ok: false, error: err.message || 'خطا' }))
+        )
+      );
+
+      for (const res of settled) {
+        const val = res.status === 'fulfilled' ? res.value : { name: '?', ok: false, error: 'unknown' };
+        if (!val.ok) results.failed.push({ name: val.name, error: val.error });
+        else if (val.skipped) results.skipped.push(val.name);
+        else results.success.push(val.name);
       }
+      completed += chunk.length;
+      setBatchProgress({ current: completed, total: targetRows.length, currentPage: '', currentPageId: null });
     }
 
     setBatchRunning(false);
