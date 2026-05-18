@@ -95,6 +95,7 @@ export const endpoints = {
     detail: (id) => `/pages/${id}`,
     related: (id) => `/pages/${id}/related`,
     progress: (id) => `/pages/${id}/progress`,
+    batchStatus: '/pages/batch-status',
     create: '/pages',
     bulk: '/pages/bulk',
     fetch: (id) => `/pages/${id}/fetch`,

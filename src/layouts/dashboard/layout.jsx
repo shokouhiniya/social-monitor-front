@@ -7,6 +7,11 @@ import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
 import { useTheme } from '@mui/material/styles';
 import { iconButtonClasses } from '@mui/material/IconButton';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import { useQueryClient } from '@tanstack/react-query';
+
+import { Iconify } from 'src/components/iconify';
 
 import { _contacts, _notifications } from 'src/_mock';
 import { useNetworkContext } from 'src/contexts/network-context';
@@ -44,6 +49,8 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
   const { user } = useMockedUser();
 
   const settings = useSettingsContext();
+
+  const queryClient = useQueryClient();
 
   const navVars = dashboardNavColorVars(theme, settings.state.navColor, settings.state.navLayout);
 
@@ -128,6 +135,16 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
       ),
       rightArea: (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0, sm: 0.75 } }}>
+          {/** @slot Refresh button */}
+          <Tooltip title="بروزرسانی صفحه">
+            <IconButton
+              onClick={() => queryClient.invalidateQueries()}
+              sx={{ color: 'text.secondary' }}
+            >
+              <Iconify icon="solar:refresh-bold" width={22} />
+            </IconButton>
+          </Tooltip>
+
           {/** @slot Searchbar */}
           {UI_CONFIG.searchbar && <Searchbar data={navData} />}
 

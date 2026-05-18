@@ -34,6 +34,10 @@ import LinearProgress from '@mui/material/LinearProgress';
 import TablePagination from '@mui/material/TablePagination';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import CircularProgress from '@mui/material/CircularProgress';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+
+import { useQueryClient } from '@tanstack/react-query';
 
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
@@ -168,9 +172,13 @@ export function PagesListView() {
   const [batchRunning, setBatchRunning] = useState(false); // true when any batch op is running
   const [batchType, setBatchType] = useState(''); // 'fetch' or 'process'
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, currentPage: '', currentPageId: null });
+  const [batchLiveStats, setBatchLiveStats] = useState({ success: 0, failed: 0, skipped: 0 });
+  const [batchStartTime, setBatchStartTime] = useState(null);
   const [batchResults, setBatchResults] = useState(null);
   const [batchCancelled, setBatchCancelled] = useState(false);
+  const [batchToast, setBatchToast] = useState({ open: false, message: '', severity: 'success' });
   const cancelRef = useRef(false);
+  const queryClient = useQueryClient();
 
   // Process options dialog
   const [processDialogOpen, setProcessDialogOpen] = useState(false);
@@ -197,15 +205,17 @@ export function PagesListView() {
     return order === 'asc' ? aVal - bVal : bVal - aVal;
   });
 
-  const FETCH_CONCURRENCY = 10; // تعداد بارگیری موازی (API سبک‌تر)
-  const PROCESS_CONCURRENCY = 5; // تعداد تحلیل موازی (LLM سنگین‌تر)
+  const FETCH_CONCURRENCY = 20; // تعداد بارگیری موازی
+  const PROCESS_CONCURRENCY = 20; // تعداد تحلیل موازی
 
   const runBatchFetch = async (targetRows) => {
     setBatchRunning(true);
     setBatchType('fetch');
     cancelRef.current = false;
     setBatchCancelled(false);
+    setBatchStartTime(Date.now());
     setBatchProgress({ current: 0, total: targetRows.length, currentPage: '', currentPageId: null });
+    setBatchLiveStats({ success: 0, failed: 0, skipped: 0 });
     const results = { success: [], failed: [], skipped: [] };
     let completed = 0;
 
@@ -215,21 +225,25 @@ export function PagesListView() {
       setBatchProgress({ current: completed + 1, total: targetRows.length, currentPage: chunk.map(r => r.name).join('، '), currentPageId: chunk[0].id });
 
       const settled = await Promise.allSettled(
-        chunk.map(row => fetchMutation.mutateAsync(row.id).then(() => ({ name: row.name, ok: true })).catch(err => ({ name: row.name, ok: false, error: err.message || 'خطا' })))
+        chunk.map(row => fetchMutation.mutateAsync(row.id).then((res) => ({ name: row.name, ok: true, alreadyRunning: res?.status === 'already_running' })).catch(err => ({ name: row.name, ok: false, error: err.message || 'خطا' })))
       );
 
       for (const res of settled) {
         const val = res.status === 'fulfilled' ? res.value : { name: '?', ok: false, error: 'unknown' };
-        if (val.ok) results.success.push(val.name);
-        else results.failed.push({ name: val.name, error: val.error });
+        if (!val.ok) results.failed.push({ name: val.name, error: val.error });
+        else if (val.alreadyRunning) results.skipped.push(val.name);
+        else results.success.push(val.name);
       }
       completed += chunk.length;
       setBatchProgress({ current: completed, total: targetRows.length, currentPage: '', currentPageId: null });
+      setBatchLiveStats({ success: results.success.length, failed: results.failed.length, skipped: results.skipped.length });
     }
 
     setBatchRunning(false);
     setBatchProgress({ current: 0, total: 0, currentPage: '', currentPageId: null });
     setBatchResults({ type: 'fetch', ...results });
+    queryClient.invalidateQueries();
+    setBatchToast({ open: true, message: `بارگیری تمام شد: ${results.success.length} موفق، ${results.failed.length} خطا`, severity: results.failed.length > 0 ? 'warning' : 'success' });
   };
 
   const runBatchProcess = async (targetRows) => {
@@ -240,7 +254,9 @@ export function PagesListView() {
     setBatchType('process');
     cancelRef.current = false;
     setBatchCancelled(false);
+    setBatchStartTime(Date.now());
     setBatchProgress({ current: 0, total: targetRows.length, currentPage: '', currentPageId: null });
+    setBatchLiveStats({ success: 0, failed: 0, skipped: 0 });
     const results = { success: [], skipped: [], failed: [] };
     let completed = 0;
 
@@ -252,7 +268,7 @@ export function PagesListView() {
       const settled = await Promise.allSettled(
         chunk.map(row =>
           processMutation.mutateAsync({ id: row.id, timeRange: '1w', services, force })
-            .then(result => ({ name: row.name, ok: true, skipped: result?.status === 'skipped' }))
+            .then(result => ({ name: row.name, ok: true, skipped: result?.status === 'skipped' || result?.status === 'already_running' }))
             .catch(err => ({ name: row.name, ok: false, error: err.message || 'خطا' }))
         )
       );
@@ -265,11 +281,14 @@ export function PagesListView() {
       }
       completed += chunk.length;
       setBatchProgress({ current: completed, total: targetRows.length, currentPage: '', currentPageId: null });
+      setBatchLiveStats({ success: results.success.length, failed: results.failed.length, skipped: results.skipped.length });
     }
 
     setBatchRunning(false);
     setBatchProgress({ current: 0, total: 0, currentPage: '', currentPageId: null });
     setBatchResults({ type: 'process', ...results });
+    queryClient.invalidateQueries();
+    setBatchToast({ open: true, message: `تحلیل تمام شد: ${results.success.length} موفق، ${results.failed.length} خطا`, severity: results.failed.length > 0 ? 'warning' : 'success' });
   };
 
   const handleFetchAll = () => runBatchFetch(allPageRows);
@@ -446,13 +465,32 @@ export function PagesListView() {
               <Box sx={{ flex: 1 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {batchType === 'fetch' ? 'بارگیری' : 'تحلیل'}: {batchProgress.currentPage} ({batchProgress.current}/{batchProgress.total})
+                    {batchType === 'fetch' ? 'بارگیری' : 'تحلیل'}: {batchProgress.current}/{batchProgress.total}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {batchProgress.total > 0 ? Math.round((batchProgress.current / batchProgress.total) * 100) : 0}%
-                  </Typography>
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Chip size="small" label={`✅ ${batchLiveStats.success}`} color="success" variant="outlined" sx={{ fontSize: 11 }} />
+                    {batchLiveStats.failed > 0 && <Chip size="small" label={`❌ ${batchLiveStats.failed}`} color="error" variant="outlined" sx={{ fontSize: 11 }} />}
+                    {batchLiveStats.skipped > 0 && <Chip size="small" label={`⏭️ ${batchLiveStats.skipped}`} variant="outlined" sx={{ fontSize: 11 }} />}
+                    <Typography variant="caption" color="text.secondary">
+                      {batchProgress.current > 0 && batchStartTime ? (() => {
+                        const elapsed = (Date.now() - batchStartTime) / 1000;
+                        const rate = batchProgress.current / elapsed;
+                        const remaining = Math.round((batchProgress.total - batchProgress.current) / rate);
+                        if (remaining < 60) return `~${remaining} ثانیه مانده`;
+                        return `~${Math.round(remaining / 60)} دقیقه مانده`;
+                      })() : ''}
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                      {batchProgress.total > 0 ? Math.round((batchProgress.current / batchProgress.total) * 100) : 0}%
+                    </Typography>
+                  </Stack>
                 </Stack>
                 <LinearProgress variant="determinate" value={batchProgress.total > 0 ? (batchProgress.current / batchProgress.total) * 100 : 0} color={batchType === 'fetch' ? 'warning' : 'secondary'} sx={{ mt: 0.5, height: 6, borderRadius: 1 }} />
+                {batchProgress.currentPage && (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: 10 }}>
+                    در حال پردازش: {batchProgress.currentPage.length > 80 ? `${batchProgress.currentPage.slice(0, 80)}...` : batchProgress.currentPage}
+                  </Typography>
+                )}
               </Box>
               <Button size="small" variant="outlined" color="error" onClick={handleCancelBatch} disabled={batchCancelled}>
                 {batchCancelled ? 'توقف...' : 'لغو'}
@@ -944,6 +982,18 @@ export function PagesListView() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Batch Toast Notification */}
+      <Snackbar
+        open={batchToast.open}
+        autoHideDuration={6000}
+        onClose={() => setBatchToast({ ...batchToast, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setBatchToast({ ...batchToast, open: false })} severity={batchToast.severity} variant="filled" sx={{ width: '100%' }}>
+          {batchToast.message}
+        </Alert>
+      </Snackbar>
     </DashboardContent>
   );
 }
