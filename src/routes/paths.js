@@ -34,6 +34,7 @@ export const paths = {
       alerts: `${ROOTS.DASHBOARD}/mynetwork/alerts`,
       fieldReports: `${ROOTS.DASHBOARD}/mynetwork/field-reports`,
       settings: `${ROOTS.DASHBOARD}/mynetwork/settings`,
+      refresh: `${ROOTS.DASHBOARD}/mynetwork/refresh`,
       guide: `${ROOTS.DASHBOARD}/mynetwork/guide`,
     },
     // Keep instagram as alias for backward compatibility
@@ -52,6 +53,7 @@ export const paths = {
       alerts: `${ROOTS.DASHBOARD}/mynetwork/alerts`,
       fieldReports: `${ROOTS.DASHBOARD}/mynetwork/field-reports`,
       settings: `${ROOTS.DASHBOARD}/mynetwork/settings`,
+      refresh: `${ROOTS.DASHBOARD}/mynetwork/refresh`,
       guide: `${ROOTS.DASHBOARD}/mynetwork/guide`,
     },
     // Telegram

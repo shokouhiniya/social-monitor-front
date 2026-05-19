@@ -100,6 +100,7 @@ export const endpoints = {
     bulk: '/pages/bulk',
     fetch: (id) => `/pages/${id}/fetch`,
     process: (id) => `/pages/${id}/process`,
+    narrative: (id) => `/pages/${id}/narrative`,
     export: (id) => `/pages/${id}/export`,
     update: (id) => `/pages/${id}`,
     delete: (id) => `/pages/${id}`,

@@ -16,6 +16,7 @@ const ICONS = {
   blog: icon('ic-blog'),
   lock: icon('ic-lock'),
   params: icon('ic-params'),
+  kanban: icon('ic-kanban'),
 };
 
 // ----------------------------------------------------------------------
@@ -42,6 +43,7 @@ export const instagramNavData = [
   {
     subheader: 'سیستم',
     items: [
+      { title: 'بروزرسانی', path: paths.dashboard.mynetwork.refresh, icon: ICONS.kanban },
       { title: 'تنظیمات', path: paths.dashboard.mynetwork.settings, icon: ICONS.params },
       { title: 'راهنمای سامانه', path: paths.dashboard.mynetwork.guide, icon: ICONS.file },
     ],
