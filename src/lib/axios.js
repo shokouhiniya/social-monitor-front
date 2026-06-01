@@ -2,6 +2,8 @@ import axios from 'axios';
 
 import { CONFIG } from 'src/global-config';
 
+import { extractApiError } from './envelope';
+
 // ----------------------------------------------------------------------
 
 const axiosInstance = axios.create({
@@ -58,12 +60,32 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error?.response?.status;
-    const message = error?.response?.data?.message || error?.message || 'Something went wrong!';
+    const body = error?.response?.data;
+
+    // استخراج خطای نرمال‌شده از envelope V2 (با fallback به legacy / HTTP status).
+    const apiError = extractApiError(error);
+
+    // پیام Error را برای حفظ سازگاری عقب‌رو نگه می‌داریم:
+    // ترتیب اولویت → پیام envelope خطای V2، سپس پیام legacy (`data.message`)،
+    // سپس پیام axios. callerهای فعلی که `err.message` را می‌خوانند همچنان کار می‌کنند.
+    const serverMessage =
+      body?.error?.message || body?.message || error?.message || 'Something went wrong!';
+
     // Don't log 404 — many queries are conditional and 404 is expected behavior
     if (status !== 404) {
-      console.error('Axios error:', message);
+      console.error('Axios error:', apiError.code, serverMessage);
     }
-    return Promise.reject(new Error(message));
+
+    // Error غنی‌شده: پیام خام سرور حفظ می‌شود ولی فیلدهای V2 الصاق می‌شوند تا
+    // لایهٔ UI بتواند پیام فارسی مبتنی بر `code` و قابلیت retry را استفاده کند.
+    const enriched = new Error(serverMessage);
+    enriched.code = apiError.code;
+    enriched.status = apiError.status;
+    enriched.details = apiError.details;
+    enriched.retryable = apiError.retryable;
+    enriched.uiMessage = apiError.message; // پیام فارسی کاربرپسند
+    enriched.apiError = apiError;
+    return Promise.reject(enriched);
   }
 );
 
@@ -201,5 +223,61 @@ export const endpoints = {
     removePages: (id) => `/clusters/${id}/pages`,
     setRepresentatives: (id) => `/clusters/${id}/representatives`,
     togglePageRepresentative: (id, pageId) => `/clusters/${id}/pages/${pageId}/representative`,
+  },
+  // --------------------------------------------------------------------
+  // V2 endpoints (design §7.2). مسیرهای legacy بالا در دورهٔ گذار حفظ می‌شوند؛
+  // این‌ها مسیرهای ماژولار جدید هستند که envelope/pagination استاندارد می‌دهند.
+  // --------------------------------------------------------------------
+  sources: {
+    list: '/sources',
+    detail: (id) => `/sources/${id}`,
+    analysisHistory: (id) => `/sources/${id}/analysis-history`,
+    create: '/sources',
+    bulk: '/sources/bulk',
+    update: (id) => `/sources/${id}`,
+    delete: (id) => `/sources/${id}`,
+    representative: (id) => `/sources/${id}/representative`,
+    cluster: (id) => `/sources/${id}/cluster`,
+    status: (id) => `/sources/${id}/status`,
+    fetch: (id) => `/sources/${id}/fetch`,
+    analyze: (id) => `/sources/${id}/analyze`,
+    insight: (id) => `/sources/${id}/insight`,
+  },
+  content: {
+    list: '/content',
+    feed: '/content/feed',
+    highImpact: '/content/high-impact',
+    detail: (id) => `/content/${id}`,
+    context: (id) => `/content/${id}/context`,
+  },
+  operations: {
+    alerts: {
+      list: '/operations/alerts',
+      detail: (id) => `/operations/alerts/${id}`,
+      create: '/operations/alerts',
+      transition: (id) => `/operations/alerts/${id}/transition`,
+    },
+    actionPlans: {
+      list: '/operations/action-plans',
+      detail: (id) => `/operations/action-plans/${id}`,
+      create: '/operations/action-plans',
+      transition: (id) => `/operations/action-plans/${id}/transition`,
+    },
+  },
+  jobs: {
+    refresh: '/jobs/refresh',
+    list: '/jobs',
+    detail: (id) => `/jobs/${id}`,
+    cancel: (id) => `/jobs/${id}/cancel`,
+    retryFailed: (id) => `/jobs/${id}/retry-failed`,
+  },
+  prompts: {
+    list: '/prompts',
+    detail: (key) => `/prompts/${key}`,
+    executions: (key) => `/prompts/${key}/executions`,
+    createVersion: (key) => `/prompts/${key}/versions`,
+    activateVersion: (key, versionId) => `/prompts/${key}/versions/${versionId}/activate`,
+    test: (key) => `/prompts/${key}/test`,
+    setActive: (key) => `/prompts/${key}/active`,
   },
 };

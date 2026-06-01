@@ -27,6 +27,7 @@ import { useCreateStrategicAlert } from 'src/api/strategic-alerts';
 import { useFieldReports, useFieldReportStats, useCreateFieldReport } from 'src/api/field-reports';
 
 import { Iconify } from 'src/components/iconify';
+import { ActionStateView } from 'src/components/action-state';
 
 import { StatCard } from '../dashboard/components/stat-card';
 import { ChartCard } from '../dashboard/components/chart-card';
@@ -79,7 +80,7 @@ export function FieldReportsView() {
   const [form, setForm] = useState({ page_id: '', content: '', source_type: 'manual', sentiment: '', reporter_id: 1 });
   const [selectedPage, setSelectedPage] = useState(null);
 
-  const { data: reportsData, isLoading } = useFieldReports({ status: statusFilter || undefined });
+  const { data: reportsData, isLoading, error: reportsError, refetch: refetchReports } = useFieldReports({ status: statusFilter || undefined });
   const { data: stats } = useFieldReportStats();
   const { data: pagesData } = usePages({ page: 1, limit: 100 });
   const { data: blindSpots } = useBlindSpots(6);
@@ -140,6 +141,8 @@ export function FieldReportsView() {
 
           {isLoading ? (
             <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
+          ) : reportsError ? (
+            <ActionStateView loading={false} error={reportsError} onRetry={refetchReports}>{null}</ActionStateView>
           ) : (
             <Stack spacing={2}>
               {reports.map((report) => (

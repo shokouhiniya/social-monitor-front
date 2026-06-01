@@ -2,7 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 
 import axiosInstance, { endpoints } from 'src/lib/axios';
 import { useScopeContext } from 'src/contexts/scope-context';
+import { normalizePage, unwrapEnvelope } from 'src/lib/envelope';
 
+// ----------------------------------------------------------------------
+// هوک‌های محتوا (content feed). پردازش envelope/pagination از طریق helperهای
+// مشترک task 9.2 (Requirement 12.5/12.7). فید با `normalizePage` نرمال می‌شود تا
+// هم `items` (V2) و هم `data` (legacy) را داشته باشد.
 // ----------------------------------------------------------------------
 
 function useScopeKey() {
@@ -15,7 +20,7 @@ export function usePosts(params) {
     queryKey: ['posts', params],
     queryFn: async () => {
       const res = await axiosInstance.get(endpoints.posts.list, { params });
-      return res.data?.data;
+      return normalizePage(res.data);
     },
   });
 }
@@ -26,7 +31,7 @@ export function useTrendingKeywords(days = 7) {
     queryKey: ['posts', 'trending-keywords', days, ...scopeKey],
     queryFn: async () => {
       const res = await axiosInstance.get(endpoints.posts.trendingKeywords, { params: { days } });
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
   });
 }
@@ -39,7 +44,7 @@ export function useSentimentTimeline(pageId, days = 30) {
       const res = await axiosInstance.get(endpoints.posts.sentimentTimeline, {
         params: { page_id: pageId, days },
       });
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
   });
 }
@@ -50,7 +55,7 @@ export function useTopicGravity(days = 7) {
     queryKey: ['posts', 'topic-gravity', days, ...scopeKey],
     queryFn: async () => {
       const res = await axiosInstance.get(endpoints.posts.topicGravity, { params: { days } });
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
   });
 }
@@ -61,7 +66,7 @@ export function useReshareTree(days = 7) {
     queryKey: ['posts', 'reshare-tree', days, ...scopeKey],
     queryFn: async () => {
       const res = await axiosInstance.get(endpoints.posts.reshareTree, { params: { days } });
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
   });
 }
@@ -71,7 +76,7 @@ export function usePostsFeed(params) {
     queryKey: ['posts', 'feed', params],
     queryFn: async () => {
       const res = await axiosInstance.get(endpoints.posts.feed, { params });
-      return res.data?.data;
+      return normalizePage(res.data);
     },
   });
 }
@@ -81,7 +86,7 @@ export function useTopicClusters() {
     queryKey: ['posts', 'topic-clusters'],
     queryFn: async () => {
       const res = await axiosInstance.get(endpoints.posts.topicClusters);
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
   });
 }
@@ -91,7 +96,7 @@ export function usePulseByPage(days = 7) {
     queryKey: ['posts', 'pulse-by-page', days],
     queryFn: async () => {
       const res = await axiosInstance.get(endpoints.posts.pulseByPage, { params: { days } });
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
   });
 }

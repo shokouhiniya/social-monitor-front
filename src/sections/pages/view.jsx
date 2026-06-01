@@ -48,6 +48,7 @@ import { DashboardContent } from 'src/layouts/dashboard';
 import { usePages, useCreatePage, useUpdatePage, useDeletePage, usePageProgress, useFetchPageData, useBulkCreatePages, useProcessPageData } from 'src/api/pages';
 
 import { Iconify } from 'src/components/iconify';
+import { ActionStateView } from 'src/components/action-state';
 
 import { PageInfoBox } from '../dashboard/components/page-info-box';
 import { topicalLabel, TOPICAL_CLUSTERS, IDENTITY_CATEGORIES } from './constants';
@@ -142,7 +143,7 @@ export function PagesListView() {
     segment: segment !== 'all' ? segment : undefined,
   };
 
-  const { data, isLoading } = usePages(params);
+  const { data, isLoading, error, refetch } = usePages(params);
   const { data: pulseData } = usePulseByPage(7);
   const createMutation = useCreatePage();
   const updateMutation = useUpdatePage();
@@ -541,9 +542,19 @@ export function PagesListView() {
           />
         </Box>
 
-        {isLoading ? (
-          <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>
-        ) : (
+        <ActionStateView
+          loading={isLoading}
+          error={error}
+          onRetry={refetch}
+          isEmpty={rows.length === 0}
+          emptyProps={{
+            icon: 'solar:users-group-rounded-bold-duotone',
+            title: 'هیچ منبعی یافت نشد',
+            description: 'برای شروع پایش، یک منبع جدید اضافه کنید یا فیلترها را تغییر دهید.',
+            actionLabel: 'افزودن پیج',
+            onAction: () => setOpenAdd(true),
+          }}
+        >
           <>
             <TableContainer>
               <Table size="small">
@@ -665,7 +676,7 @@ export function PagesListView() {
               labelRowsPerPage="تعداد:"
             />
           </>
-        )}
+        </ActionStateView>
       </Card>
 
       {/* Batch Action Bar */}

@@ -15,6 +15,7 @@ import { useScopeContext } from 'src/contexts/scope-context';
 import { useActivityIndex, useMacroDashboard, useAlignmentIndex, useNarrativeHealth } from 'src/api/analytics';
 
 import { Iconify } from 'src/components/iconify';
+import { ActionStateView } from 'src/components/action-state';
 
 import { StatCard } from './components/stat-card';
 import { RefreshBar } from './components/refresh-bar';
@@ -160,7 +161,7 @@ function ScopeBanner() {
 
 export function DashboardView() {
   const { scope } = useScopeContext();
-  const { data: macro, isLoading: macroLoading } = useMacroDashboard();
+  const { data: macro, isLoading: macroLoading, error: macroError, refetch: refetchMacro } = useMacroDashboard();
   const { data: alignment } = useAlignmentIndex();
   const { data: narrativeHealth } = useNarrativeHealth();
   const { data: activityIdx } = useActivityIndex();
@@ -186,6 +187,11 @@ export function DashboardView() {
       {/* Refresh Bar */}
       <RefreshBar />
 
+      {macroError && !macro ? (
+        <ActionStateView loading={false} error={macroError} onRetry={refetchMacro}>
+          {null}
+        </ActionStateView>
+      ) : (
       <Grid container spacing={3} sx={{ mt: 1 }}>
         {/* KPI Cards (4) */}
         <Grid size={{ xs: 6, md: 3 }}>
@@ -289,6 +295,7 @@ export function DashboardView() {
           </CollapsibleSection>
         </Grid>
       </Grid>
+      )}
     </DashboardContent>
   );
 }

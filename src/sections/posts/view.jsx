@@ -37,6 +37,7 @@ import { DashboardContent } from 'src/layouts/dashboard';
 import { usePostsFeed, useTopicClusters } from 'src/api/posts';
 
 import { Iconify } from 'src/components/iconify';
+import { ActionStateView } from 'src/components/action-state';
 
 import { PageInfoBox } from '../dashboard/components/page-info-box';
 
@@ -133,7 +134,7 @@ export function PostsListView() {
   const MAX_LOAD_MORE = 5; // after 5 clicks, switch to pagination
   const usePagination = loadMoreCount >= MAX_LOAD_MORE;
 
-  const { data: feedData, isLoading: feedLoading } = usePostsFeed({
+  const { data: feedData, isLoading: feedLoading, error: feedError, refetch: refetchFeed } = usePostsFeed({
     search: search || undefined,
     sentiment_label: sentimentFilter || undefined,
     post_type: typeFilter || undefined,
@@ -424,6 +425,20 @@ export function PostsListView() {
       {viewMode === 'feed' ? (
         feedLoading && allPosts.length === 0 ? (
           <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
+        ) : feedError && allPosts.length === 0 ? (
+          <ActionStateView loading={false} error={feedError} onRetry={refetchFeed}>{null}</ActionStateView>
+        ) : allPosts.length === 0 ? (
+          <ActionStateView
+            loading={false}
+            isEmpty
+            emptyProps={{
+              icon: 'solar:gallery-bold-duotone',
+              title: 'محتوایی برای نمایش نیست',
+              description: 'با تغییر فیلترها یا اجرای واکشی منابع، محتوای جدید را اینجا ببینید.',
+            }}
+          >
+            {null}
+          </ActionStateView>
         ) : (
           <>
             <Grid container spacing={2}>

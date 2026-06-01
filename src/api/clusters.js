@@ -1,7 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import axiosInstance, { endpoints } from 'src/lib/axios';
+import { extractItems, unwrapEnvelope } from 'src/lib/envelope';
 
+// ----------------------------------------------------------------------
+// هوک‌های خوشه‌ها. لیست‌ها با `extractItems` به آرایه نرمال می‌شوند (سازگار با
+// legacy و V2 — Requirement 12.5/12.7)؛ جزئیات و mutation ها با `unwrapEnvelope`
+// پردازش می‌شوند (Requirement 12.1).
 // ----------------------------------------------------------------------
 
 export function useClusters() {
@@ -9,7 +14,7 @@ export function useClusters() {
     queryKey: ['clusters'],
     queryFn: async () => {
       const res = await axiosInstance.get(endpoints.clusters.list);
-      return res.data?.data;
+      return extractItems(res.data);
     },
   });
 }
@@ -20,10 +25,10 @@ export function useCluster(id) {
     queryFn: async () => {
       try {
         const res = await axiosInstance.get(endpoints.clusters.detail(id));
-        return res.data?.data;
+        return unwrapEnvelope(res.data);
       } catch (err) {
         // Silent 404 — cluster might have been deleted
-        if (err?.message?.includes('not found') || err?.message?.includes('404')) {
+        if (err?.code === 'NOT_FOUND' || err?.message?.includes('not found') || err?.message?.includes('404')) {
           return null;
         }
         throw err;
@@ -39,7 +44,7 @@ export function useClusterPages(id) {
     queryKey: ['clusters', id, 'pages'],
     queryFn: async () => {
       const res = await axiosInstance.get(endpoints.clusters.pages(id));
-      return res.data?.data;
+      return extractItems(res.data);
     },
     enabled: !!id,
   });
@@ -50,7 +55,7 @@ export function useCreateCluster() {
   return useMutation({
     mutationFn: async (data) => {
       const res = await axiosInstance.post(endpoints.clusters.create, data);
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clusters'] }),
   });
@@ -61,7 +66,7 @@ export function useUpdateCluster() {
   return useMutation({
     mutationFn: async ({ id, data }) => {
       const res = await axiosInstance.put(endpoints.clusters.update(id), data);
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['clusters'] });
@@ -75,7 +80,7 @@ export function useDeleteCluster() {
   return useMutation({
     mutationFn: async (id) => {
       const res = await axiosInstance.delete(endpoints.clusters.delete(id));
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clusters'] });
@@ -91,7 +96,7 @@ export function useAssignPagesToCluster() {
       const res = await axiosInstance.post(endpoints.clusters.assignPages(id), {
         page_ids: pageIds,
       });
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['clusters'] });
@@ -108,7 +113,7 @@ export function useRemovePagesFromCluster() {
       const res = await axiosInstance.delete(endpoints.clusters.removePages(id), {
         data: { page_ids: pageIds },
       });
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['clusters'] });
@@ -125,7 +130,7 @@ export function useSetClusterRepresentatives() {
       const res = await axiosInstance.put(endpoints.clusters.setRepresentatives(id), {
         page_ids: pageIds,
       });
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['clusters'] });
@@ -143,7 +148,7 @@ export function useTogglePageRepresentative() {
         endpoints.clusters.togglePageRepresentative(clusterId, pageId),
         { is_representative: !!isRepresentative }
       );
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['clusters'] });

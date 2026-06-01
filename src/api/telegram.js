@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import axiosInstance, { endpoints } from 'src/lib/axios';
+import { normalizePage, unwrapEnvelope } from 'src/lib/envelope';
 
 // Telegram endpoints
 const telegramEndpoints = {
@@ -20,7 +21,7 @@ export function useSyncTelegramChannel() {
         page_category: pageCategory,
         client_keywords: clientKeywords,
       });
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pages'] });
@@ -35,7 +36,7 @@ export function useMonitorTelegramChannel() {
   return useMutation({
     mutationFn: async (pageId) => {
       const res = await axiosInstance.post(telegramEndpoints.monitor(pageId));
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pages'] });
@@ -49,7 +50,7 @@ export function useFetchMoreTelegramMessages() {
   return useMutation({
     mutationFn: async ({ pageId, count }) => {
       const res = await axiosInstance.post(telegramEndpoints.fetchMore(pageId), { count });
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pages'] });
@@ -66,7 +67,7 @@ export function useTelegramChannels(params = {}) {
       const res = await axiosInstance.get(endpoints.pages.list, {
         params: { ...params, platform: 'telegram' },
       });
-      return res.data?.data;
+      return normalizePage(res.data);
     },
   });
 }

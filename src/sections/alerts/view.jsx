@@ -35,6 +35,7 @@ import { useCreateActionPlanFromAlert } from 'src/api/action-plans';
 import { useAlertStats, useGroupedAlerts, useUpdateAlertStatus, useCreateStrategicAlert } from 'src/api/strategic-alerts';
 
 import { Iconify } from 'src/components/iconify';
+import { ActionStateView } from 'src/components/action-state';
 
 import { StatCard } from '../dashboard/components/stat-card';
 import { PageInfoBox } from '../dashboard/components/page-info-box';
@@ -76,7 +77,7 @@ export function AlertsView() {
   const [form, setForm] = useState({ title: '', message: '', priority: 'medium', category: '', assigned_to: '', evidence_url: '' });
 
   const { data: stats, isLoading: statsLoading } = useAlertStats();
-  const { data: grouped, isLoading: groupedLoading } = useGroupedAlerts(showArchived ? 'archived' : undefined);
+  const { data: grouped, isLoading: groupedLoading, error: groupedError, refetch: refetchGrouped } = useGroupedAlerts(showArchived ? 'archived' : undefined);
   const createMutation = useCreateStrategicAlert();
   const updateStatusMutation = useUpdateAlertStatus();
   const generateMutation = useGenerateAlerts();
@@ -154,6 +155,8 @@ export function AlertsView() {
       {/* Grouped Alert Feed */}
       {groupedLoading ? (
         <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
+      ) : groupedError ? (
+        <ActionStateView loading={false} error={groupedError} onRetry={refetchGrouped}>{null}</ActionStateView>
       ) : filteredGroups.length === 0 ? (
         <Card sx={{ p: 5, textAlign: 'center' }}>
           <Iconify icon={showArchived ? 'solar:archive-bold-duotone' : 'solar:check-circle-bold-duotone'} width={48} sx={{ color: showArchived ? 'text.disabled' : 'success.main', mb: 2 }} />
@@ -753,4 +756,4 @@ function CreateOperationFromAlertDialog({ open, onClose, alert }) {
     </Dialog>
   );
 }
-
+

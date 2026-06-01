@@ -1,7 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import axiosInstance, { endpoints } from 'src/lib/axios';
+import { normalizePage, unwrapEnvelope } from 'src/lib/envelope';
 
+// ----------------------------------------------------------------------
+// همهٔ هوک‌ها از طریق helperهای envelope (task 9.2) پاسخ را پردازش می‌کنند تا هم با
+// envelope استاندارد V2 (`{ meta, data }`) و هم با پاسخ خام legacy سازگار بمانند
+// (Requirement 12.5/12.7). فهرست‌ها با `normalizePage` به شکلی نرمال می‌شوند که
+// هم `items`/`pageSize` (V2) و هم `data`/`limit` (legacy) را داشته باشد.
 // ----------------------------------------------------------------------
 
 export function usePages(params) {
@@ -9,7 +15,7 @@ export function usePages(params) {
     queryKey: ['pages', params],
     queryFn: async () => {
       const res = await axiosInstance.get(endpoints.pages.list, { params });
-      return res.data?.data;
+      return normalizePage(res.data);
     },
   });
 }
@@ -19,7 +25,7 @@ export function usePage(id) {
     queryKey: ['pages', id],
     queryFn: async () => {
       const res = await axiosInstance.get(endpoints.pages.detail(id));
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     enabled: !!id,
   });
@@ -30,7 +36,7 @@ export function useCreatePage() {
   return useMutation({
     mutationFn: async (data) => {
       const res = await axiosInstance.post(endpoints.pages.create, data);
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pages'] }),
   });
@@ -41,7 +47,7 @@ export function useUpdatePage() {
   return useMutation({
     mutationFn: async ({ id, data }) => {
       const res = await axiosInstance.put(endpoints.pages.update(id), data);
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pages'] }),
   });
@@ -52,7 +58,7 @@ export function useDeletePage() {
   return useMutation({
     mutationFn: async (id) => {
       const res = await axiosInstance.delete(endpoints.pages.delete(id));
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pages'] }),
   });
@@ -63,7 +69,7 @@ export function useRelatedPages(id) {
     queryKey: ['pages', id, 'related'],
     queryFn: async () => {
       const res = await axiosInstance.get(endpoints.pages.related(id));
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     enabled: !!id,
   });
@@ -74,7 +80,7 @@ export function useBulkCreatePages() {
   return useMutation({
     mutationFn: async (pages) => {
       const res = await axiosInstance.post(endpoints.pages.bulk, pages);
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pages'] }),
   });
@@ -85,7 +91,7 @@ export function useFetchPageData() {
   return useMutation({
     mutationFn: async (id) => {
       const res = await axiosInstance.post(endpoints.pages.fetch(id));
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pages'] });
@@ -99,7 +105,7 @@ export function useProcessPageData() {
   return useMutation({
     mutationFn: async ({ id, timeRange, services, force }) => {
       const res = await axiosInstance.post(endpoints.pages.process(id), { timeRange, services, force });
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pages'] });
@@ -114,7 +120,7 @@ export function useGenerateNarrative() {
   return useMutation({
     mutationFn: async (id) => {
       const res = await axiosInstance.post(endpoints.pages.narrative(id));
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['pages', id] });
@@ -128,7 +134,7 @@ export function usePageProgress(id, enabled = false) {
     queryKey: ['pages', id, 'progress'],
     queryFn: async () => {
       const res = await axiosInstance.get(`/pages/${id}/progress`);
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
     enabled: !!id && enabled,
     refetchInterval: enabled ? 1000 : false, // Poll every second when enabled
@@ -140,7 +146,7 @@ export function useBlindSpots(limit = 6) {
     queryKey: ['pages', 'blind-spots', limit],
     queryFn: async () => {
       const res = await axiosInstance.get(endpoints.pages.blindSpots, { params: { limit } });
-      return res.data?.data;
+      return unwrapEnvelope(res.data);
     },
   });
 }
