@@ -110,6 +110,29 @@ export function useAttachAccount() {
   });
 }
 
+export function useCreateAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }) => {
+      const res = await axiosInstance.post(endpoints.microMedia.createAccount(id), data);
+      return unwrapEnvelope(res.data);
+    },
+    onSuccess: (_, { id }) =>
+      qc.invalidateQueries({ queryKey: ['micro-media', id, 'accounts'] }),
+  });
+}
+
+export function useDetachAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pageId }) => {
+      const res = await axiosInstance.delete(endpoints.microMedia.detachAccount(pageId));
+      return unwrapEnvelope(res.data);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['micro-media'] }),
+  });
+}
+
 export function useMicroMediaPerformance(id) {
   return useQuery({
     queryKey: ['micro-media', id, 'performance'],

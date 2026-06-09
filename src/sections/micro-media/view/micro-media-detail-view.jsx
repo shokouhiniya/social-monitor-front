@@ -10,9 +10,14 @@ import Grid from '@mui/material/Grid';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
+import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
@@ -23,6 +28,8 @@ import { useScoreIndicators } from 'src/api/media-score';
 import {
   useAddScore,
   useMicroMedia,
+  useCreateAccount,
+  useDetachAccount,
   useSuggestProfile,
   useMicroMediaPosts,
   useMicroMediaScores,
@@ -32,6 +39,7 @@ import {
   useAddMicroMediaInteraction,
 } from 'src/api/micro-media';
 
+import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
 
 import { PageInfoBox } from 'src/sections/dashboard/components/page-info-box';
@@ -141,32 +149,133 @@ function ProfileTab({ media }) {
   );
 }
 
+const PLATFORM_OPTIONS = [
+  { value: 'instagram', label: 'اینستاگرام' },
+  { value: 'telegram', label: 'تلگرام' },
+  { value: 'twitter', label: 'توییتر (X)' },
+  { value: 'youtube', label: 'یوتیوب' },
+  { value: 'whatsapp', label: 'واتساپ' },
+  { value: 'website', label: 'وب‌سایت' },
+  { value: 'other', label: 'سایر' },
+];
+
 function AccountsTab({ id }) {
   const { data: accounts, isLoading } = useMicroMediaAccounts(id);
   const refresh = useRefreshPerformance();
+  const createAccount = useCreateAccount();
+  const detachAccount = useDetachAccount();
+
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ name: '', username: '', platform: 'instagram', profile_url: '', followers_count: '' });
+
+  const setField = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  const handleCreate = async () => {
+    if (!form.username && !form.name) {
+      toast.error('نام یا نام کاربری سکو را وارد کنید');
+      return;
+    }
+    try {
+      await createAccount.mutateAsync({
+        id,
+        data: {
+          name: form.name || undefined,
+          username: form.username || undefined,
+          platform: form.platform || undefined,
+          profile_url: form.profile_url || undefined,
+          followers_count: form.followers_count ? Number(form.followers_count) : undefined,
+        },
+      });
+      toast.success('سکو اضافه شد');
+      setOpen(false);
+      setForm({ name: '', username: '', platform: 'instagram', profile_url: '', followers_count: '' });
+    } catch (err) {
+      toast.error(err?.message || 'افزودن سکو با خطا مواجه شد');
+    }
+  };
+
+  const handleRemove = async (pageId) => {
+    try {
+      await detachAccount.mutateAsync({ pageId });
+      toast.success('سکو حذف شد');
+    } catch (err) {
+      toast.error(err?.message || 'حذف سکو با خطا مواجه شد');
+    }
+  };
+
   if (isLoading) return <CircularProgress />;
+
   return (
     <Card sx={{ p: 3 }}>
-      <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Typography variant="subtitle1">حساب‌های پلتفرمی</Typography>
-        <Button size="small" variant="outlined" onClick={() => refresh.mutate(id)} disabled={refresh.isPending}>
-          بروزرسانی عملکرد
-        </Button>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Typography variant="subtitle1">سکوها (حساب‌های پلتفرمی)</Typography>
+        <Stack direction="row" spacing={1}>
+          <Button size="small" variant="outlined" onClick={() => refresh.mutate(id)} disabled={refresh.isPending}>
+            بروزرسانی عملکرد
+          </Button>
+          <Button size="small" variant="contained" startIcon={<Iconify icon="mingcute:add-line" />} onClick={() => setOpen(true)}>
+            افزودن سکو
+          </Button>
+        </Stack>
       </Stack>
+
       {(accounts ?? []).length === 0 ? (
-        <Typography color="text.secondary">حسابی متصل نیست</Typography>
+        <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
+          <Iconify icon="solar:smartphone-bold-duotone" width={40} />
+          <Typography sx={{ mt: 1 }}>هنوز سکویی اضافه نشده است. با دکمهٔ «افزودن سکو» شروع کنید.</Typography>
+        </Box>
       ) : (
         <Stack spacing={1}>
           {(accounts ?? []).map((a) => (
-            <Stack key={a.id} direction="row" spacing={2} alignItems="center" sx={{ p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-              <Chip size="small" label={a.platform || '—'} />
-              <Typography sx={{ flex: 1 }}>{a.username || a.name}</Typography>
+            <Stack key={a.id} direction="row" spacing={2} alignItems="center" sx={{ p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+              <Chip size="small" label={PLATFORM_OPTIONS.find((p) => p.value === a.platform)?.label || a.platform || '—'} />
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="subtitle2">{a.username || a.name}</Typography>
+                {a.profile_url && (
+                  <Typography
+                    component="a"
+                    href={a.profile_url}
+                    target="_blank"
+                    rel="noopener"
+                    variant="caption"
+                    color="primary"
+                    sx={{ display: 'block' }}
+                    noWrap
+                  >
+                    {a.profile_url}
+                  </Typography>
+                )}
+              </Box>
               <Typography variant="caption" color="text.secondary">{a.followers_count ?? 0} دنبال‌کننده</Typography>
               {a.is_primary ? <Chip size="small" color="primary" label="اصلی" /> : null}
+              <IconButton size="small" color="error" onClick={() => handleRemove(a.id)} disabled={detachAccount.isPending}>
+                <Iconify icon="solar:trash-bin-trash-bold" />
+              </IconButton>
             </Stack>
           ))}
         </Stack>
       )}
+
+      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>افزودن سکو</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField select label="پلتفرم" value={form.platform} onChange={setField('platform')} fullWidth>
+              {PLATFORM_OPTIONS.map((p) => (
+                <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>
+              ))}
+            </TextField>
+            <TextField label="نام کاربری (آیدی)" value={form.username} onChange={setField('username')} fullWidth placeholder="مثلاً my_channel" />
+            <TextField label="نام نمایشی" value={form.name} onChange={setField('name')} fullWidth helperText="اگر خالی بماند از نام کاربری استفاده می‌شود" />
+            <TextField label="لینک پروفایل" value={form.profile_url} onChange={setField('profile_url')} fullWidth placeholder="https://..." />
+            <TextField label="تعداد دنبال‌کننده" type="number" value={form.followers_count} onChange={setField('followers_count')} fullWidth />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button color="inherit" onClick={() => setOpen(false)}>انصراف</Button>
+          <Button variant="contained" onClick={handleCreate} disabled={createAccount.isPending}>افزودن</Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }

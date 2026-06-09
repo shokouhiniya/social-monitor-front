@@ -310,6 +310,7 @@ export const endpoints = {
     delete: (id) => `/micro-media/${id}`,
     tags: (id) => `/micro-media/${id}/tags`,
     accounts: (id) => `/micro-media/${id}/accounts`,
+    createAccount: (id) => `/micro-media/${id}/accounts/create`,
     detachAccount: (pageId) => `/micro-media/accounts/${pageId}`,
     performance: (id) => `/micro-media/${id}/performance`,
     refreshPerformance: (id) => `/micro-media/${id}/refresh-performance`,
