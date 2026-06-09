@@ -34,9 +34,17 @@ export function isValidToken(accessToken) {
   }
 
   try {
-    // For simple base64 token (not JWT), just check if it exists and is valid base64
-    const decoded = atob(accessToken);
-    return decoded.length > 0;
+    // توکن V2 یک JWT استاندارد است (header.payload.signature). payload را decode
+    // می‌کنیم و در صورت وجود `exp`، انقضا را بررسی می‌کنیم.
+    const decoded = jwtDecode(accessToken);
+    if (!decoded) {
+      return false;
+    }
+    if (typeof decoded.exp === 'number') {
+      return decoded.exp * 1000 > Date.now();
+    }
+    // بدون exp → معتبر در نظر گرفته می‌شود (وجود payload معتبر کافی است).
+    return true;
   } catch (error) {
     console.error('Error during token validation:', error);
     return false;

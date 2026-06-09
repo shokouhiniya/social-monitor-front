@@ -139,14 +139,68 @@ export const operationsRoomNavData = instagramNavData;
 // Default export (used as fallback)
 export const navData = instagramNavData;
 
+// ----------------------------------------------------------------------
+// micromedia-transformation (تصمیم ۷) — ناوبری تجربهٔ اصلی: مدیریت میکرورسانه.
+// فضاهای پلتفرمی (mynetwork/instagram/telegram) حذف و قابلیت‌های قدیمی به
+// زیربخش «پایش محتوا» منتقل شده‌اند.
+// ----------------------------------------------------------------------
+export const managementNavData = [
+  {
+    subheader: 'مدیریت',
+    items: [
+      {
+        title: 'داشبورد کلان',
+        path: paths.dashboard.overview,
+        icon: ICONS.dashboard,
+        allowedRoles: ['super_admin', 'admin', 'operations_manager'],
+      },
+      { title: 'میکرورسانه‌ها', path: paths.dashboard.microMedia.root, icon: ICONS.user },
+      { title: 'هاب‌ها', path: paths.dashboard.hubs.root, icon: ICONS.folder },
+      { title: 'تعاملات', path: paths.dashboard.interactions, icon: ICONS.blog },
+      { title: 'امتیازدهی رسانه', path: paths.dashboard.mediaScore, icon: ICONS.analytics },
+    ],
+  },
+  {
+    subheader: 'عملیات',
+    items: [
+      { title: 'عملیات‌ها', path: paths.dashboard.operations.root, icon: ICONS.kanban },
+      { title: 'تسک‌ها', path: paths.dashboard.tasks.root, icon: ICONS.label },
+    ],
+  },
+  {
+    subheader: 'پایش محتوا',
+    items: [
+      { title: 'منابع (پیج‌ها)', path: paths.dashboard.mynetwork.pages.root, icon: ICONS.user },
+      { title: 'محتوای جمع‌آوری‌شده', path: paths.dashboard.mynetwork.posts, icon: ICONS.blog },
+      { title: 'تحلیل محتوا', path: paths.dashboard.mynetwork.macro, icon: ICONS.analytics },
+      { title: 'هشدارها', path: paths.dashboard.mynetwork.alerts, icon: ICONS.lock },
+      { title: 'مرکز بروزرسانی', path: paths.dashboard.mynetwork.refresh, icon: ICONS.job },
+    ],
+  },
+  {
+    subheader: 'سیستم',
+    items: [
+      {
+        title: 'کاربران و دسترسی‌ها',
+        path: paths.dashboard.users,
+        icon: ICONS.user,
+        allowedRoles: ['super_admin', 'admin', 'operations_manager'],
+      },
+      { title: 'تنظیمات', path: paths.dashboard.mynetwork.settings, icon: ICONS.params },
+      { title: 'راهنمای سامانه', path: paths.dashboard.mynetwork.guide, icon: ICONS.file },
+    ],
+  },
+];
+
 // Get nav data by network
 export function getNavDataByNetwork(network) {
   switch (network) {
     case 'telegram':
       return telegramNavData;
-    case 'mynetwork':
     case 'instagram':
-    default:
       return instagramNavData;
+    case 'management':
+    default:
+      return managementNavData;
   }
 }

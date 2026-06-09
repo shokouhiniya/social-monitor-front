@@ -8,6 +8,7 @@ import ScreenSize from 'src/layouts/screen-size';
 import { I18nProvider, LocalizationProvider } from 'src/locales';
 import { themeConfig, ThemeProvider, primary as primaryColor } from 'src/theme';
 
+import { Snackbar } from 'src/components/snackbar';
 import { ProgressBar } from 'src/components/progress-bar';
 import { MotionLazy } from 'src/components/animate/motion-lazy';
 import { detectSettings } from 'src/components/settings/server';
@@ -80,6 +81,7 @@ export default async function RootLayout({ children }) {
                       <MotionLazy>
                         <ScreenSize>
                           <ProgressBar />
+                          <Snackbar />
                           <SettingsDrawer defaultSettings={defaultSettings} />
                           {children}
                         </ScreenSize>

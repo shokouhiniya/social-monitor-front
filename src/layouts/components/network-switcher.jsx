@@ -23,11 +23,14 @@ export function NetworkSwitcher() {
 
   const handleSwitch = (networkKey) => {
     switchNetwork(networkKey);
-    // Navigate to the dashboard of the selected network
+    // Navigate to the home of the selected space.
     if (networkKey === 'telegram') {
       router.push(paths.dashboard.telegram.root);
-    } else {
+    } else if (networkKey === 'instagram') {
       router.push(paths.dashboard.instagram.root);
+    } else {
+      // management (micromedia-transformation) — تجربهٔ اصلی مدیریت میکرورسانه
+      router.push(paths.dashboard.overview);
     }
   };
 
@@ -112,8 +115,10 @@ export function NetworkSwitcherMini() {
     switchNetwork(next.key);
     if (next.key === 'telegram') {
       router.push(paths.dashboard.telegram.root);
-    } else {
+    } else if (next.key === 'instagram') {
       router.push(paths.dashboard.instagram.root);
+    } else {
+      router.push(paths.dashboard.overview);
     }
   };
 

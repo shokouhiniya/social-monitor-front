@@ -108,8 +108,8 @@ export const fetcher = async (args) => {
 
 export const endpoints = {
   auth: {
-    me: '/auth/me',
-    signIn: '/auth/login',
+    me: '/auth/v2/me',
+    signIn: '/auth/v2/login',
     signUp: '/auth/register',
   },
   pages: {
@@ -279,5 +279,80 @@ export const endpoints = {
     activateVersion: (key, versionId) => `/prompts/${key}/versions/${versionId}/activate`,
     test: (key) => `/prompts/${key}/test`,
     setActive: (key) => `/prompts/${key}/active`,
+  },
+  // --------------------------------------------------------------------
+  // micromedia-transformation — لایهٔ محصول مدیریت میکرورسانه (design §4).
+  // مسیر کمپین‌ها `/campaigns` است (تداخل صفر با `/operations/*` legacy)، ولی در
+  // UI با عنوان «عملیات» نمایش داده می‌شود.
+  // --------------------------------------------------------------------
+  hubs: {
+    list: '/hubs',
+    stats: '/hubs/stats',
+    assignableUsers: '/hubs/assignable-users',
+    detail: (id) => `/hubs/${id}`,
+    create: '/hubs',
+    update: (id) => `/hubs/${id}`,
+    users: (id) => `/hubs/${id}/users`,
+    removeUser: (id, userId) => `/hubs/${id}/users/${userId}`,
+  },
+  users: {
+    list: '/admin/users',
+    create: '/admin/users',
+    update: (id) => `/admin/users/${id}`,
+    password: (id) => `/admin/users/${id}/password`,
+  },
+  microMedia: {
+    list: '/micro-media',
+    create: '/micro-media',
+    bulk: '/micro-media/bulk',
+    detail: (id) => `/micro-media/${id}`,
+    update: (id) => `/micro-media/${id}`,
+    delete: (id) => `/micro-media/${id}`,
+    tags: (id) => `/micro-media/${id}/tags`,
+    accounts: (id) => `/micro-media/${id}/accounts`,
+    detachAccount: (pageId) => `/micro-media/accounts/${pageId}`,
+    performance: (id) => `/micro-media/${id}/performance`,
+    refreshPerformance: (id) => `/micro-media/${id}/refresh-performance`,
+    scores: (id) => `/micro-media/${id}/scores`,
+    interactions: (id) => `/micro-media/${id}/interactions`,
+    posts: (id) => `/micro-media/${id}/posts`,
+    suggestProfile: (id) => `/micro-media/${id}/suggest-profile-from-posts`,
+  },
+  mediaScore: {
+    indicators: '/media-score-indicators',
+    indicator: (id) => `/media-score-indicators/${id}`,
+    records: '/media-score-records',
+    batch: '/media-score-records/batch',
+    leaderboard: '/media-score/leaderboard',
+    detail: (id) => `/media-score/detail/${id}`,
+  },
+  interactionsV2: {
+    list: '/interactions-v2',
+    overview: '/interactions-v2/overview',
+    create: '/interactions-v2',
+  },
+  tasks: {
+    list: '/tasks',
+    overview: '/tasks/overview',
+    create: '/tasks',
+    detail: (id) => `/tasks/${id}`,
+    update: (id) => `/tasks/${id}`,
+    status: (id) => `/tasks/${id}/status`,
+    tags: (id) => `/tasks/${id}/tags`,
+  },
+  campaigns: {
+    list: '/campaigns',
+    create: '/campaigns',
+    detail: (id) => `/campaigns/${id}`,
+    update: (id) => `/campaigns/${id}`,
+    media: (id) => `/campaigns/${id}/media`,
+    tasks: (id) => `/campaigns/${id}/tasks`,
+    outputs: (id) => `/campaigns/${id}/outputs`,
+    impact: (id) => `/campaigns/${id}/impact`,
+  },
+  dashboards: {
+    management: '/dashboards/management',
+    hub: (id) => `/dashboards/hubs/${id}`,
+    operation: (id) => `/dashboards/campaigns/${id}`,
   },
 };

@@ -17,7 +17,7 @@ import { Logo } from 'src/components/logo';
 import { Iconify } from 'src/components/iconify';
 import { useSettingsContext } from 'src/components/settings';
 
-import { useMockedUser } from 'src/auth/hooks';
+import { useAuthContext } from 'src/auth/hooks';
 
 import { NavMobile } from './nav-mobile';
 import { VerticalDivider } from './content';
@@ -44,7 +44,7 @@ import { MainSection, layoutClasses, HeaderSection, LayoutSection } from '../cor
 export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery = 'lg' }) {
   const theme = useTheme();
 
-  const { user } = useMockedUser();
+  const { user: authUser } = useAuthContext();
 
   const settings = useSettingsContext();
 
@@ -61,7 +61,10 @@ export function DashboardLayout({ sx, cssVars, children, slotProps, layoutQuery 
   const isNavHorizontal = settings.state.navLayout === 'horizontal';
   const isNavVertical = isNavMini || settings.state.navLayout === 'vertical';
 
-  const canDisplayItemByRole = (allowedRoles) => !allowedRoles?.includes(user?.role);
+  // مخفی‌سازی آیتم منو بر اساس نقش: اگر آیتم allowedRoles داشته باشد و نقش کاربر
+  // در آن نباشد، آیتم پنهان می‌شود (checkPermissions=true یعنی پنهان کن).
+  const canDisplayItemByRole = (allowedRoles) =>
+    !!allowedRoles && !allowedRoles.includes(authUser?.role);
 
   const renderHeader = () => {
     const headerSlotProps = {

@@ -18,6 +18,30 @@ export const paths = {
   // DASHBOARD
   dashboard: {
     root: ROOTS.DASHBOARD,
+    // micromedia-transformation — تجربهٔ اصلی: مدیریت میکرورسانه (تصمیم ۷)
+    microMedia: {
+      root: `${ROOTS.DASHBOARD}/micro-media`,
+      new: `${ROOTS.DASHBOARD}/micro-media/new`,
+      detail: (id) => `${ROOTS.DASHBOARD}/micro-media/${id}`,
+      edit: (id) => `${ROOTS.DASHBOARD}/micro-media/${id}/edit`,
+    },
+    hubs: {
+      root: `${ROOTS.DASHBOARD}/hubs`,
+      detail: (id) => `${ROOTS.DASHBOARD}/hubs/${id}`,
+    },
+    tasks: {
+      root: `${ROOTS.DASHBOARD}/tasks`,
+      detail: (id) => `${ROOTS.DASHBOARD}/tasks/${id}`,
+    },
+    operations: {
+      root: `${ROOTS.DASHBOARD}/operations`,
+      new: `${ROOTS.DASHBOARD}/operations/new`,
+      detail: (id) => `${ROOTS.DASHBOARD}/operations/${id}`,
+    },
+    interactions: `${ROOTS.DASHBOARD}/interactions`,
+    mediaScore: `${ROOTS.DASHBOARD}/media-score`,
+    users: `${ROOTS.DASHBOARD}/users`,
+    overview: `${ROOTS.DASHBOARD}/overview`,
     // My Network (was instagram)
     mynetwork: {
       root: `${ROOTS.DASHBOARD}/mynetwork`,

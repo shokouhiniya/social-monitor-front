@@ -5,6 +5,7 @@ import { useMemo, useState, useContext, useCallback, createContext } from 'react
 // ----------------------------------------------------------------------
 
 const NETWORKS = [
+  { key: 'management', label: 'مدیریت میکرورسانه', icon: 'mdi:view-dashboard', color: '#1976d2' },
   { key: 'instagram', label: 'اینستاگرام', icon: 'mdi:instagram', color: '#E4405F' },
   { key: 'telegram', label: 'تلگرام', icon: 'mdi:telegram', color: '#0088cc' },
   // Future: { key: 'twitter', label: 'توییتر', icon: 'mdi:twitter', color: '#1DA1F2' },
@@ -16,9 +17,9 @@ const NetworkContext = createContext(undefined);
 export function NetworkProvider({ children }) {
   const [activeNetwork, setActiveNetwork] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('active_network') || 'instagram';
+      return localStorage.getItem('active_network') || 'management';
     }
-    return 'instagram';
+    return 'management';
   });
 
   const switchNetwork = useCallback((network) => {
