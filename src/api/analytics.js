@@ -5,37 +5,47 @@ import axiosInstance, { endpoints } from 'src/lib/axios';
 import { useScopeContext } from 'src/contexts/scope-context';
 
 // ----------------------------------------------------------------------
-// All analytics hooks include the active scope in their queryKey so that
-// switching between «نمایندگان شبکه / خوشه / کل شبکه» does not return
-// stale data from the previous scope. Axios automatically appends the
-// scope/clusterId query params (see src/lib/axios.js).
+// همهٔ هوک‌های آنالیتیکس scope فعال را هم در queryKey (برای کش) و هم به‌صورت
+// صریح در params درخواست می‌فرستند تا scope به‌صورت قطعی از React context جریان
+// یابد (نه از طریق localStorage سراسری). این کار اجازه می‌دهد صفحات «تحلیل» با
+// `StaticScopeProvider` یک scope ثابت (مثل all_micromedia / platform:instagram /
+// micromedia:42) را روی همان ماژول‌های موجود اعمال کنند.
 //
-// خروجی هر هوک با `unwrapEnvelope` پردازش می‌شود تا هم با envelope V2
-// (`{ meta, data }`) و هم با پاسخ خام legacy سازگار بماند (Requirement 12.1).
+// scope='all' → پارامتر `__noScope` فرستاده می‌شود تا interceptor مقدار
+// localStorage را تزریق نکند و کل شبکه پوشش داده شود.
 // ----------------------------------------------------------------------
 
-function useScopeKey() {
+function useScoped() {
   const { scope, clusterId } = useScopeContext();
-  return [scope || 'all', clusterId || 0];
+  const s = scope || 'all';
+  let params;
+  if (s === 'cluster' && clusterId) {
+    params = { scope: 'cluster', clusterId };
+  } else if (s && s !== 'all') {
+    params = { scope: s };
+  } else {
+    params = { __noScope: true };
+  }
+  return { key: [s, clusterId || 0], params };
 }
 
 export function useMacroDashboard() {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'macro-dashboard', ...scopeKey],
+    queryKey: ['analytics', 'macro-dashboard', ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.macroDashboard);
+      const res = await axiosInstance.get(endpoints.analytics.macroDashboard, { params });
       return unwrapEnvelope(res.data);
     },
   });
 }
 
 export function useAlignmentIndex() {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'alignment-index', ...scopeKey],
+    queryKey: ['analytics', 'alignment-index', ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.alignmentIndex);
+      const res = await axiosInstance.get(endpoints.analytics.alignmentIndex, { params });
       return unwrapEnvelope(res.data);
     },
   });
@@ -55,11 +65,11 @@ export function useProfileDeepDive(pageId, timeRange = '1w') {
 }
 
 export function useNetworkPulse() {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'network-pulse', ...scopeKey],
+    queryKey: ['analytics', 'network-pulse', ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.networkPulse);
+      const res = await axiosInstance.get(endpoints.analytics.networkPulse, { params });
       return unwrapEnvelope(res.data);
     },
     refetchInterval: 60000,
@@ -67,11 +77,11 @@ export function useNetworkPulse() {
 }
 
 export function useNetworkPulseWeekly() {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'network-pulse-weekly', ...scopeKey],
+    queryKey: ['analytics', 'network-pulse-weekly', ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.networkPulseWeekly);
+      const res = await axiosInstance.get(endpoints.analytics.networkPulseWeekly, { params });
       return unwrapEnvelope(res.data);
     },
     refetchInterval: 300000, // 5 min
@@ -79,44 +89,48 @@ export function useNetworkPulseWeekly() {
 }
 
 export function useReactionVelocity(days = 7) {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'reaction-velocity', days, ...scopeKey],
+    queryKey: ['analytics', 'reaction-velocity', days, ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.reactionVelocity, { params: { days } });
+      const res = await axiosInstance.get(endpoints.analytics.reactionVelocity, {
+        params: { ...params, days },
+      });
       return unwrapEnvelope(res.data);
     },
   });
 }
 
 export function useGhostPages() {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'ghost-pages', ...scopeKey],
+    queryKey: ['analytics', 'ghost-pages', ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.ghostPages);
+      const res = await axiosInstance.get(endpoints.analytics.ghostPages, { params });
       return unwrapEnvelope(res.data);
     },
   });
 }
 
 export function useActivityIndex() {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'activity-index', ...scopeKey],
+    queryKey: ['analytics', 'activity-index', ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.activityIndex);
+      const res = await axiosInstance.get(endpoints.analytics.activityIndex, { params });
       return unwrapEnvelope(res.data);
     },
   });
 }
 
 export function usePeriodicReport(hours = 6) {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'periodic-report', hours, ...scopeKey],
+    queryKey: ['analytics', 'periodic-report', hours, ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.periodicReport, { params: { hours } });
+      const res = await axiosInstance.get(endpoints.analytics.periodicReport, {
+        params: { ...params, hours },
+      });
       return unwrapEnvelope(res.data);
     },
     refetchInterval: false, // manual refresh only
@@ -124,44 +138,48 @@ export function usePeriodicReport(hours = 6) {
 }
 
 export function useLatestPosts(limit = 10) {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'latest-posts', limit, ...scopeKey],
+    queryKey: ['analytics', 'latest-posts', limit, ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.latestPosts, { params: { limit } });
+      const res = await axiosInstance.get(endpoints.analytics.latestPosts, {
+        params: { ...params, limit },
+      });
       return unwrapEnvelope(res.data);
     },
   });
 }
 
 export function useHighImpactPosts(limit = 5) {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'high-impact-posts', limit, ...scopeKey],
+    queryKey: ['analytics', 'high-impact-posts', limit, ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.highImpactPosts, { params: { limit } });
+      const res = await axiosInstance.get(endpoints.analytics.highImpactPosts, {
+        params: { ...params, limit },
+      });
       return unwrapEnvelope(res.data);
     },
   });
 }
 
 export function useNarrativeHealth() {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'narrative-health', ...scopeKey],
+    queryKey: ['analytics', 'narrative-health', ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.narrativeHealth);
+      const res = await axiosInstance.get(endpoints.analytics.narrativeHealth, { params });
       return unwrapEnvelope(res.data);
     },
   });
 }
 
 export function useCrisisCorridor() {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'crisis-corridor', ...scopeKey],
+    queryKey: ['analytics', 'crisis-corridor', ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.crisisCorridor);
+      const res = await axiosInstance.get(endpoints.analytics.crisisCorridor, { params });
       return unwrapEnvelope(res.data);
     },
     refetchInterval: 60000,
@@ -169,11 +187,11 @@ export function useCrisisCorridor() {
 }
 
 export function useAiSynthesizer() {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'ai-synthesizer', ...scopeKey],
+    queryKey: ['analytics', 'ai-synthesizer', ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.aiSynthesizer);
+      const res = await axiosInstance.get(endpoints.analytics.aiSynthesizer, { params });
       return unwrapEnvelope(res.data);
     },
     refetchInterval: 300000,
@@ -181,44 +199,44 @@ export function useAiSynthesizer() {
 }
 
 export function useKeywordVelocity() {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'keyword-velocity', ...scopeKey],
+    queryKey: ['analytics', 'keyword-velocity', ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.keywordVelocity);
+      const res = await axiosInstance.get(endpoints.analytics.keywordVelocity, { params });
       return unwrapEnvelope(res.data);
     },
   });
 }
 
 export function useSentimentInfluenceMatrix() {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'sentiment-influence-matrix', ...scopeKey],
+    queryKey: ['analytics', 'sentiment-influence-matrix', ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.sentimentInfluenceMatrix);
+      const res = await axiosInstance.get(endpoints.analytics.sentimentInfluenceMatrix, { params });
       return unwrapEnvelope(res.data);
     },
   });
 }
 
 export function useNarrativeBattle() {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'narrative-battle', ...scopeKey],
+    queryKey: ['analytics', 'narrative-battle', ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.narrativeBattle);
+      const res = await axiosInstance.get(endpoints.analytics.narrativeBattle, { params });
       return unwrapEnvelope(res.data);
     },
   });
 }
 
 export function useActorsSceneReport() {
-  const scopeKey = useScopeKey();
+  const { key, params } = useScoped();
   return useQuery({
-    queryKey: ['analytics', 'actors-scene-report', ...scopeKey],
+    queryKey: ['analytics', 'actors-scene-report', ...key],
     queryFn: async () => {
-      const res = await axiosInstance.get(endpoints.analytics.actorsSceneReport);
+      const res = await axiosInstance.get(endpoints.analytics.actorsSceneReport, { params });
       return unwrapEnvelope(res.data);
     },
     refetchInterval: false, // manual refresh only

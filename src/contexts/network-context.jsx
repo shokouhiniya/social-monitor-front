@@ -6,10 +6,10 @@ import { useMemo, useState, useContext, useCallback, createContext } from 'react
 
 const NETWORKS = [
   { key: 'management', label: 'مدیریت میکرورسانه', icon: 'mdi:view-dashboard', color: '#1976d2' },
-  { key: 'instagram', label: 'اینستاگرام', icon: 'mdi:instagram', color: '#E4405F' },
-  { key: 'telegram', label: 'تلگرام', icon: 'mdi:telegram', color: '#0088cc' },
-  // Future: { key: 'twitter', label: 'توییتر', icon: 'mdi:twitter', color: '#1DA1F2' },
-  // Future: { key: 'youtube', label: 'یوتیوب', icon: 'mdi:youtube', color: '#FF0000' },
+  // اینستاگرام/تلگرام از سوییچر بالای منو حذف شدند؛ قابلیت‌های تحلیل/پایش محتوا
+  // اکنون مستقیماً در منوی «مدیریت» ادغام شده‌اند. تعاریف برای رفرنس نگه داشته شد:
+  // { key: 'instagram', label: 'اینستاگرام', icon: 'mdi:instagram', color: '#E4405F' },
+  // { key: 'telegram', label: 'تلگرام', icon: 'mdi:telegram', color: '#0088cc' },
 ];
 
 const NetworkContext = createContext(undefined);
@@ -17,7 +17,12 @@ const NetworkContext = createContext(undefined);
 export function NetworkProvider({ children }) {
   const [activeNetwork, setActiveNetwork] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('active_network') || 'management';
+      const stored = localStorage.getItem('active_network');
+      // اگر مقدار ذخیره‌شده دیگر در فهرست شبکه‌ها نباشد (مثلاً instagram/telegram حذف‌شده)
+      // به management برگردان تا منوی قدیمی نمایش داده نشود.
+      if (stored && NETWORKS.some((n) => n.key === stored)) {
+        return stored;
+      }
     }
     return 'management';
   });

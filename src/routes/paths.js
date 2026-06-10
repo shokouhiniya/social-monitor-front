@@ -41,6 +41,20 @@ export const paths = {
     interactions: `${ROOTS.DASHBOARD}/interactions`,
     mediaScore: `${ROOTS.DASHBOARD}/media-score`,
     users: `${ROOTS.DASHBOARD}/users`,
+    analysis: {
+      network: `${ROOTS.DASHBOARD}/analysis/network`,
+      content: `${ROOTS.DASHBOARD}/analysis/content`,
+      platforms: `${ROOTS.DASHBOARD}/analysis/platforms`,
+      microMedia: {
+        root: `${ROOTS.DASHBOARD}/analysis/micro-media`,
+        detail: (id) => `${ROOTS.DASHBOARD}/analysis/micro-media/${id}`,
+      },
+    },
+    definitions: {
+      clusters: `${ROOTS.DASHBOARD}/definitions/clusters`,
+      identities: `${ROOTS.DASHBOARD}/definitions/identities`,
+      platforms: `${ROOTS.DASHBOARD}/definitions/platforms`,
+    },
     overview: `${ROOTS.DASHBOARD}/overview`,
     // My Network (was instagram)
     mynetwork: {
@@ -50,9 +64,10 @@ export const paths = {
         root: `${ROOTS.DASHBOARD}/mynetwork/pages`,
         profile: (id) => `${ROOTS.DASHBOARD}/mynetwork/pages/${id}`,
       },
+      // خوشه‌ها به بخش تعاریف منتقل شده‌اند — اصل و مبنا
       clusters: {
-        root: `${ROOTS.DASHBOARD}/mynetwork/clusters`,
-        detail: (id) => `${ROOTS.DASHBOARD}/mynetwork/clusters/${id}`,
+        root: `${ROOTS.DASHBOARD}/definitions/clusters`,
+        detail: (id) => `${ROOTS.DASHBOARD}/definitions/clusters/${id}`,
       },
       posts: `${ROOTS.DASHBOARD}/mynetwork/posts`,
       alerts: `${ROOTS.DASHBOARD}/mynetwork/alerts`,
@@ -69,9 +84,10 @@ export const paths = {
         root: `${ROOTS.DASHBOARD}/mynetwork/pages`,
         profile: (id) => `${ROOTS.DASHBOARD}/mynetwork/pages/${id}`,
       },
+      // خوشه‌ها به بخش تعاریف منتقل شده‌اند
       clusters: {
-        root: `${ROOTS.DASHBOARD}/mynetwork/clusters`,
-        detail: (id) => `${ROOTS.DASHBOARD}/mynetwork/clusters/${id}`,
+        root: `${ROOTS.DASHBOARD}/definitions/clusters`,
+        detail: (id) => `${ROOTS.DASHBOARD}/definitions/clusters/${id}`,
       },
       posts: `${ROOTS.DASHBOARD}/mynetwork/posts`,
       alerts: `${ROOTS.DASHBOARD}/mynetwork/alerts`,

@@ -8,7 +8,6 @@ import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
-import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import Tooltip from '@mui/material/Tooltip';
@@ -26,22 +25,22 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
-import { proxyImage } from 'src/utils/proxy-image';
-
-import { usePages } from 'src/api/pages';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { useCluster } from 'src/api/clusters';
 import {
-  useCluster,
-  useAssignPagesToCluster,
-  useRemovePagesFromCluster,
-  useTogglePageRepresentative,
-} from 'src/api/clusters';
+  useMicroMediaList,
+  useUpdateMicroMedia,
+  useSetMicroMediaRepresentative,
+} from 'src/api/micro-media';
 
 import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
-function PageRow({ page, isRepresentative, onToggleRep, onRemove, busy }) {
+/**
+ * یک ردیف میکرورسانه در خوشه.
+ */
+function MediaRow({ media, isRepresentative, onToggleRep, onRemove, busy }) {
   const router = useRouter();
   return (
     <Card
@@ -53,42 +52,62 @@ function PageRow({ page, isRepresentative, onToggleRep, onRemove, busy }) {
         transition: 'all 0.2s',
         border: '1px solid',
         borderColor: isRepresentative ? 'warning.main' : 'divider',
-        bgcolor: (t) => isRepresentative ? alpha(t.palette.warning.main, 0.04) : 'transparent',
+        bgcolor: (t) => (isRepresentative ? alpha(t.palette.warning.main, 0.04) : 'transparent'),
         '&:hover': { boxShadow: 4 },
       }}
     >
-      <Avatar
-        src={proxyImage(page.profile_image_url)}
-        alt={page.name}
-        sx={{ width: 40, height: 40 }}
+      {/* آیکون placeholder میکرورسانه */}
+      <Box
+        sx={{
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          bgcolor: 'action.selected',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          cursor: 'pointer',
+        }}
+        onClick={() => router.push(paths.dashboard.microMedia?.detail?.(media.id) ?? '#')}
       >
-        {page.name?.[0]}
-      </Avatar>
-      <Box sx={{ flexGrow: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => router.push(paths.dashboard.mynetwork.pages.profile(page.id))}>
-        <Typography variant="subtitle2" noWrap>{page.name}</Typography>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          {(media.name || '?')[0].toUpperCase()}
+        </Typography>
+      </Box>
+
+      <Box
+        sx={{ flexGrow: 1, minWidth: 0, cursor: 'pointer' }}
+        onClick={() => router.push(paths.dashboard.microMedia?.detail?.(media.id) ?? '#')}
+      >
+        <Typography variant="subtitle2" noWrap>
+          {media.name}
+        </Typography>
         <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 0.25 }}>
-          <Typography variant="caption" color="text.secondary" noWrap>@{page.username}</Typography>
-          {page.platform && (
-            <Iconify icon={page.platform === 'telegram' ? 'mdi:telegram' : page.platform === 'twitter' ? 'mdi:twitter' : 'mdi:instagram'} width={14} sx={{ color: 'text.disabled' }} />
+          {media.identity_title && (
+            <Chip size="small" label={media.identity_title} variant="soft" color="info" sx={{ fontSize: 10 }} />
           )}
-          {(page.followers_count || 0) > 0 && (
-            <Typography variant="caption" color="text.secondary">· {Number(page.followers_count).toLocaleString()} فالوور</Typography>
+          {media.activity_domain && (
+            <Typography variant="caption" color="text.secondary" noWrap>
+              {media.activity_domain}
+            </Typography>
           )}
         </Stack>
       </Box>
+
       <Stack direction="row" spacing={0.5} alignItems="center" sx={{ flexShrink: 0 }}>
         <Tooltip title={isRepresentative ? 'لغو نماینده' : 'انتخاب به‌عنوان نماینده'}>
           <IconButton
             size="small"
             color="warning"
             disabled={busy}
-            onClick={() => onToggleRep(page, !isRepresentative)}
+            onClick={() => onToggleRep(media, !isRepresentative)}
           >
             <Iconify icon={isRepresentative ? 'solar:star-bold' : 'solar:star-line-duotone'} width={20} />
           </IconButton>
         </Tooltip>
         <Tooltip title="حذف از خوشه">
-          <IconButton size="small" color="error" disabled={busy} onClick={() => onRemove(page)}>
+          <IconButton size="small" color="error" disabled={busy} onClick={() => onRemove(media)}>
             <Iconify icon="solar:close-circle-bold" width={20} />
           </IconButton>
         </Tooltip>
@@ -101,75 +120,88 @@ function PageRow({ page, isRepresentative, onToggleRep, onRemove, busy }) {
 
 export function ClusterDetailView({ clusterId }) {
   const router = useRouter();
-  const { data: cluster, isLoading } = useCluster(clusterId);
-  const { data: allPagesResp } = usePages({ page: 1, limit: 500 });
+  const { data: cluster, isLoading: clusterLoading } = useCluster(clusterId);
 
-  const assignMutation = useAssignPagesToCluster();
-  const removeMutation = useRemovePagesFromCluster();
-  const toggleRepMutation = useTogglePageRepresentative();
+  // میکرورسانه‌های این خوشه (topic_cluster_id = clusterId)
+  const { data: clusterMediaPage, isLoading: mediaLoading } = useMicroMediaList(
+    clusterId ? { clusterId, limit: 500 } : null,
+  );
+  // همه میکرورسانه‌ها — برای دیالوگ افزودن
+  const { data: allMediaPage } = useMicroMediaList({ limit: 500 });
+
+  const updateMedia = useUpdateMicroMedia();
+  const setRepMutation = useSetMicroMediaRepresentative();
 
   const [search, setSearch] = useState('');
   const [openAdd, setOpenAdd] = useState(false);
   const [selectedToAdd, setSelectedToAdd] = useState([]);
   const [addSearch, setAddSearch] = useState('');
 
-  const pages = useMemo(() => cluster?.pages || [], [cluster]);
-  const representatives = useMemo(() => pages.filter((p) => p.is_representative), [pages]);
-  const allPagesList = useMemo(() => allPagesResp?.data || [], [allPagesResp]);
+  const clusterMediaList = clusterMediaPage?.items ?? [];
+  const allMediaList = allMediaPage?.items ?? [];
+
+  const representatives = useMemo(
+    () => clusterMediaList.filter((m) => m.is_cluster_representative),
+    [clusterMediaList],
+  );
 
   const filtered = useMemo(() => {
-    if (!search) return pages;
+    if (!search) return clusterMediaList;
     const q = search.toLowerCase();
-    return pages.filter(
-      (p) => p.name?.toLowerCase().includes(q) || p.username?.toLowerCase().includes(q),
-    );
-  }, [pages, search]);
+    return clusterMediaList.filter((m) => (m.name || '').toLowerCase().includes(q));
+  }, [clusterMediaList, search]);
 
-  const filteredReps = filtered.filter((p) => p.is_representative);
-  const filteredOthers = filtered.filter((p) => !p.is_representative);
+  const filteredReps = filtered.filter((m) => m.is_cluster_representative);
+  const filteredOthers = filtered.filter((m) => !m.is_cluster_representative);
 
-  // Pages not yet in this cluster (for add dialog)
+  // میکرورسانه‌هایی که هنوز در این خوشه نیستند (برای دیالوگ افزودن)
   const availableToAdd = useMemo(() => {
-    if (!allPagesList?.length) return [];
-    const inCluster = new Set(pages.map((p) => p.id));
-    let list = allPagesList.filter((p) => !inCluster.has(p.id));
+    const inCluster = new Set(clusterMediaList.map((m) => m.id));
+    let list = allMediaList.filter((m) => !inCluster.has(m.id));
     if (addSearch) {
       const q = addSearch.toLowerCase();
-      list = list.filter(
-        (p) => p.name?.toLowerCase().includes(q) || p.username?.toLowerCase().includes(q),
-      );
+      list = list.filter((m) => (m.name || '').toLowerCase().includes(q));
     }
     return list;
-  }, [allPagesList, pages, addSearch]);
+  }, [allMediaList, clusterMediaList, addSearch]);
 
+  // افزودن میکرورسانه‌ها به خوشه با آپدیت topic_cluster_id
   const handleAdd = async () => {
     if (!selectedToAdd.length) return;
     try {
-      await assignMutation.mutateAsync({ id: clusterId, pageIds: selectedToAdd });
+      await Promise.all(
+        selectedToAdd.map((id) =>
+          updateMedia.mutateAsync({ id, data: { topic_cluster_id: Number(clusterId) } }),
+        ),
+      );
       setOpenAdd(false);
       setSelectedToAdd([]);
       setAddSearch('');
     } catch (err) {
-      alert(err.message || 'خطا در اضافه کردن پیج‌ها');
+      alert(err.message || 'خطا در اضافه کردن میکرورسانه‌ها');
     }
   };
 
-  const handleRemove = async (page) => {
-    if (!window.confirm(`پیج «${page.name}» از این خوشه حذف شود؟`)) return;
+  // حذف میکرورسانه از خوشه با null کردن topic_cluster_id
+  const handleRemove = async (media) => {
+    if (!window.confirm(`میکرورسانه «${media.name}» از این خوشه حذف شود؟`)) return;
     try {
-      await removeMutation.mutateAsync({ id: clusterId, pageIds: [page.id] });
+      await updateMedia.mutateAsync({ id: media.id, data: { topic_cluster_id: null } });
     } catch (err) {
       alert(err.message || 'خطا در حذف');
     }
   };
 
-  const handleToggleRep = async (page, isRep) => {
+  // toggle نماینده بودن
+  const handleToggleRep = async (media, isRep) => {
     try {
-      await toggleRepMutation.mutateAsync({ clusterId, pageId: page.id, isRepresentative: isRep });
+      await setRepMutation.mutateAsync({ id: media.id, scope: 'cluster', value: isRep });
     } catch (err) {
       alert(err.message || 'خطا در تغییر وضعیت نماینده');
     }
   };
+
+  const isLoading = clusterLoading || mediaLoading;
 
   if (isLoading) {
     return (
@@ -189,12 +221,17 @@ export function ClusterDetailView({ clusterId }) {
     );
   }
 
-  const busy = assignMutation.isPending || removeMutation.isPending || toggleRepMutation.isPending;
+  const busy = updateMedia.isPending || setRepMutation.isPending;
 
   return (
     <DashboardContent maxWidth="xl">
       {/* Header */}
-      <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ md: 'center' }} spacing={2} sx={{ mb: 3 }}>
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        alignItems={{ md: 'center' }}
+        spacing={2}
+        sx={{ mb: 3 }}
+      >
         <Button
           size="small"
           color="inherit"
@@ -220,9 +257,13 @@ export function ClusterDetailView({ clusterId }) {
               <Iconify icon={cluster.icon || 'solar:layers-bold-duotone'} width={26} />
             </Box>
             <Box>
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>{cluster.name}</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                {cluster.name}
+              </Typography>
               {cluster.description && (
-                <Typography variant="body2" color="text.secondary">{cluster.description}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {cluster.description}
+                </Typography>
               )}
             </Box>
           </Stack>
@@ -230,31 +271,45 @@ export function ClusterDetailView({ clusterId }) {
         <Button
           variant="contained"
           startIcon={<Iconify icon="solar:add-circle-bold-duotone" />}
-          onClick={() => { setSelectedToAdd([]); setAddSearch(''); setOpenAdd(true); }}
+          onClick={() => {
+            setSelectedToAdd([]);
+            setAddSearch('');
+            setOpenAdd(true);
+          }}
         >
-          افزودن پیج به خوشه
+          افزودن میکرورسانه به خوشه
         </Button>
       </Stack>
 
       {/* Stats */}
       <Stack direction="row" spacing={1.5} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
-        <Chip icon={<Iconify icon="solar:users-group-rounded-bold-duotone" />} label={`${pages.length} پیج`} color="primary" variant="outlined" />
-        <Chip icon={<Iconify icon="solar:star-bold-duotone" />} label={`${representatives.length} نماینده`} color="warning" variant={representatives.length > 0 ? 'filled' : 'outlined'} />
+        <Chip
+          icon={<Iconify icon="solar:users-group-rounded-bold-duotone" />}
+          label={`${clusterMediaList.length} میکرورسانه`}
+          color="primary"
+          variant="outlined"
+        />
+        <Chip
+          icon={<Iconify icon="solar:star-bold-duotone" />}
+          label={`${representatives.length} نماینده`}
+          color="warning"
+          variant={representatives.length > 0 ? 'filled' : 'outlined'}
+        />
       </Stack>
 
-      {representatives.length === 0 && pages.length > 0 && (
+      {representatives.length === 0 && clusterMediaList.length > 0 && (
         <Alert severity="info" sx={{ mb: 3 }} icon={<Iconify icon="solar:star-bold-duotone" />}>
-          هنوز نماینده‌ای برای این خوشه انتخاب نکرده‌اید. با کلیک روی آیکون ستاره کنار هر پیج،
-          آن را به‌عنوان نماینده مشخص کنید. نمایندگان در داشبورد روی دامنه «نمایندگان شبکه» محاسبه می‌شوند.
+          هنوز نماینده‌ای برای این خوشه انتخاب نکرده‌اید. با کلیک روی آیکون ستاره کنار هر
+          میکرورسانه، آن را به‌عنوان نماینده مشخص کنید.
         </Alert>
       )}
 
       {/* Search */}
-      {pages.length > 0 && (
+      {clusterMediaList.length > 0 && (
         <TextField
           fullWidth
           size="small"
-          placeholder="جستجو در پیج‌های این خوشه..."
+          placeholder="جستجو در میکرورسانه‌های این خوشه..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           sx={{ mb: 2 }}
@@ -269,29 +324,38 @@ export function ClusterDetailView({ clusterId }) {
       )}
 
       {/* Empty state */}
-      {pages.length === 0 && (
+      {clusterMediaList.length === 0 && (
         <Card sx={{ p: 6, textAlign: 'center' }}>
-          <Iconify icon="solar:user-plus-bold-duotone" width={64} sx={{ color: 'text.disabled', mb: 2 }} />
+          <Iconify
+            icon="solar:user-plus-bold-duotone"
+            width={64}
+            sx={{ color: 'text.disabled', mb: 2 }}
+          />
           <Typography variant="h6">این خوشه هنوز خالی است</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 480, mx: 'auto' }}>
-            با کلیک روی «افزودن پیج به خوشه» چند پیج را به این خوشه نسبت بدهید
-            تا تحلیل‌های مخصوص این خوشه فعال شوند.
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mb: 3, maxWidth: 480, mx: 'auto' }}
+          >
+            با کلیک روی «افزودن میکرورسانه به خوشه» چند میکرورسانه را به این خوشه نسبت بدهید.
           </Typography>
         </Card>
       )}
 
-      {/* Representatives section */}
+      {/* Representatives */}
       {filteredReps.length > 0 && (
         <Box sx={{ mb: 4 }}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
             <Iconify icon="solar:star-bold-duotone" sx={{ color: 'warning.main' }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>نمایندگان خوشه ({filteredReps.length})</Typography>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              نمایندگان خوشه ({filteredReps.length})
+            </Typography>
           </Stack>
           <Grid container spacing={1.5}>
-            {filteredReps.map((p) => (
-              <Grid key={p.id} size={{ xs: 12, sm: 6, md: 4 }}>
-                <PageRow
-                  page={p}
+            {filteredReps.map((m) => (
+              <Grid key={m.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                <MediaRow
+                  media={m}
                   isRepresentative
                   onToggleRep={handleToggleRep}
                   onRemove={handleRemove}
@@ -303,18 +367,20 @@ export function ClusterDetailView({ clusterId }) {
         </Box>
       )}
 
-      {/* Other pages section */}
+      {/* Others */}
       {filteredOthers.length > 0 && (
         <Box>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
             <Iconify icon="solar:users-group-rounded-bold-duotone" sx={{ color: 'text.secondary' }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>سایر پیج‌های خوشه ({filteredOthers.length})</Typography>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              سایر میکرورسانه‌های خوشه ({filteredOthers.length})
+            </Typography>
           </Stack>
           <Grid container spacing={1.5}>
-            {filteredOthers.map((p) => (
-              <Grid key={p.id} size={{ xs: 12, sm: 6, md: 4 }}>
-                <PageRow
-                  page={p}
+            {filteredOthers.map((m) => (
+              <Grid key={m.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                <MediaRow
+                  media={m}
                   isRepresentative={false}
                   onToggleRep={handleToggleRep}
                   onRemove={handleRemove}
@@ -326,14 +392,14 @@ export function ClusterDetailView({ clusterId }) {
         </Box>
       )}
 
-      {/* Add pages dialog */}
+      {/* Add micro-media dialog */}
       <Dialog open={openAdd} onClose={() => setOpenAdd(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>افزودن پیج به خوشه «{cluster.name}»</DialogTitle>
+        <DialogTitle>افزودن میکرورسانه به خوشه «{cluster.name}»</DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
             size="small"
-            placeholder="جستجو در پیج‌های قابل اضافه..."
+            placeholder="جستجوی میکرورسانه..."
             value={addSearch}
             onChange={(e) => setAddSearch(e.target.value)}
             sx={{ mb: 2, mt: 1 }}
@@ -346,21 +412,35 @@ export function ClusterDetailView({ clusterId }) {
             }}
           />
           {availableToAdd.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-              {addSearch ? 'پیجی با این مشخصات یافت نشد' : 'همه پیج‌ها قبلاً به خوشه‌ها نسبت داده شده‌اند'}
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ textAlign: 'center', py: 3 }}
+            >
+              {addSearch
+                ? 'میکرورسانه‌ای با این مشخصات یافت نشد'
+                : 'همه میکرورسانه‌ها قبلاً به خوشه‌ها نسبت داده شده‌اند'}
             </Typography>
           ) : (
-            <Box sx={{ maxHeight: 400, overflowY: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-              {availableToAdd.map((p) => {
-                const checked = selectedToAdd.includes(p.id);
+            <Box
+              sx={{
+                maxHeight: 400,
+                overflowY: 'auto',
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+              }}
+            >
+              {availableToAdd.map((m) => {
+                const checked = selectedToAdd.includes(m.id);
                 return (
                   <Box
-                    key={p.id}
-                    onClick={() => {
+                    key={m.id}
+                    onClick={() =>
                       setSelectedToAdd((prev) =>
-                        prev.includes(p.id) ? prev.filter((x) => x !== p.id) : [...prev, p.id]
-                      );
-                    }}
+                        prev.includes(m.id) ? prev.filter((x) => x !== m.id) : [...prev, m.id],
+                      )
+                    }
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
@@ -375,14 +455,33 @@ export function ClusterDetailView({ clusterId }) {
                     }}
                   >
                     <Checkbox checked={checked} onChange={() => {}} />
-                    <Avatar src={proxyImage(p.profile_image_url)} sx={{ width: 32, height: 32 }}>
-                      {p.name?.[0]}
-                    </Avatar>
-                    <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>{p.name}</Typography>
-                      <Typography variant="caption" color="text.secondary" noWrap>@{p.username}</Typography>
+                    <Box
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: '50%',
+                        bgcolor: 'action.selected',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                        {(m.name || '?')[0].toUpperCase()}
+                      </Typography>
                     </Box>
-                    {p.cluster_id && (
+                    <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
+                        {m.name}
+                      </Typography>
+                      {m.identity_title && (
+                        <Typography variant="caption" color="text.secondary" noWrap>
+                          {m.identity_title}
+                        </Typography>
+                      )}
+                    </Box>
+                    {m.topic_cluster_id && m.topic_cluster_id !== Number(clusterId) && (
                       <Chip size="small" label="در خوشه دیگر" variant="outlined" />
                     )}
                   </Box>
@@ -391,8 +490,12 @@ export function ClusterDetailView({ clusterId }) {
             </Box>
           )}
           {selectedToAdd.length > 0 && (
-            <Typography variant="caption" color="primary.main" sx={{ mt: 1, display: 'block' }}>
-              {selectedToAdd.length} پیج برای افزودن انتخاب شده
+            <Typography
+              variant="caption"
+              color="primary.main"
+              sx={{ mt: 1, display: 'block' }}
+            >
+              {selectedToAdd.length} میکرورسانه برای افزودن انتخاب شده
             </Typography>
           )}
         </DialogContent>
@@ -400,10 +503,10 @@ export function ClusterDetailView({ clusterId }) {
           <Button onClick={() => setOpenAdd(false)}>انصراف</Button>
           <Button
             variant="contained"
-            disabled={selectedToAdd.length === 0 || assignMutation.isPending}
+            disabled={selectedToAdd.length === 0 || updateMedia.isPending}
             onClick={handleAdd}
           >
-            {assignMutation.isPending ? '...' : `افزودن (${selectedToAdd.length})`}
+            {updateMedia.isPending ? '...' : `افزودن (${selectedToAdd.length})`}
           </Button>
         </DialogActions>
       </Dialog>

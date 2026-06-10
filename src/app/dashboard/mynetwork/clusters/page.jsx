@@ -1,9 +1,6 @@
-import { CONFIG } from 'src/global-config';
+import { redirect } from 'next/navigation';
 
-import { ClustersListView } from 'src/sections/clusters/list-view';
-
-export const metadata = { title: `خوشه‌ها - ${CONFIG.appName}` };
-
+// خوشه‌ها به بخش تعاریف منتقل شده‌اند — اصل و مبنا: /definitions/clusters/
 export default function Page() {
-  return <ClustersListView />;
+  redirect('/dashboard/definitions/clusters');
 }

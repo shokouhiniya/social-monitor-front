@@ -153,7 +153,7 @@ export function ClustersListView() {
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 700 }}>خوشه‌ها</Typography>
           <Typography variant="body2" color="text.secondary">
-            دسته‌بندی پیج‌ها به خوشه‌های منطقی برای تحلیل قسمتی از شبکه و انتخاب نمایندگان
+            دسته‌بندی میکرورسانه‌ها به خوشه‌های منطقی برای تحلیل قسمتی از شبکه و انتخاب نمایندگان
           </Typography>
         </Box>
         <Button
@@ -169,7 +169,7 @@ export function ClustersListView() {
       {/* Summary chips */}
       <Stack direction="row" spacing={1.5} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
         <Chip icon={<Iconify icon="solar:layers-bold-duotone" />} label={`${clusters?.length || 0} خوشه`} color="primary" variant="outlined" />
-        <Chip icon={<Iconify icon="solar:users-group-rounded-bold-duotone" />} label={`${totalPages} پیج خوشه‌بندی‌شده`} color="info" variant="outlined" />
+        <Chip icon={<Iconify icon="solar:users-group-rounded-bold-duotone" />} label={`${totalPages} میکرورسانه خوشه‌بندی‌شده`} color="info" variant="outlined" />
         <Chip icon={<Iconify icon="solar:star-bold-duotone" />} label={`${totalReps} نماینده`} color="warning" variant="outlined" />
       </Stack>
 
@@ -185,7 +185,7 @@ export function ClustersListView() {
           <Typography variant="h6">هنوز خوشه‌ای ثبت نشده</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 480, mx: 'auto' }}>
             برای شروع، چند خوشه (مثل: رسانه‌های مقاومت، فعالان فلسطین، رسانه‌های اقتصادی) بسازید
-            و پیج‌های پایش‌شده را به آن‌ها نسبت بدهید.
+            و میکرورسانه‌های پایش‌شده را به آن‌ها نسبت بدهید.
           </Typography>
           <Button variant="contained" onClick={openCreate} startIcon={<Iconify icon="solar:add-circle-bold-duotone" />}>
             ساخت اولین خوشه
@@ -263,7 +263,7 @@ export function ClustersListView() {
                   <Chip
                     size="small"
                     icon={<Iconify icon="solar:users-group-rounded-bold-duotone" width={14} />}
-                    label={`${cluster.pages_count || 0} پیج`}
+                    label={`${cluster.pages_count || 0} میکرورسانه`}
                     color="info"
                     variant="outlined"
                   />

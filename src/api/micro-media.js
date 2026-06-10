@@ -14,6 +14,7 @@ export function useMicroMediaList(params) {
       const res = await axiosInstance.get(endpoints.microMedia.list, { params });
       return normalizePage(res.data);
     },
+    enabled: params !== null && params !== undefined,
   });
 }
 
@@ -218,6 +219,66 @@ export function useSuggestProfile() {
     mutationFn: async (id) => {
       const res = await axiosInstance.post(endpoints.microMedia.suggestProfile(id));
       return unwrapEnvelope(res.data);
+    },
+  });
+}
+
+// ----------------------------------------------------------------------
+// نمایندگان (representatives) — انتخاب میکرورسانه‌ها به‌عنوان نمایندهٔ خوشه/هویت.
+// خوشه و هویت کاملاً مستقل‌اند (دو پرچم جدا).
+// ----------------------------------------------------------------------
+
+/** همهٔ نمایندگان، گروه‌بندی‌شده: { cluster: {[clusterId]: [...]}, identity: {[title]: [...]} } */
+export function useMicroMediaRepresentatives({ enabled = true } = {}) {
+  return useQuery({
+    queryKey: ['micro-media', 'representatives'],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.microMedia.representatives);
+      return unwrapEnvelope(res.data);
+    },
+    enabled,
+  });
+}
+
+/** فهرست میکرورسانه‌های یک خوشهٔ موضوعی (برای دیالوگ مدیریت نمایندگان خوشه). */
+export function useMicroMediaByCluster(clusterId, enabled = true) {
+  return useQuery({
+    queryKey: ['micro-media', 'by-cluster', clusterId],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.microMedia.byCluster(clusterId));
+      return unwrapEnvelope(res.data);
+    },
+    enabled: enabled && !!clusterId,
+  });
+}
+
+/** فهرست میکرورسانه‌های یک هویت (برای دیالوگ مدیریت نمایندگان هویت). */
+export function useMicroMediaByIdentity(title, enabled = true) {
+  return useQuery({
+    queryKey: ['micro-media', 'by-identity', title],
+    queryFn: async () => {
+      const res = await axiosInstance.get(endpoints.microMedia.byIdentity, {
+        params: { title },
+      });
+      return unwrapEnvelope(res.data);
+    },
+    enabled: enabled && !!title,
+  });
+}
+
+/** تعیین/لغو نماینده‌بودن یک میکرورسانه برای خوشه یا هویت. */
+export function useSetMicroMediaRepresentative() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, scope, value }) => {
+      const res = await axiosInstance.patch(endpoints.microMedia.setRepresentative(id), {
+        scope,
+        value,
+      });
+      return unwrapEnvelope(res.data);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['micro-media'] });
     },
   });
 }

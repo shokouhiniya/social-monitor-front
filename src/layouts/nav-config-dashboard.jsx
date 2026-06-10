@@ -43,6 +43,15 @@ const comingSoon = (title, navIcon) => ({
   caption: COMING_SOON,
 });
 
+// آیتمی که هنوز مقصدش توسط کارفرما تعریف نشده (در انتظار تعریف).
+const pending = (title, navIcon) => ({
+  title,
+  path: '#',
+  icon: navIcon,
+  disabled: true,
+  caption: 'در حال تعریف',
+});
+
 /**
  * ساخت ساختار ناوبری چهاربخشی برای یک شبکه.
  * @param {object} net پیکربندی شبکه شامل مسیرهای واقعی و عنوان منابع/قابلیت‌ها.
@@ -168,25 +177,48 @@ export const managementNavData = [
     ],
   },
   {
+    subheader: 'تحلیل',
+    items: [
+      { title: 'شبکه', path: paths.dashboard.analysis.network, icon: ICONS.dashboard },
+      { title: 'میکرورسانه‌ها', path: paths.dashboard.analysis.microMedia.root, icon: ICONS.user },
+      { title: 'محتوا', path: paths.dashboard.analysis.content, icon: ICONS.analytics },
+      { title: 'سکو', path: paths.dashboard.analysis.platforms, icon: ICONS.folder },
+    ],
+  },
+  {
     subheader: 'پایش محتوا',
     items: [
-      { title: 'منابع (پیج‌ها)', path: paths.dashboard.mynetwork.pages.root, icon: ICONS.user },
-      { title: 'محتوای جمع‌آوری‌شده', path: paths.dashboard.mynetwork.posts, icon: ICONS.blog },
-      { title: 'تحلیل محتوا', path: paths.dashboard.mynetwork.macro, icon: ICONS.analytics },
-      { title: 'هشدارها', path: paths.dashboard.mynetwork.alerts, icon: ICONS.lock },
-      { title: 'مرکز بروزرسانی', path: paths.dashboard.mynetwork.refresh, icon: ICONS.job },
+      pending('میکرورسانه‌ها', ICONS.user),
+      pending('همه محتوا', ICONS.blog),
     ],
   },
   {
     subheader: 'سیستم',
     items: [
+      { title: 'مرکز بروزرسانی', path: paths.dashboard.mynetwork.refresh, icon: ICONS.job },
       {
-        title: 'کاربران و دسترسی‌ها',
+        title: 'کاربران و دسترسی',
         path: paths.dashboard.users,
         icon: ICONS.user,
         allowedRoles: ['super_admin', 'admin', 'operations_manager'],
       },
       { title: 'تنظیمات', path: paths.dashboard.mynetwork.settings, icon: ICONS.params },
+      {
+        title: 'تعاریف',
+        path: '#',
+        icon: ICONS.label,
+        allowedRoles: ['super_admin', 'admin', 'operations_manager'],
+        children: [
+          { title: 'خوشه', path: paths.dashboard.definitions.clusters, icon: ICONS.folder },
+          { title: 'هویت', path: paths.dashboard.definitions.identities, icon: ICONS.user },
+          { title: 'سکو', path: paths.dashboard.definitions.platforms, icon: ICONS.folder },
+        ],
+      },
+    ],
+  },
+  {
+    subheader: 'راهنما',
+    items: [
       { title: 'راهنمای سامانه', path: paths.dashboard.mynetwork.guide, icon: ICONS.file },
     ],
   },

@@ -19,6 +19,8 @@ import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
 import { useHubs } from 'src/api/hubs';
+import { useClusters } from 'src/api/clusters';
+import { useDefinitions } from 'src/api/definitions';
 import { DashboardContent } from 'src/layouts/dashboard';
 import {
   useMicroMedia,
@@ -37,6 +39,8 @@ const PLATFORMS = ['instagram', 'telegram', 'eitaa', 'rubika', 'twitter', 'youtu
 const EMPTY = {
   name: '',
   hub_id: '',
+  identity_title: '',
+  topic_cluster_id: '',
   activity_domain: '',
   identity_description: '',
   contact_name: '',
@@ -54,6 +58,8 @@ export function MicroMediaCreateView({ id }) {
   const isEdit = !!id;
   const { data: existing } = useMicroMedia(id);
   const { data: hubs } = useHubs();
+  const { data: clusters } = useClusters();
+  const { data: identities } = useDefinitions('identity');
   const createMutation = useCreateMicroMedia();
   const updateMutation = useUpdateMicroMedia();
 
@@ -65,6 +71,8 @@ export function MicroMediaCreateView({ id }) {
       setForm({
         name: existing.name ?? '',
         hub_id: existing.hub_id ?? '',
+        identity_title: existing.identity_title ?? '',
+        topic_cluster_id: existing.topic_cluster_id ?? '',
         activity_domain: existing.activity_domain ?? '',
         identity_description: existing.identity_description ?? '',
         contact_name: existing.contact_name ?? '',
@@ -82,19 +90,16 @@ export function MicroMediaCreateView({ id }) {
   // --- account row helpers (create mode only) ---
   const setAccount = (idx, key, value) =>
     setAccounts((arr) => arr.map((a, i) => (i === idx ? { ...a, [key]: value } : a)));
-
   const addAccount = () => setAccounts((arr) => [...arr, emptyAccount(arr.length === 0)]);
-
-  const removeAccount = (idx) =>
-    setAccounts((arr) => arr.filter((_, i) => i !== idx));
-
-  const setPrimary = (idx) =>
-    setAccounts((arr) => arr.map((a, i) => ({ ...a, is_primary: i === idx })));
+  const removeAccount = (idx) => setAccounts((arr) => arr.filter((_, i) => i !== idx));
+  const setPrimary = (idx) => setAccounts((arr) => arr.map((a, i) => ({ ...a, is_primary: i === idx })));
 
   const handleSubmit = async () => {
     const payload = {
       name: form.name,
       hub_id: form.hub_id || undefined,
+      identity_title: form.identity_title || undefined,
+      topic_cluster_id: form.topic_cluster_id ? Number(form.topic_cluster_id) : undefined,
       activity_domain: form.activity_domain || undefined,
       identity_description: form.identity_description || undefined,
       contact_name: form.contact_name || undefined,
@@ -143,12 +148,14 @@ export function MicroMediaCreateView({ id }) {
         shortDescription="اطلاعات پایه، تماس و هویتی میکرورسانه را وارد کنید. لازم نیست همهٔ فیلدها را همان ابتدا پر کنید؛ بعداً قابل تکمیل‌اند."
         tips={[
           'فقط «نام» اجباری است.',
+          'هویت و خوشه را از لیست تعاریف انتخاب کنید.',
           'هاب را انتخاب کنید تا میکرورسانه در ساختار مدیریتی درست قرار گیرد.',
           'برچسب‌ها را با ویرگول (،) جدا کنید.',
         ]}
       />
 
-      <Card sx={{ p: 3 }}>
+      {/* --- اطلاعات پایه --- */}
+      <Card sx={{ p: 3, mb: 2 }}>
         <Typography variant="subtitle1" sx={{ mb: 2 }}>اطلاعات پایه</Typography>
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 6 }}>
@@ -166,15 +173,73 @@ export function MicroMediaCreateView({ id }) {
             <TextField label="حوزه فعالیت" value={form.activity_domain} onChange={set('activity_domain')} fullWidth />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField label="برچسب‌ها (با ، جدا کنید)" value={form.tagsText} onChange={set('tagsText')} fullWidth disabled={isEdit} />
-          </Grid>
-          <Grid size={{ xs: 12 }}>
-            <TextField label="توضیح هویت" value={form.identity_description} onChange={set('identity_description')} fullWidth multiline rows={2} />
+            <TextField
+              label="برچسب‌ها (با ، جدا کنید)"
+              value={form.tagsText}
+              onChange={set('tagsText')}
+              fullWidth
+              disabled={isEdit}
+              helperText={isEdit ? 'برچسب‌ها از تب «برچسب‌ها» در صفحه جزئیات ویرایش می‌شوند' : ''}
+            />
           </Grid>
         </Grid>
+      </Card>
 
-        <Divider sx={{ my: 3 }} />
-        <Typography variant="subtitle1" sx={{ mb: 2 }}>اطلاعات تماس و هویتی</Typography>
+      {/* --- هویت و خوشه --- */}
+      <Card sx={{ p: 3, mb: 2 }}>
+        <Typography variant="subtitle1" sx={{ mb: 0.5 }}>هویت و خوشه</Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+          هویت و خوشه موضوعی میکرورسانه را از لیست تعریف‌شده انتخاب کنید.
+          این دو فیلد برای دسته‌بندی، فیلتر داشبورد و انتخاب نماینده استفاده می‌شوند.
+        </Typography>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              select
+              label="هویت"
+              value={form.identity_title}
+              onChange={set('identity_title')}
+              fullWidth
+              helperText="نوع/کیستی میکرورسانه (ژورنالیست، بلاگر، روحانی، اینفلوئنسر...)"
+            >
+              <MenuItem value="">— انتخاب نشده —</MenuItem>
+              {(identities ?? []).map((i) => (
+                <MenuItem key={i.id} value={i.title}>{i.title}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              select
+              label="خوشه موضوعی"
+              value={form.topic_cluster_id}
+              onChange={set('topic_cluster_id')}
+              fullWidth
+              helperText="گروه موضوعی که این میکرورسانه در آن قرار می‌گیرد"
+            >
+              <MenuItem value="">— انتخاب نشده —</MenuItem>
+              {(clusters ?? []).map((c) => (
+                <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              label="توضیح هویت"
+              value={form.identity_description}
+              onChange={set('identity_description')}
+              fullWidth
+              multiline
+              rows={2}
+              helperText="توضیح تکمیلی درباره هویت این میکرورسانه (اختیاری)"
+            />
+          </Grid>
+        </Grid>
+      </Card>
+
+      {/* --- اطلاعات تماس --- */}
+      <Card sx={{ p: 3, mb: 2 }}>
+        <Typography variant="subtitle1" sx={{ mb: 2 }}>اطلاعات تماس و جمعیتی</Typography>
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 4 }}>
             <TextField label="نام رابط" value={form.contact_name} onChange={set('contact_name')} fullWidth />
@@ -192,81 +257,71 @@ export function MicroMediaCreateView({ id }) {
             <TextField label="زبان" value={form.language} onChange={set('language')} fullWidth />
           </Grid>
         </Grid>
-
-        {!isEdit && (
-          <>
-            <Divider sx={{ my: 3 }} />
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-              <Box>
-                <Typography variant="subtitle1">سکوها (حساب‌های پلتفرمی)</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  اختیاری. حساب‌های هر پلتفرم را همین‌جا تعریف کنید؛ بعداً هم از تب «سکوها» قابل افزودن‌اند.
-                </Typography>
-              </Box>
-              <Button size="small" startIcon={<Iconify icon="mingcute:add-line" />} onClick={addAccount}>
-                افزودن سکو
-              </Button>
-            </Stack>
-
-            <Stack spacing={2}>
-              {accounts.map((acc, idx) => (
-                <Grid container spacing={2} key={idx} alignItems="center">
-                  <Grid size={{ xs: 12, sm: 3 }}>
-                    <TextField
-                      select
-                      label="پلتفرم"
-                      value={acc.platform}
-                      onChange={(e) => setAccount(idx, 'platform', e.target.value)}
-                      fullWidth
-                      size="small"
-                    >
-                      {PLATFORMS.map((p) => (
-                        <MenuItem key={p} value={p}>{p}</MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 3 }}>
-                    <TextField
-                      label="یوزرنیم / آیدی"
-                      value={acc.username}
-                      onChange={(e) => setAccount(idx, 'username', e.target.value)}
-                      fullWidth
-                      size="small"
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 3 }}>
-                    <TextField
-                      label="نام نمایشی (اختیاری)"
-                      value={acc.name}
-                      onChange={(e) => setAccount(idx, 'name', e.target.value)}
-                      fullWidth
-                      size="small"
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 8, sm: 2 }}>
-                    <FormControlLabel
-                      control={<Switch checked={!!acc.is_primary} onChange={() => setPrimary(idx)} size="small" />}
-                      label="اصلی"
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 4, sm: 1 }} sx={{ textAlign: 'right' }}>
-                    <IconButton color="error" onClick={() => removeAccount(idx)} disabled={accounts.length === 1}>
-                      <Iconify icon="solar:trash-bin-trash-bold" width={18} />
-                    </IconButton>
-                  </Grid>
-                </Grid>
-              ))}
-            </Stack>
-          </>
-        )}
-
-        <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 3 }}>
-          <Button color="inherit" onClick={() => router.back()}>انصراف</Button>
-          <Button variant="contained" onClick={handleSubmit} disabled={!form.name || busy}>
-            {isEdit ? 'ذخیره تغییرات' : 'ایجاد'}
-          </Button>
-        </Stack>
       </Card>
+
+      {/* --- سکوها (فقط در حالت ساخت) --- */}
+      {!isEdit && (
+        <Card sx={{ p: 3, mb: 2 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+            <Box>
+              <Typography variant="subtitle1">سکوها (حساب‌های پلتفرمی)</Typography>
+              <Typography variant="caption" color="text.secondary">
+                اختیاری. حساب‌های هر پلتفرم را همین‌جا تعریف کنید؛ بعداً هم از تب «سکوها» قابل افزودن‌اند.
+              </Typography>
+            </Box>
+            <Button size="small" startIcon={<Iconify icon="mingcute:add-line" />} onClick={addAccount}>
+              افزودن سکو
+            </Button>
+          </Stack>
+          <Stack spacing={2}>
+            {accounts.map((acc, idx) => (
+              <Grid container spacing={2} key={idx} alignItems="center">
+                <Grid size={{ xs: 12, sm: 3 }}>
+                  <TextField
+                    select label="پلتفرم" value={acc.platform}
+                    onChange={(e) => setAccount(idx, 'platform', e.target.value)}
+                    fullWidth size="small"
+                  >
+                    {PLATFORMS.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                  </TextField>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 3 }}>
+                  <TextField
+                    label="یوزرنیم / آیدی" value={acc.username}
+                    onChange={(e) => setAccount(idx, 'username', e.target.value)}
+                    fullWidth size="small"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 3 }}>
+                  <TextField
+                    label="نام نمایشی (اختیاری)" value={acc.name}
+                    onChange={(e) => setAccount(idx, 'name', e.target.value)}
+                    fullWidth size="small"
+                  />
+                </Grid>
+                <Grid size={{ xs: 8, sm: 2 }}>
+                  <FormControlLabel
+                    control={<Switch checked={!!acc.is_primary} onChange={() => setPrimary(idx)} size="small" />}
+                    label="اصلی"
+                  />
+                </Grid>
+                <Grid size={{ xs: 4, sm: 1 }} sx={{ textAlign: 'right' }}>
+                  <IconButton color="error" onClick={() => removeAccount(idx)} disabled={accounts.length === 1}>
+                    <Iconify icon="solar:trash-bin-trash-bold" width={18} />
+                  </IconButton>
+                </Grid>
+              </Grid>
+            ))}
+          </Stack>
+        </Card>
+      )}
+
+      <Stack direction="row" spacing={2} justifyContent="flex-end">
+        <Button color="inherit" onClick={() => router.back()}>انصراف</Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={!form.name || busy}>
+          {isEdit ? 'ذخیره تغییرات' : 'ایجاد'}
+        </Button>
+      </Stack>
     </DashboardContent>
   );
 }

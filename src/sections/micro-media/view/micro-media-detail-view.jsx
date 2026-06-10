@@ -25,6 +25,7 @@ import { useRouter } from 'src/routes/hooks';
 
 import { DashboardContent } from 'src/layouts/dashboard';
 import { useScoreIndicators } from 'src/api/media-score';
+import { usePlatformOptions } from 'src/api/definitions';
 import {
   useAddScore,
   useMicroMedia,
@@ -149,26 +150,25 @@ function ProfileTab({ media }) {
   );
 }
 
-const PLATFORM_OPTIONS = [
-  { value: 'instagram', label: 'اینستاگرام' },
-  { value: 'telegram', label: 'تلگرام' },
-  { value: 'twitter', label: 'توییتر (X)' },
-  { value: 'youtube', label: 'یوتیوب' },
-  { value: 'whatsapp', label: 'واتساپ' },
-  { value: 'website', label: 'وب‌سایت' },
-  { value: 'other', label: 'سایر' },
-];
-
 function AccountsTab({ id }) {
   const { data: accounts, isLoading } = useMicroMediaAccounts(id);
+  const { data: platformOptions } = usePlatformOptions();
   const refresh = useRefreshPerformance();
   const createAccount = useCreateAccount();
   const detachAccount = useDetachAccount();
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', username: '', platform: 'instagram', profile_url: '', followers_count: '' });
+  const [form, setForm] = useState({ name: '', username: '', platform: '', profile_url: '', followers_count: '' });
+
+  const options = platformOptions ?? [];
+  const platformLabel = (k) => options.find((p) => p.key === k)?.label || k || '—';
 
   const setField = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  const openDialog = () => {
+    setForm({ name: '', username: '', platform: options[0]?.key ?? '', profile_url: '', followers_count: '' });
+    setOpen(true);
+  };
 
   const handleCreate = async () => {
     if (!form.username && !form.name) {
@@ -188,7 +188,6 @@ function AccountsTab({ id }) {
       });
       toast.success('سکو اضافه شد');
       setOpen(false);
-      setForm({ name: '', username: '', platform: 'instagram', profile_url: '', followers_count: '' });
     } catch (err) {
       toast.error(err?.message || 'افزودن سکو با خطا مواجه شد');
     }
@@ -213,7 +212,7 @@ function AccountsTab({ id }) {
           <Button size="small" variant="outlined" onClick={() => refresh.mutate(id)} disabled={refresh.isPending}>
             بروزرسانی عملکرد
           </Button>
-          <Button size="small" variant="contained" startIcon={<Iconify icon="mingcute:add-line" />} onClick={() => setOpen(true)}>
+          <Button size="small" variant="contained" startIcon={<Iconify icon="mingcute:add-line" />} onClick={openDialog}>
             افزودن سکو
           </Button>
         </Stack>
@@ -228,7 +227,7 @@ function AccountsTab({ id }) {
         <Stack spacing={1}>
           {(accounts ?? []).map((a) => (
             <Stack key={a.id} direction="row" spacing={2} alignItems="center" sx={{ p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-              <Chip size="small" label={PLATFORM_OPTIONS.find((p) => p.value === a.platform)?.label || a.platform || '—'} />
+              <Chip size="small" label={platformLabel(a.platform)} />
               <Box sx={{ flex: 1 }}>
                 <Typography variant="subtitle2">{a.username || a.name}</Typography>
                 {a.profile_url && (
@@ -261,8 +260,8 @@ function AccountsTab({ id }) {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField select label="پلتفرم" value={form.platform} onChange={setField('platform')} fullWidth>
-              {PLATFORM_OPTIONS.map((p) => (
-                <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>
+              {options.map((p) => (
+                <MenuItem key={p.key} value={p.key}>{p.label}</MenuItem>
               ))}
             </TextField>
             <TextField label="نام کاربری (آیدی)" value={form.username} onChange={setField('username')} fullWidth placeholder="مثلاً my_channel" />

@@ -1,9 +1,6 @@
-import { CONFIG } from 'src/global-config';
+import { redirect } from 'next/navigation';
 
-import { ClusterDetailView } from 'src/sections/clusters/detail-view';
-
-export const metadata = { title: `جزئیات خوشه - ${CONFIG.appName}` };
-
+// جزئیات خوشه به بخش تعاریف منتقل شده‌اند
 export default function Page({ params }) {
-  return <ClusterDetailView clusterId={Number(params.id)} />;
+  redirect(`/dashboard/definitions/clusters/${params.id}`);
 }

@@ -159,7 +159,7 @@ function ScopeBanner() {
   return null;
 }
 
-export function DashboardView() {
+export function DashboardView({ title, hideScopeControls = false } = {}) {
   const { scope } = useScopeContext();
   const { data: macro, isLoading: macroLoading, error: macroError, refetch: refetchMacro } = useMacroDashboard();
   const { data: alignment } = useAlignmentIndex();
@@ -168,20 +168,27 @@ export function DashboardView() {
 
   const totalPages = macro?.identity_distribution?.reduce((s, i) => s + Number(i.count), 0) || 0;
   const scopeLabel = scope === 'cluster' ? 'خوشه‌ای' : SCOPE_LABELS[scope] || 'کل شبکه';
+  const headerTitle = title || 'اتاق وضعیت کنشگران';
 
   return (
     <DashboardContent maxWidth="xl">
       {/* Page Info Box */}
-      <PageInfoBox {...PAGE_INFO} />
+      <PageInfoBox {...PAGE_INFO} title={headerTitle} />
 
-      {/* Scope Selector */}
-      <ScopeSelector />
-      <ScopeBanner />
+      {/* Scope Selector (در صفحات با scope ثابت پنهان می‌شود) */}
+      {!hideScopeControls && (
+        <>
+          <ScopeSelector />
+          <ScopeBanner />
+        </>
+      )}
 
       {/* Header */}
       <Stack direction="row" alignItems="baseline" spacing={1} sx={{ mb: 1 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>اتاق وضعیت کنشگران</Typography>
-        <Typography variant="body2" color="text.secondary">— {scopeLabel}</Typography>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>{headerTitle}</Typography>
+        {!hideScopeControls && (
+          <Typography variant="body2" color="text.secondary">— {scopeLabel}</Typography>
+        )}
       </Stack>
 
       {/* Refresh Bar */}

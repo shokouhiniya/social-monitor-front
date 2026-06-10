@@ -65,3 +65,27 @@ export function useScopeContext() {
   if (!context) throw new Error('useScopeContext must be used within ScopeProvider');
   return context;
 }
+
+/**
+ * StaticScopeProvider — یک scope ثابت و غیرماندگار (بدون localStorage) فراهم
+ * می‌کند تا صفحات «تحلیل» بتوانند داشبوردها و ماژول‌های موجود را با یک scope
+ * مشخص (مثل `all_micromedia`، `platform:instagram`، `micromedia:42`) رندر کنند
+ * بدون آنکه scope داشبورد اصلیِ کاربر را تغییر دهند.
+ */
+export function StaticScopeProvider({ scope, clusterId = null, children }) {
+  const value = useMemo(
+    () => ({
+      scope,
+      clusterId,
+      setScope: () => {},
+      params:
+        scope === 'cluster' && clusterId
+          ? { scope: 'cluster', clusterId }
+          : scope && scope !== 'all'
+            ? { scope }
+            : {},
+    }),
+    [scope, clusterId]
+  );
+  return <ScopeContext value={value}>{children}</ScopeContext>;
+}

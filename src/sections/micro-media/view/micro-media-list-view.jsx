@@ -28,12 +28,14 @@ import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
 import { useHubs } from 'src/api/hubs';
+import { useClusters } from 'src/api/clusters';
 import { DashboardContent } from 'src/layouts/dashboard';
 import {
   useMicroMediaList,
   useDeleteMicroMedia,
   useBulkCreateMicroMedia,
 } from 'src/api/micro-media';
+import { useDefinitions } from 'src/api/definitions';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -63,6 +65,8 @@ function isStale(value) {
 
 const TEMPLATE_HEADERS = [
   'name',
+  'identity_title',
+  'cluster_name',
   'activity_domain',
   'country',
   'language',
@@ -95,7 +99,11 @@ function parseCsvLine(line) {
   return out.map((v) => v.trim());
 }
 
-function rowToPayload(obj) {
+/**
+ * یک ردیف CSV را به payload ارسالی به API تبدیل می‌کند.
+ * clusterNameMap: نگاشت نام خوشه → id (برای تبدیل cluster_name به topic_cluster_id)
+ */
+function rowToPayload(obj, clusterNameMap = {}) {
   const accounts = [];
   for (const n of [1, 2, 3]) {
     const username = obj[`account${n}_username`];
@@ -111,8 +119,16 @@ function rowToPayload(obj) {
   const tags = obj.tags
     ? obj.tags.split(/[،;|]/).map((t) => t.trim()).filter(Boolean)
     : undefined;
+
+  // تبدیل نام خوشه به id
+  const clusterId = obj.cluster_name
+    ? clusterNameMap[obj.cluster_name.trim()]
+    : undefined;
+
   return {
     name: obj.name,
+    identity_title: obj.identity_title?.trim() || undefined,
+    topic_cluster_id: clusterId ?? undefined,
     activity_domain: obj.activity_domain || undefined,
     country: obj.country || undefined,
     language: obj.language || undefined,
@@ -145,27 +161,36 @@ export function MicroMediaListView() {
 
   const { data, isLoading } = useMicroMediaList(params);
   const { data: hubs } = useHubs();
+  const { data: clusters } = useClusters();
+  const { data: identities } = useDefinitions('identity');
   const bulkMutation = useBulkCreateMicroMedia();
   const deleteMutation = useDeleteMicroMedia();
 
   const items = data?.items ?? [];
+
+  // نگاشت سریع id خوشه → نام (برای نمایش در ستون جدول)
+  const clusterMap = Object.fromEntries((clusters ?? []).map((c) => [c.id, c.name]));
+  // نگاشت نام خوشه → id (برای import CSV)
+  const clusterNameMap = Object.fromEntries((clusters ?? []).map((c) => [c.name, c.id]));
 
   // --- bulk import handlers ---
 
   const handleDownloadTemplate = () => {
     const header = TEMPLATE_HEADERS.join(',');
     const example = [
-      'خبرگزاری نمونه',
-      'خبری',
-      'ایران',
-      'فارسی',
-      'علی رضایی',
-      '09120000000',
-      'خبر،سیاسی',
-      'instagram',
-      'sample_page',
-      'telegram',
-      'sample_channel',
+      'خبرگزاری نمونه',  // name
+      'ژورنالیست',        // identity_title
+      'رسانه‌های مقاومت', // cluster_name
+      'خبری',             // activity_domain
+      'ایران',            // country
+      'فارسی',            // language
+      'علی رضایی',        // contact_name
+      '09120000000',      // contact_phone
+      'خبر،سیاسی',        // tags
+      'instagram',        // account1_platform
+      'sample_page',      // account1_username
+      'telegram',         // account2_platform
+      'sample_channel',   // account2_username
     ].join(',');
     const csv = `${header}\n${example}`;
     const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
@@ -194,7 +219,7 @@ export function MicroMediaListView() {
         const vals = parseCsvLine(line);
         const obj = {};
         headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
-        return rowToPayload(obj);
+        return rowToPayload(obj, clusterNameMap);
       }).filter((r) => r.name);
       setImportPreview(rows);
     };
@@ -323,6 +348,8 @@ export function MicroMediaListView() {
               <TableHead>
                 <TableRow>
                   <TableCell>نام</TableCell>
+                  <TableCell>هویت</TableCell>
+                  <TableCell>خوشه</TableCell>
                   <TableCell>حوزه فعالیت</TableCell>
                   <TableCell align="center">سکوها</TableCell>
                   <TableCell align="center">امتیاز</TableCell>
@@ -336,6 +363,30 @@ export function MicroMediaListView() {
                 {items.map((m) => (
                   <TableRow key={m.id} hover>
                     <TableCell>{m.name}</TableCell>
+                    <TableCell>
+                      {m.identity_title ? (
+                        <Chip
+                          size="small"
+                          label={m.identity_title}
+                          color="info"
+                          variant="soft"
+                        />
+                      ) : (
+                        <Typography variant="caption" color="text.disabled">—</Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {m.topic_cluster_id ? (
+                        <Chip
+                          size="small"
+                          label={clusterMap[m.topic_cluster_id] ?? `خوشه ${m.topic_cluster_id}`}
+                          color="warning"
+                          variant="soft"
+                        />
+                      ) : (
+                        <Typography variant="caption" color="text.disabled">—</Typography>
+                      )}
+                    </TableCell>
                     <TableCell>{m.activity_domain || '—'}</TableCell>
                     <TableCell align="center">
                       <Chip
@@ -441,8 +492,9 @@ export function MicroMediaListView() {
                     <TableRow>
                       <TableCell>#</TableCell>
                       <TableCell>نام</TableCell>
+                      <TableCell>هویت</TableCell>
+                      <TableCell>خوشه</TableCell>
                       <TableCell>حوزه</TableCell>
-                      <TableCell>کشور</TableCell>
                       <TableCell align="center">سکوها</TableCell>
                       <TableCell>برچسب‌ها</TableCell>
                     </TableRow>
@@ -452,8 +504,22 @@ export function MicroMediaListView() {
                       <TableRow key={idx}>
                         <TableCell>{idx + 1}</TableCell>
                         <TableCell>{row.name}</TableCell>
+                        <TableCell>
+                          {row.identity_title ? (
+                            <Chip size="small" label={row.identity_title} color="info" variant="soft" />
+                          ) : '—'}
+                        </TableCell>
+                        <TableCell>
+                          {row.topic_cluster_id ? (
+                            <Chip
+                              size="small"
+                              label={clusterMap[row.topic_cluster_id] ?? `خوشه ${row.topic_cluster_id}`}
+                              color="warning"
+                              variant="soft"
+                            />
+                          ) : '—'}
+                        </TableCell>
                         <TableCell>{row.activity_domain || '—'}</TableCell>
-                        <TableCell>{row.country || '—'}</TableCell>
                         <TableCell align="center">
                           {(row.accounts ?? []).length === 0 ? '—' : (row.accounts ?? []).map((a, i) => (
                             <Chip key={i} size="small" sx={{ mr: 0.5 }} label={`${a.platform || '?'}: ${a.username || ''}`} />
