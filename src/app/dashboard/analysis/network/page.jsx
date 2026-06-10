@@ -1,5 +1,4 @@
 import { CONFIG } from 'src/global-config';
-
 import { StaticScopeProvider } from 'src/contexts/scope-context';
 
 import { DashboardView } from 'src/sections/dashboard/view';

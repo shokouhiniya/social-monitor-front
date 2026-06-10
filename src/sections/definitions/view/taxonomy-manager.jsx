@@ -23,9 +23,8 @@ import DialogActions from '@mui/material/DialogActions';
 import TableContainer from '@mui/material/TableContainer';
 import CircularProgress from '@mui/material/CircularProgress';
 
-import { DashboardContent } from 'src/layouts/dashboard';
-
 import { useMicroMediaList } from 'src/api/micro-media';
+import { DashboardContent } from 'src/layouts/dashboard';
 
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';

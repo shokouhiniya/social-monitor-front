@@ -25,8 +25,8 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
-import { DashboardContent } from 'src/layouts/dashboard';
 import { useCluster } from 'src/api/clusters';
+import { DashboardContent } from 'src/layouts/dashboard';
 import {
   useMicroMediaList,
   useUpdateMicroMedia,

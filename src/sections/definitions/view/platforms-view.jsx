@@ -24,7 +24,6 @@ import TableContainer from '@mui/material/TableContainer';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { DashboardContent } from 'src/layouts/dashboard';
-
 import {
   useDefinitions,
   useCreateDefinition,
