@@ -19,7 +19,7 @@ import { useRouter } from 'src/routes/hooks';
 
 import { useHubs } from 'src/api/hubs';
 import { useClusters } from 'src/api/clusters';
-import { useDefinitions } from 'src/api/definitions';
+import { useDefinitions, usePlatformOptions } from 'src/api/definitions';
 import { DashboardContent } from 'src/layouts/dashboard';
 import {
   useMicroMedia,
@@ -32,8 +32,6 @@ import { Iconify } from 'src/components/iconify';
 import { PageInfoBox } from 'src/sections/dashboard/components/page-info-box';
 
 // ----------------------------------------------------------------------
-
-const PLATFORMS = ['instagram', 'telegram', 'eitaa', 'rubika', 'twitter', 'youtube', 'aparat', 'website', 'other'];
 
 const EMPTY = {
   name: '',
@@ -50,7 +48,7 @@ const EMPTY = {
   tagsText: '',
 };
 
-const emptyAccount = (primary = false) => ({ platform: 'instagram', username: '', name: '', is_primary: primary });
+const emptyAccount = (primary = false, firstPlatform = '') => ({ platform: firstPlatform, username: '', name: '', is_primary: primary });
 
 export function MicroMediaCreateView({ id }) {
   const router = useRouter();
@@ -59,11 +57,15 @@ export function MicroMediaCreateView({ id }) {
   const { data: hubs } = useHubs();
   const { data: clusters } = useClusters();
   const { data: identities } = useDefinitions('identity');
+  const { data: platformOptions } = usePlatformOptions();
   const createMutation = useCreateMicroMedia();
   const updateMutation = useUpdateMicroMedia();
 
   const [form, setForm] = useState(EMPTY);
   const [accounts, setAccounts] = useState([emptyAccount(true)]);
+
+  // اولین پلتفرم تعریف‌شده (برای مقدار پیش‌فرض سکوی جدید)
+  const firstPlatformKey = platformOptions?.[0]?.key ?? '';
 
   useEffect(() => {
     if (isEdit && existing) {
@@ -89,7 +91,7 @@ export function MicroMediaCreateView({ id }) {
   // --- account row helpers (create mode only) ---
   const setAccount = (idx, key, value) =>
     setAccounts((arr) => arr.map((a, i) => (i === idx ? { ...a, [key]: value } : a)));
-  const addAccount = () => setAccounts((arr) => [...arr, emptyAccount(arr.length === 0)]);
+  const addAccount = () => setAccounts((arr) => [...arr, emptyAccount(arr.length === 0, firstPlatformKey)]);
   const removeAccount = (idx) => setAccounts((arr) => arr.filter((_, i) => i !== idx));
   const setPrimary = (idx) => setAccounts((arr) => arr.map((a, i) => ({ ...a, is_primary: i === idx })));
 
@@ -281,7 +283,9 @@ export function MicroMediaCreateView({ id }) {
                     onChange={(e) => setAccount(idx, 'platform', e.target.value)}
                     fullWidth size="small"
                   >
-                    {PLATFORMS.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                    {(platformOptions ?? []).map((p) => (
+                      <MenuItem key={p.key} value={p.key}>{p.label || p.key}</MenuItem>
+                    ))}
                   </TextField>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 3 }}>

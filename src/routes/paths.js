@@ -55,6 +55,14 @@ export const paths = {
       identities: `${ROOTS.DASHBOARD}/definitions/identities`,
       platforms: `${ROOTS.DASHBOARD}/definitions/platforms`,
     },
+    // پایش محتوا
+    monitor: {
+      microMedia: {
+        root: `${ROOTS.DASHBOARD}/monitor/micro-media`,
+        content: (id) => `${ROOTS.DASHBOARD}/monitor/micro-media/${id}/content`,
+      },
+      content: `${ROOTS.DASHBOARD}/monitor/content`,
+    },
     overview: `${ROOTS.DASHBOARD}/overview`,
     // My Network (was instagram)
     mynetwork: {

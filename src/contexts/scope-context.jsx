@@ -7,9 +7,15 @@ import { useMemo, useState, useContext, useCallback, createContext } from 'react
 /**
  * Scope context — controls which subset of the network drives the dashboards.
  *
- *  - 'all'             → entire monitored network
- *  - 'representatives' → pages flagged is_representative = true
- *  - 'cluster'         → pages belonging to a specific cluster (clusterId)
+ * مقادیر scope:
+ *  - 'all'                          → کل شبکه (بدون فیلتر)
+ *  - 'representatives'              → پیج‌های is_representative (قدیمی)
+ *  - 'cluster'                      → پیج‌های یک خوشه (نیاز به clusterId)
+ *  - 'cluster-representatives'      → نمایندگان خوشه (میکرورسانه is_cluster_representative)
+ *                                     + clusterId اختیاری برای فیلتر یک خوشه خاص
+ *  - 'identity:<title>'             → میکرورسانه‌های یک هویت خاص
+ *  - 'identity-representatives'     → نمایندگان هویت (is_identity_representative)
+ *  - 'identity-representatives:<title>' → نمایندگان یک هویت خاص
  */
 
 const ScopeContext = createContext(undefined);
@@ -17,25 +23,52 @@ const ScopeContext = createContext(undefined);
 const STORAGE_KEY = 'dashboard_scope';
 
 function readInitialScope() {
-  if (typeof window === 'undefined') return { scope: 'representatives', clusterId: null };
+  if (typeof window === 'undefined')
+    return { scope: 'cluster-representatives', clusterId: null, identityTitle: null };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { scope: 'representatives', clusterId: null };
+    if (!raw) return { scope: 'cluster-representatives', clusterId: null, identityTitle: null };
     const parsed = JSON.parse(raw);
     return {
-      scope: parsed?.scope || 'representatives',
+      scope: parsed?.scope || 'cluster-representatives',
       clusterId: parsed?.clusterId ?? null,
+      identityTitle: parsed?.identityTitle ?? null,
     };
   } catch {
-    return { scope: 'representatives', clusterId: null };
+    return { scope: 'cluster-representatives', clusterId: null, identityTitle: null };
   }
+}
+
+function buildParams(scope, clusterId, identityTitle) {
+  if (scope === 'cluster' && clusterId) {
+    return { scope: 'cluster', clusterId };
+  }
+  if (scope === 'cluster-representatives' && clusterId) {
+    return { scope: 'cluster-representatives', clusterId };
+  }
+  if (scope === 'cluster-representatives') {
+    return { scope: 'cluster-representatives' };
+  }
+  if (scope === 'identity' && identityTitle) {
+    return { scope: `identity:${encodeURIComponent(identityTitle)}` };
+  }
+  if (scope === 'identity-representatives' && identityTitle) {
+    return { scope: `identity-representatives:${encodeURIComponent(identityTitle)}` };
+  }
+  if (scope === 'identity-representatives') {
+    return { scope: 'identity-representatives' };
+  }
+  if (scope && scope !== 'all') {
+    return { scope };
+  }
+  return { __noScope: true };
 }
 
 export function ScopeProvider({ children }) {
   const [state, setState] = useState(readInitialScope);
 
-  const setScope = useCallback((scope, clusterId = null) => {
-    const next = { scope, clusterId: scope === 'cluster' ? clusterId : null };
+  const setScope = useCallback((scope, { clusterId = null, identityTitle = null } = {}) => {
+    const next = { scope, clusterId, identityTitle };
     setState(next);
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -46,15 +79,11 @@ export function ScopeProvider({ children }) {
     () => ({
       scope: state.scope,
       clusterId: state.clusterId,
+      identityTitle: state.identityTitle,
       setScope,
-      // params helper for axios requests
-      params: state.scope === 'cluster' && state.clusterId
-        ? { scope: 'cluster', clusterId: state.clusterId }
-        : state.scope && state.scope !== 'all'
-          ? { scope: state.scope }
-          : {},
+      params: buildParams(state.scope, state.clusterId, state.identityTitle),
     }),
-    [state, setScope]
+    [state, setScope],
   );
 
   return <ScopeContext value={value}>{children}</ScopeContext>;
@@ -67,25 +96,18 @@ export function useScopeContext() {
 }
 
 /**
- * StaticScopeProvider — یک scope ثابت و غیرماندگار (بدون localStorage) فراهم
- * می‌کند تا صفحات «تحلیل» بتوانند داشبوردها و ماژول‌های موجود را با یک scope
- * مشخص (مثل `all_micromedia`، `platform:instagram`، `micromedia:42`) رندر کنند
- * بدون آنکه scope داشبورد اصلیِ کاربر را تغییر دهند.
+ * StaticScopeProvider — scope ثابت برای صفحات تحلیل (بدون localStorage).
  */
-export function StaticScopeProvider({ scope, clusterId = null, children }) {
+export function StaticScopeProvider({ scope, clusterId = null, identityTitle = null, children }) {
   const value = useMemo(
     () => ({
       scope,
       clusterId,
+      identityTitle,
       setScope: () => {},
-      params:
-        scope === 'cluster' && clusterId
-          ? { scope: 'cluster', clusterId }
-          : scope && scope !== 'all'
-            ? { scope }
-            : {},
+      params: buildParams(scope, clusterId, identityTitle),
     }),
-    [scope, clusterId]
+    [scope, clusterId, identityTitle],
   );
   return <ScopeContext value={value}>{children}</ScopeContext>;
 }

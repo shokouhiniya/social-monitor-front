@@ -34,12 +34,16 @@ import { IdentityRadialChart } from './components/identity-radial-chart';
 import { ProfileDistributions } from './components/profile-distributions';
 import { NarrativeHealthGauge } from './components/narrative-health-gauge';
 import { StrategicAlertsWidget } from './components/strategic-alerts-widget';
+import { AiRequiredBadge } from './components/ai-required-badge';
 
 // ----------------------------------------------------------------------
 
 const SCOPE_LABELS = {
   representatives: 'نمایندگان شبکه',
   cluster: 'خوشه',
+  'cluster-representatives': 'نمایندگان خوشه',
+  identity: 'هویت',
+  'identity-representatives': 'نمایندگان هویت',
   all: 'کل شبکه',
 };
 
@@ -95,12 +99,14 @@ const PAGE_INFO = {
 
 function ScopeBanner() {
   const router = useRouter();
-  const { scope, clusterId, setScope } = useScopeContext();
+  const { scope, clusterId, identityTitle, setScope } = useScopeContext();
   const { data: clusters } = useClusters();
-  const { data: activeCluster } = useCluster(scope === 'cluster' ? clusterId : null);
+  const { data: activeCluster } = useCluster(
+    (scope === 'cluster' || scope === 'cluster-representatives') ? clusterId : null,
+  );
 
-  // Auto-recover from stale clusterId (deleted cluster left in localStorage)
-  if (scope === 'cluster' && clusterId && clusters && clusters.length > 0) {
+  // Auto-recover از clusterId منسوخ
+  if ((scope === 'cluster' || scope === 'cluster-representatives') && clusterId && clusters?.length > 0) {
     const exists = clusters.some((c) => c.id === Number(clusterId));
     if (!exists) {
       return (
@@ -108,18 +114,33 @@ function ScopeBanner() {
           severity="warning"
           icon={<Iconify icon="solar:refresh-bold-duotone" />}
           action={
-            <Button size="small" color="warning" variant="contained" onClick={() => setScope('representatives')}>
+            <Button size="small" color="warning" variant="contained"
+              onClick={() => setScope('cluster-representatives')}
+            >
               بازگشت به نمایندگان
             </Button>
           }
           sx={{ mb: 2 }}
         >
-          خوشه انتخاب‌شده دیگر موجود نیست. به نمایندگان شبکه برگردید یا خوشه دیگری انتخاب کنید.
+          خوشه انتخاب‌شده دیگر موجود نیست.
         </Alert>
       );
     }
   }
 
+  // نمایندگان خوشه: اگر هنوز کسی نماینده نشده
+  if (scope === 'cluster-representatives') {
+    if (!clusterId) {
+      return (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          خوشه‌ای انتخاب نشده. از سلکتور بالا یک خوشه انتخاب کنید.
+        </Alert>
+      );
+    }
+    return null;
+  }
+
+  // scope قدیمی representatives (page-based)
   if (scope === 'representatives') {
     const reps = (clusters || []).reduce((s, c) => s + (c.representatives_count || 0), 0);
     if (reps === 0) {
@@ -129,14 +150,14 @@ function ScopeBanner() {
           icon={<Iconify icon="solar:star-bold-duotone" />}
           action={
             <Button size="small" color="warning" variant="contained"
-              onClick={() => router.push(paths.dashboard.mynetwork.clusters.root)}
+              onClick={() => router.push(paths.dashboard.definitions.clusters)}
             >
               مدیریت خوشه‌ها
             </Button>
           }
           sx={{ mb: 2 }}
         >
-          هیچ پیجی به‌عنوان «نماینده» انتخاب نشده. ابتدا در صفحه خوشه‌ها چند پیج را به‌عنوان نماینده مشخص کنید.
+          هنوز نماینده‌ای انتخاب نشده. از بخش تعاریف → خوشه‌ها نماینده تعیین کنید.
         </Alert>
       );
     }
@@ -145,15 +166,13 @@ function ScopeBanner() {
 
   if (scope === 'cluster') {
     if (!clusterId) {
-      return <Alert severity="info" sx={{ mb: 2 }}>خوشه‌ای انتخاب نشده. از سلکتور بالا یک خوشه انتخاب کنید.</Alert>;
+      return <Alert severity="info" sx={{ mb: 2 }}>خوشه‌ای انتخاب نشده.</Alert>;
     }
-    if (activeCluster && (activeCluster.pages_count ?? activeCluster.pages?.length ?? 0) === 0) {
-      return (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          خوشه «{activeCluster.name}» هنوز پیجی ندارد. ابتدا پیج‌ها را به این خوشه اضافه کنید.
-        </Alert>
-      );
-    }
+    return null;
+  }
+
+  if ((scope === 'identity' || scope === 'identity-representatives') && !identityTitle) {
+    return <Alert severity="info" sx={{ mb: 2 }}>هویتی انتخاب نشده. از سلکتور بالا یک هویت انتخاب کنید.</Alert>;
   }
 
   return null;
@@ -167,7 +186,7 @@ export function DashboardView({ title, hideScopeControls = false } = {}) {
   const { data: activityIdx } = useActivityIndex();
 
   const totalPages = macro?.identity_distribution?.reduce((s, i) => s + Number(i.count), 0) || 0;
-  const scopeLabel = scope === 'cluster' ? 'خوشه‌ای' : SCOPE_LABELS[scope] || 'کل شبکه';
+  const scopeLabel = SCOPE_LABELS[scope] || scope || 'کل شبکه';
   const headerTitle = title || 'اتاق وضعیت کنشگران';
 
   return (
@@ -249,7 +268,9 @@ export function DashboardView({ title, hideScopeControls = false } = {}) {
 
         {/* Actors Scene Report (300-400 word AI narrative) */}
         <Grid size={{ xs: 12 }}>
-          <ActorsSceneReport />
+          <AiRequiredBadge title="گزارش وضعیت صحنه کنشگران">
+            <ActorsSceneReport />
+          </AiRequiredBadge>
         </Grid>
 
         {/* Profile Distributions (category, cluster, country, language, religion) */}
@@ -272,8 +293,12 @@ export function DashboardView({ title, hideScopeControls = false } = {}) {
             badge="۹ ماژول"
           >
             <Stack spacing={3}>
-              <AiSynthesizer />
-              <PeriodicReport />
+              <AiRequiredBadge title="خلاصه‌ساز هوش مصنوعی">
+                <AiSynthesizer />
+              </AiRequiredBadge>
+              <AiRequiredBadge title="گزارش دوره‌ای">
+                <PeriodicReport />
+              </AiRequiredBadge>
               <PulseStrip />
 
               <Grid container spacing={3}>

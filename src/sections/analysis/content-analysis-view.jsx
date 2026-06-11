@@ -16,6 +16,7 @@ import { TopicGravityChart } from 'src/sections/dashboard/components/topic-gravi
 import { CollapsibleSection } from 'src/sections/dashboard/components/collapsible-section';
 import { NarrativeHealthGauge } from 'src/sections/dashboard/components/narrative-health-gauge';
 import { TrendingKeywordsCloud } from 'src/sections/dashboard/components/trending-keywords-cloud';
+import { AiRequiredBadge } from 'src/sections/dashboard/components/ai-required-badge';
 
 // ----------------------------------------------------------------------
 
@@ -116,7 +117,9 @@ export function ContentAnalysisView({ emptyHint }) {
               subtitle="خلاصهٔ AI و Crisis Corridor"
             >
               <Stack spacing={3}>
-                <AiSynthesizer />
+                <AiRequiredBadge title="خلاصه‌ساز هوش مصنوعی">
+                  <AiSynthesizer />
+                </AiRequiredBadge>
                 <CrisisCorridor />
               </Stack>
             </CollapsibleSection>

@@ -42,16 +42,15 @@ const PAGE_INFO = {
   title: 'مدیریت خوشه‌ها',
   icon: 'solar:atom-bold-duotone',
   color: 'secondary',
-  shortDescription: 'گروه‌بندی منطقی پیج‌ها به خوشه‌ها — برای تحلیل سگمنتی شبکه، تخصیص نمایندگان و فیلتر کل سامانه',
+  shortDescription: 'گروه‌بندی منطقی میکرورسانه‌ها به خوشه‌ها — برای تحلیل سگمنتی شبکه، تخصیص نمایندگان و فیلتر کل سامانه',
   modules: [
     { name: 'ساخت خوشه', icon: 'solar:add-circle-bold-duotone', color: 'primary', description: 'هر خوشه شامل: نام، رنگ، آیکون، توضیحات. مثال: «رسانه مقاومت»، «بلاگرهای ایرانی»، «کانال‌های خبری بین‌المللی».' },
-    { name: 'تخصیص پیج', icon: 'solar:link-bold-duotone', color: 'success', description: 'پیج‌ها را به خوشه اضافه کنید. هر پیج می‌تواند فقط در یک خوشه باشد. در صفحه detail خوشه می‌توانید چندتایی اضافه/حذف کنید.' },
-    { name: 'تعیین نمایندگان', icon: 'solar:star-bold-duotone', color: 'warning', description: 'برخی پیج‌های مهم خوشه را به‌عنوان «نماینده» علامت بزنید. در داشبورد می‌توانید فقط نمایندگان را تحلیل کنید (سبک‌تر و دقیق‌تر).' },
-    { name: 'فیلتر سامانه', icon: 'solar:filter-bold-duotone', color: 'info', description: 'با ScopeSelector در داشبورد، می‌توانید فقط داده‌های یک خوشه خاص را تحلیل کنید — بدون نیاز به ساخت داشبورد جدید.' },
+    { name: 'تخصیص میکرورسانه', icon: 'solar:link-bold-duotone', color: 'success', description: 'میکرورسانه‌ها را از طریق صفحه ویرایش یا جزئیات خوشه به آن اضافه کنید.' },
+    { name: 'تعیین نمایندگان', icon: 'solar:star-bold-duotone', color: 'warning', description: 'برخی میکرورسانه‌های مهم خوشه را به‌عنوان «نماینده» علامت بزنید. در داشبورد می‌توانید فقط نمایندگان را تحلیل کنید.' },
+    { name: 'فیلتر سامانه', icon: 'solar:filter-bold-duotone', color: 'info', description: 'با ScopeSelector در داشبورد، می‌توانید فقط داده‌های یک خوشه خاص را تحلیل کنید.' },
   ],
   tips: [
-    'برای حذف خوشه ابتدا باید پیج‌های آن را خالی کنید',
-    'نمایندگان معمولاً ۱۰-۲۰٪ پیج‌های خوشه هستند (پرنفوذترین‌ها)',
+    'نمایندگان معمولاً ۱۰-۲۰٪ میکرورسانه‌های خوشه هستند (پرنفوذترین‌ها)',
     'رنگ خوشه در نمودارها و چارت‌های شبکه استفاده می‌شود',
   ],
 };
@@ -142,7 +141,7 @@ export function ClustersListView() {
     }
   };
 
-  const totalPages = (clusters || []).reduce((s, c) => s + (c.pages_count || 0), 0);
+  const totalMicroMedia = (clusters || []).reduce((s, c) => s + (c.pages_count || 0), 0);
   const totalReps = (clusters || []).reduce((s, c) => s + (c.representatives_count || 0), 0);
 
   return (
@@ -169,7 +168,7 @@ export function ClustersListView() {
       {/* Summary chips */}
       <Stack direction="row" spacing={1.5} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
         <Chip icon={<Iconify icon="solar:layers-bold-duotone" />} label={`${clusters?.length || 0} خوشه`} color="primary" variant="outlined" />
-        <Chip icon={<Iconify icon="solar:users-group-rounded-bold-duotone" />} label={`${totalPages} میکرورسانه خوشه‌بندی‌شده`} color="info" variant="outlined" />
+        <Chip icon={<Iconify icon="solar:users-group-rounded-bold-duotone" />} label={`${totalMicroMedia} میکرورسانه خوشه‌بندی‌شده`} color="info" variant="outlined" />
         <Chip icon={<Iconify icon="solar:star-bold-duotone" />} label={`${totalReps} نماینده`} color="warning" variant="outlined" />
       </Stack>
 

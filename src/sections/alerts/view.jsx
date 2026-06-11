@@ -27,7 +27,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import FormControlLabel from '@mui/material/FormControlLabel';
 
-import { usePages } from 'src/api/pages';
+import { useMicroMediaList } from 'src/api/micro-media';
 import { useClusters } from 'src/api/clusters';
 import { useGenerateAlerts } from 'src/api/analytics';
 import { DashboardContent } from 'src/layouts/dashboard';
@@ -53,18 +53,18 @@ const PAGE_INFO = {
   title: 'مرکز عملیات',
   icon: 'solar:command-bold-duotone',
   color: 'error',
-  shortDescription: 'مدیریت یکپارچه هشدارهای استراتژیک و عملیات‌ها — تعریف عملیات برای پیج/خوشه، تعیین مسئول، ثبت اطلاعات ارتباطی و توصیه پیج‌های همراه',
+  shortDescription: 'مدیریت یکپارچه هشدارهای استراتژیک و عملیات‌ها — تعریف عملیات برای میکرورسانه/خوشه، تعیین مسئول، ثبت اطلاعات ارتباطی و توصیه میکرورسانه‌های همراه',
   modules: [
     { name: 'هشدارهای استراتژیک', icon: 'solar:bell-bold-duotone', color: 'error', description: 'لیست هشدارها (تولیدی AI یا دستی) — هر هشدار با اولویت، دسته‌بندی، Playbook و امکان تبدیل به عملیات.' },
-    { name: 'تعریف عملیات (Action Plan)', icon: 'solar:clipboard-add-bold-duotone', color: 'primary', description: 'هر هشدار را می‌توانید به یک یا چند عملیات تبدیل کنید — برای یک پیج خاص، چند پیج، یا کل یک خوشه.' },
+    { name: 'تعریف عملیات (Action Plan)', icon: 'solar:clipboard-add-bold-duotone', color: 'primary', description: 'هر هشدار را می‌توانید به یک یا چند عملیات تبدیل کنید — برای یک میکرورسانه خاص، چند میکرورسانه، یا کل یک خوشه.' },
     { name: 'مسئولیت', icon: 'solar:user-id-bold-duotone', color: 'info', description: 'برای هر عملیات می‌توانید یک مسئول مشخص کنید (نام، دپارتمان، یا شناسه کاربر) و وضعیت پیشرفت را پیگیری کنید.' },
-    { name: 'اطلاعات ارتباطی', icon: 'solar:phone-bold-duotone', color: 'success', description: 'برای عملیات‌های پیج‌محور، اطلاعات تماس ادمین (تلفن، ایمیل، تلگرام، یادداشت) ذخیره می‌شود تا تیم با او ارتباط بگیرد.' },
-    { name: 'توصیه پیج‌های همراه', icon: 'solar:users-group-rounded-bold-duotone', color: 'warning', description: 'برای هر عملیات، می‌توانید لیستی از پیج‌های پیشنهادی برای همراه‌سازی یا بازنشر معرفی کنید.' },
-    { name: 'ثبت تعامل (Interaction)', icon: 'solar:chat-round-dots-bold-duotone', color: 'secondary', description: 'هر تماس واقعی با ادمین پیج (کامنت، پیام، DM، تماس تلفنی) را در عملیات ثبت کنید — تا تاریخچه ارتباطات شفاف باشد.' },
+    { name: 'اطلاعات ارتباطی', icon: 'solar:phone-bold-duotone', color: 'success', description: 'اطلاعات تماس ادمین (تلفن، ایمیل، تلگرام، یادداشت) ذخیره می‌شود تا تیم ارتباط بگیرد.' },
+    { name: 'توصیه میکرورسانه‌های همراه', icon: 'solar:users-group-rounded-bold-duotone', color: 'warning', description: 'برای هر عملیات، می‌توانید لیستی از میکرورسانه‌های پیشنهادی برای همراه‌سازی یا بازنشر معرفی کنید.' },
+    { name: 'ثبت تعامل (Interaction)', icon: 'solar:chat-round-dots-bold-duotone', color: 'secondary', description: 'هر تماس واقعی (کامنت، پیام، DM، تماس تلفنی) را در عملیات ثبت کنید — تا تاریخچه ارتباطات شفاف باشد.' },
   ],
   tips: [
     'هشدارهای «بحرانی» با حاشیه قرمز از سایرین متمایز می‌شوند',
-    'عملیات‌ها در پروفایل هر پیج هم نمایش داده می‌شوند',
+    'عملیات‌ها در پروفایل هر میکرورسانه هم نمایش داده می‌شوند',
     'برای دیدن عملیات‌های یک خوشه، به صفحه آن خوشه بروید',
     'با تب «عملیات‌ها» می‌توانید همه‌ی عملیات‌های فعال شبکه را در یک نگاه ببینید',
   ],
@@ -323,7 +323,7 @@ function AlertCard({ alert, onStatusChange }) {
           )}
 
           {alert.target_pages?.length > 0 && (
-            <Chip label={`${alert.target_pages.length} پیج هدف`} size="small" variant="outlined" color="info" sx={{ mt: 1 }}
+            <Chip label={`${alert.target_pages.length} میکرورسانه هدف`} size="small" variant="outlined" color="info" sx={{ mt: 1 }}
               icon={<Iconify icon="solar:users-group-rounded-bold" width={14} />}
             />
           )}
@@ -386,19 +386,20 @@ function CreateOperationFromAlertDialog({ open, onClose, alert }) {
   const [platformFilter, setPlatformFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
-  const { data: pagesData } = usePages({ page: 1, limit: 100 });
+  const { data: mmData } = useMicroMediaList({ limit: 100 });
   const { data: clustersData } = useClusters();
   const createFromAlert = useCreateActionPlanFromAlert();
 
-  const pages = pagesData?.data || pagesData || [];
+  const pages = mmData?.items ?? [];
 
   // Filter pages by search and filters
   const filteredPages = pages.filter((page) => {
     const matchesSearch = !search ||
       page.name?.toLowerCase().includes(search.toLowerCase()) ||
-      page.username?.toLowerCase().includes(search.toLowerCase());
-    const matchesPlatform = platformFilter === 'all' || page.platform === platformFilter;
-    const matchesCategory = categoryFilter === 'all' || page.category === categoryFilter;
+      page.identity_title?.toLowerCase().includes(search.toLowerCase()) ||
+      page.activity_domain?.toLowerCase().includes(search.toLowerCase());
+    const matchesPlatform = platformFilter === 'all';  // micro-media ندارند platform مستقیم
+    const matchesCategory = categoryFilter === 'all' || page.identity_title === categoryFilter;
     return matchesSearch && matchesPlatform && matchesCategory;
   });
 
@@ -494,7 +495,7 @@ function CreateOperationFromAlertDialog({ open, onClose, alert }) {
             <Typography variant="subtitle2" sx={{ mb: 1 }}>هدف عملیات</Typography>
             <Stack direction="row" spacing={1}>
               <Chip
-                label="یک یا چند پیج"
+                label="یک یا چند میکرورسانه"
                 size="medium"
                 variant={target === 'pages' ? 'filled' : 'outlined'}
                 color={target === 'pages' ? 'primary' : 'default'}
@@ -523,7 +524,7 @@ function CreateOperationFromAlertDialog({ open, onClose, alert }) {
             >
               <MenuItem value="">— انتخاب —</MenuItem>
               {(clustersData || []).map((c) => (
-                <MenuItem key={c.id} value={c.id}>{c.name} ({c.pages_count || 0} پیج)</MenuItem>
+                <MenuItem key={c.id} value={c.id}>{c.name} ({c.pages_count || 0} میکرورسانه)</MenuItem>
               ))}
             </TextField>
           )}
@@ -613,10 +614,10 @@ function CreateOperationFromAlertDialog({ open, onClose, alert }) {
           <Box sx={(theme) => ({ p: 1.5, borderRadius: 1, bgcolor: alpha(theme.palette.warning.main, 0.04), border: `1px solid ${alpha(theme.palette.warning.main, 0.15)}` })}>
             <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
               <Iconify icon="solar:users-group-rounded-bold-duotone" width={18} sx={{ color: 'warning.main' }} />
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'warning.main' }}>پیج‌های پیشنهادی همراه</Typography>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'warning.main' }}>میکرورسانه‌های پیشنهادی همراه</Typography>
             </Stack>
             <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-              پیج‌هایی که برای همراه‌سازی، بازنشر یا تعامل در این عملیات پیشنهاد می‌شوند
+              میکرورسانه‌هایی که برای همراه‌سازی، بازنشر یا تعامل در این عملیات پیشنهاد می‌شوند
             </Typography>
             <Box sx={{ maxHeight: 120, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 0.75, bgcolor: 'background.paper' }}>
               {pages.slice(0, 30).map((page) => (
@@ -629,13 +630,13 @@ function CreateOperationFromAlertDialog({ open, onClose, alert }) {
                       onChange={() => handleToggleRecommended(page.id)}
                     />
                   }
-                  label={<Typography variant="caption">{page.name} {page.username && `(@${page.username})`}</Typography>}
+                  label={<Typography variant="caption">{page.name} {page.activity_domain && `— ${page.activity_domain}`}</Typography>}
                   sx={{ display: 'flex', m: 0, py: 0.25 }}
                 />
               ))}
             </Box>
             <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: 'block' }}>
-              {recommendedPages.length} پیج پیشنهادی
+              {recommendedPages.length} میکرورسانه پیشنهادی
             </Typography>
           </Box>
 
@@ -643,7 +644,7 @@ function CreateOperationFromAlertDialog({ open, onClose, alert }) {
           {target === 'pages' && (
           <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-              <Typography variant="subtitle2">انتخاب پیج‌های هدف</Typography>
+              <Typography variant="subtitle2">انتخاب میکرورسانه‌های هدف</Typography>
               <Button size="small" onClick={handleSelectAllFiltered} sx={{ fontSize: 11 }}>
                 {filteredPages.length > 0 && filteredPages.every((p) => selectedPages.includes(p.id)) ? 'لغو انتخاب' : 'انتخاب همه'}
               </Button>
@@ -652,7 +653,7 @@ function CreateOperationFromAlertDialog({ open, onClose, alert }) {
             <TextField
               fullWidth
               size="small"
-              placeholder="جستجوی نام یا یوزرنیم..."
+              placeholder="جستجوی نام میکرورسانه..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               InputProps={{
@@ -708,7 +709,7 @@ function CreateOperationFromAlertDialog({ open, onClose, alert }) {
             <Box sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1 }}>
               {filteredPages.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                  پیجی یافت نشد
+                  میکرورسانه‌ای یافت نشد
                 </Typography>
               ) : (
                 filteredPages.map((page) => (
@@ -724,9 +725,9 @@ function CreateOperationFromAlertDialog({ open, onClose, alert }) {
                     label={
                       <Stack direction="row" alignItems="center" spacing={0.75}>
                         <Typography variant="body2">{page.name}</Typography>
-                        {page.username && <Typography variant="caption" color="text.disabled">@{page.username}</Typography>}
-                        {page.platform && (
-                          <Chip label={PLATFORM_LABELS[page.platform] || page.platform} size="small" variant="outlined" sx={{ height: 18, fontSize: 9 }} />
+                        {page.identity_title && <Typography variant="caption" color="text.disabled">{page.identity_title}</Typography>}
+                        {page.activity_domain && (
+                          <Chip label={page.activity_domain} size="small" variant="outlined" sx={{ height: 18, fontSize: 9 }} />
                         )}
                       </Stack>
                     }
@@ -736,7 +737,7 @@ function CreateOperationFromAlertDialog({ open, onClose, alert }) {
               )}
             </Box>
             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-              {selectedPages.length} پیج انتخاب شده — برای هر پیج یک عملیات جداگانه ایجاد می‌شود
+              {selectedPages.length} میکرورسانه انتخاب شده — برای هر کدام یک عملیات جداگانه ایجاد می‌شود
             </Typography>
           </Box>
           )}
@@ -750,7 +751,7 @@ function CreateOperationFromAlertDialog({ open, onClose, alert }) {
           disabled={!isValid || createFromAlert.isPending}
           startIcon={createFromAlert.isPending ? <CircularProgress size={16} /> : <Iconify icon="solar:clipboard-check-bold" />}
         >
-          {target === 'cluster' ? 'ایجاد عملیات خوشه' : `ایجاد عملیات (${selectedPages.length} پیج)`}
+          {target === 'cluster' ? 'ایجاد عملیات خوشه' : `ایجاد عملیات (${selectedPages.length} میکرورسانه)`}
         </Button>
       </DialogActions>
     </Dialog>

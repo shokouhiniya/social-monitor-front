@@ -21,7 +21,7 @@ import DialogActions from '@mui/material/DialogActions';
 import LinearProgress from '@mui/material/LinearProgress';
 import CircularProgress from '@mui/material/CircularProgress';
 
-import { usePages, useBlindSpots } from 'src/api/pages';
+import { useMicroMediaList } from 'src/api/micro-media';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { useCreateStrategicAlert } from 'src/api/strategic-alerts';
 import { useFieldReports, useFieldReportStats, useCreateFieldReport } from 'src/api/field-reports';
@@ -42,9 +42,9 @@ const PAGE_INFO = {
   shortDescription: 'لایه انسانی سامانه — اطلاعاتی که فقط با حضور میدانی یا منابع داخلی به دست می‌آید و در دیتای کراولر نیست',
   modules: [
     { name: 'ثبت گزارش', icon: 'solar:add-circle-bold-duotone', color: 'primary', description: 'گزارش میدانی به صورت متن دستی، ویس، یا فایل ثبت کنید. کلمات کلیدی به‌صورت خودکار استخراج می‌شوند.' },
-    { name: 'اتصال به پیج', icon: 'solar:link-bold-duotone', color: 'info', description: 'هر گزارش می‌تواند به یک پیج خاص متصل شود. سپس در پروفایل پیج، گزارش به‌عنوان «شواهد میدانی» نمایش داده می‌شود.' },
-    { name: 'تحلیل احساسات', icon: 'solar:emotional-bold-duotone', color: 'warning', description: 'وضعیت روحی صاحب پیج: عصبی، متمایل به همکاری، فراری، خنثی.' },
-    { name: 'پیج‌های کور (Blind Spots)', icon: 'solar:eye-closed-bold-duotone', color: 'error', description: 'پیج‌هایی با نفوذ بالا که هیچ گزارش میدانی ندارند. این پیج‌ها اولویت تحقیق و گزارش‌گیری هستند.' },
+    { name: 'اتصال به میکرورسانه', icon: 'solar:link-bold-duotone', color: 'info', description: 'هر گزارش می‌تواند به یک میکرورسانه متصل شود. سپس در پروفایل میکرورسانه، گزارش به‌عنوان «شواهد میدانی» نمایش داده می‌شود.' },
+    { name: 'تحلیل احساسات', icon: 'solar:emotional-bold-duotone', color: 'warning', description: 'وضعیت روحی: عصبی، متمایل به همکاری، فراری، خنثی.' },
+    { name: 'بدون گزارش (Blind Spots)', icon: 'solar:eye-closed-bold-duotone', color: 'error', description: 'میکرورسانه‌هایی که هنوز هیچ گزارش میدانی ندارند — اولویت تحقیق و گزارش‌گیری.' },
     { name: 'تبدیل به هشدار', icon: 'solar:bell-bold-duotone', color: 'error', description: 'هر گزارش را می‌توانید با یک کلیک به یک هشدار استراتژیک تبدیل کنید — تا تیم اقدام کند.' },
     { name: 'درجه اعتبار', icon: 'solar:shield-check-bold-duotone', color: 'success', description: '۳ درجه: موثق، در حد شنیده، تحلیل شخصی. به تحلیلگر کمک می‌کند منبع را ارزیابی کند.' },
   ],
@@ -82,12 +82,11 @@ export function FieldReportsView() {
 
   const { data: reportsData, isLoading, error: reportsError, refetch: refetchReports } = useFieldReports({ status: statusFilter || undefined });
   const { data: stats } = useFieldReportStats();
-  const { data: pagesData } = usePages({ page: 1, limit: 100 });
-  const { data: blindSpots } = useBlindSpots(6);
+  const { data: mmData } = useMicroMediaList({ limit: 100 });
   const createMutation = useCreateFieldReport();
 
   const reports = reportsData?.data || [];
-  const pages = pagesData?.data || [];
+  const pages = mmData?.items ?? [];
 
   const handleCreate = () => {
     createMutation.mutate(
@@ -160,24 +159,12 @@ export function FieldReportsView() {
         {/* Sidebar */}
         <Grid size={{ xs: 12, md: 4 }}>
           {/* Knowledge Gap Radar */}
-          <ChartCard title="پیج‌های کور" icon="solar:eye-closed-bold-duotone" info="پیج‌هایی با نفوذ بالا که هیچ گزارش میدانی ندارند — اولویت تحقیق" sx={{ mb: 3 }}>
-            <Stack spacing={1}>
-              {(blindSpots || []).length === 0 ? (
-                <Typography variant="caption" color="text.secondary">همه پیج‌های با نفوذ بالا دارای گزارش میدانی هستند</Typography>
-              ) : (
-                (blindSpots || []).map((item) => (
-                  <Stack key={item.id} direction="row" alignItems="center" spacing={1.5}
-                    sx={(theme) => ({ p: 1, borderRadius: 1, bgcolor: alpha(theme.palette.error.main, 0.04), border: `1px solid ${alpha(theme.palette.error.main, 0.1)}` })}
-                  >
-                    <Iconify icon="solar:eye-closed-bold" width={16} sx={{ color: 'error.main', flexShrink: 0 }} />
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 600 }}>{item.name}</Typography>
-                      <Typography variant="caption" color="text.disabled" sx={{ display: 'block', fontSize: 10 }}>@{item.username} • نفوذ: {item.influence?.toFixed(1)}</Typography>
-                    </Box>
-                    <Chip label="نیاز به تحقیق" size="small" color="error" variant="outlined" sx={{ height: 20, fontSize: 9 }} />
-                  </Stack>
-                ))
-              )}
+          <ChartCard title="میکرورسانه‌های بدون گزارش" icon="solar:eye-closed-bold-duotone" info="میکرورسانه‌هایی که هنوز هیچ گزارش میدانی ندارند — اولویت تحقیق" sx={{ mb: 3 }}>
+            <Stack spacing={1} alignItems="center" sx={{ py: 2 }}>
+              <Iconify icon="solar:cpu-bolt-bold-duotone" width={32} sx={{ color: 'text.disabled' }} />
+              <Typography variant="caption" color="text.disabled" textAlign="center">
+                این ماژول در نسخه بعدی بر اساس میکرورسانه‌ها فعال می‌شود
+              </Typography>
             </Stack>
           </ChartCard>
 
@@ -217,8 +204,8 @@ export function FieldReportsView() {
               options={pages}
               value={selectedPage}
               onChange={(_, newValue) => setSelectedPage(newValue)}
-              getOptionLabel={(option) => `${option.name} (@${option.username})`}
-              renderInput={(params) => <TextField {...params} label="انتخاب پیج" placeholder="جستجوی نام یا یوزرنیم..." />}
+              getOptionLabel={(option) => option.name || ''}
+              renderInput={(params) => <TextField {...params} label="اتصال به میکرورسانه" placeholder="جستجوی نام میکرورسانه..." />}
               renderOption={(props, option) => (
                 <Box component="li" {...props} key={option.id}>
                   <Stack direction="row" alignItems="center" spacing={1.5} sx={{ width: '100%' }}>
@@ -227,9 +214,13 @@ export function FieldReportsView() {
                     </Box>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography variant="body2" noWrap>{option.name}</Typography>
-                      <Typography variant="caption" color="text.secondary" noWrap>@{option.username}</Typography>
+                      {option.identity_title && (
+                        <Typography variant="caption" color="text.secondary" noWrap>{option.identity_title}</Typography>
+                      )}
                     </Box>
-                    <Chip label={option.platform} size="small" variant="outlined" sx={{ fontSize: 10 }} />
+                    {option.activity_domain && (
+                      <Chip label={option.activity_domain} size="small" variant="outlined" sx={{ fontSize: 10 }} />
+                    )}
                   </Stack>
                 </Box>
               )}

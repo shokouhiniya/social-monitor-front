@@ -33,7 +33,7 @@ import { Iconify } from 'src/components/iconify';
 // ----------------------------------------------------------------------
 
 const STEPS = [
-  { key: 'fetch', label: 'واکشی پیج‌ها', icon: 'solar:download-minimalistic-bold-duotone' },
+  { key: 'fetch', label: 'واکشی حساب‌های پلتفرم', icon: 'solar:download-minimalistic-bold-duotone' },
   { key: 'process', label: 'تحلیل هوشمند', icon: 'solar:cpu-bolt-bold-duotone' },
   { key: 'dashboards', label: 'بروزرسانی داشبوردها', icon: 'solar:chart-2-bold-duotone' },
 ];
@@ -143,7 +143,7 @@ export function RefreshView() {
             <Box sx={{ flex: 1 }}>
               <Typography variant="h5">مرکز بروزرسانی</Typography>
               <Typography variant="body2" color="text.secondary">
-                واکشی، تحلیل هوشمند و بروزرسانی داشبوردها — ۲۰ پیج موازی
+                واکشی، تحلیل هوشمند و بروزرسانی داشبوردها — ۲۰ حساب موازی
               </Typography>
             </Box>
             {isRunning && (

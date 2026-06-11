@@ -16,17 +16,27 @@ import { useScopeContext } from 'src/contexts/scope-context';
 // ----------------------------------------------------------------------
 
 function useScoped() {
-  const { scope, clusterId } = useScopeContext();
+  const { scope, clusterId, identityTitle } = useScopeContext();
   const s = scope || 'all';
   let params;
   if (s === 'cluster' && clusterId) {
     params = { scope: 'cluster', clusterId };
+  } else if (s === 'cluster-representatives' && clusterId) {
+    params = { scope: 'cluster-representatives', clusterId };
+  } else if (s === 'cluster-representatives') {
+    params = { scope: 'cluster-representatives' };
+  } else if (s === 'identity' && identityTitle) {
+    params = { scope: `identity:${encodeURIComponent(identityTitle)}` };
+  } else if (s === 'identity-representatives' && identityTitle) {
+    params = { scope: `identity-representatives:${encodeURIComponent(identityTitle)}` };
+  } else if (s === 'identity-representatives') {
+    params = { scope: 'identity-representatives' };
   } else if (s && s !== 'all') {
     params = { scope: s };
   } else {
     params = { __noScope: true };
   }
-  return { key: [s, clusterId || 0], params };
+  return { key: [s, clusterId || 0, identityTitle || ''], params };
 }
 
 export function useMacroDashboard() {

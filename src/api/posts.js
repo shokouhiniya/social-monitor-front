@@ -75,9 +75,11 @@ export function usePostsFeed(params) {
   return useQuery({
     queryKey: ['posts', 'feed', params],
     queryFn: async () => {
+      // اگر micro_media_id داده شده، آن را به query اضافه کن
       const res = await axiosInstance.get(endpoints.posts.feed, { params });
       return normalizePage(res.data);
     },
+    enabled: params !== null && params !== undefined,
   });
 }
 

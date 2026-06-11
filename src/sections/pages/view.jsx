@@ -358,6 +358,19 @@ export function PagesListView() {
       .then(() => setSelected([]));
   };
 
+  const [deleteConfirmRow, setDeleteConfirmRow] = useState(null);
+
+  const handleDeleteRow = (row) => {
+    setDeleteConfirmRow(row);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!deleteConfirmRow) return;
+    deleteMutation.mutate(deleteConfirmRow.id, {
+      onSuccess: () => setDeleteConfirmRow(null),
+    });
+  };
+
   const handleExportExcel = () => {
     const selectedRows = rows.filter((r) => selected.includes(r.id));
     const headers = ['id', 'name', 'username', 'platform', 'category', 'country', 'language', 'followers_count', 'following_count', 'influence_score', 'credibility_score', 'consistency_rate', 'cluster', 'is_active'];
@@ -651,6 +664,11 @@ export function PagesListView() {
                           <Tooltip title="مشاهده پروفایل" arrow>
                             <IconButton size="small" onClick={() => router.push(paths.dashboard.instagram.pages.profile(row.id))}>
                               <Iconify icon="solar:eye-bold" width={18} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="حذف میکرورسانه" arrow>
+                            <IconButton size="small" color="error" onClick={() => handleDeleteRow(row)} disabled={batchRunning || deleteMutation.isPending}>
+                              <Iconify icon="solar:trash-bin-trash-bold" width={16} />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="باز کردن در شبکه اجتماعی" arrow>
@@ -1004,6 +1022,37 @@ export function PagesListView() {
           {batchToast.message}
         </Alert>
       </Snackbar>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteConfirmRow} onClose={() => setDeleteConfirmRow(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Iconify icon="solar:trash-bin-trash-bold-duotone" width={24} sx={{ color: 'error.main' }} />
+            <span>حذف میکرورسانه</span>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            آیا از حذف{' '}
+            <Typography component="span" variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
+              {deleteConfirmRow?.name}
+            </Typography>{' '}
+            مطمئن هستید؟ این عملیات قابل بازگشت نیست.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmRow(null)}>انصراف</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDeleteConfirm}
+            disabled={deleteMutation.isPending}
+            startIcon={deleteMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="solar:trash-bin-trash-bold" />}
+          >
+            {deleteMutation.isPending ? 'در حال حذف...' : 'حذف'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </DashboardContent>
   );
 }

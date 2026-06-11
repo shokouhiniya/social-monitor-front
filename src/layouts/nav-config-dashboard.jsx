@@ -179,17 +179,42 @@ export const managementNavData = [
   {
     subheader: 'تحلیل',
     items: [
-      { title: 'شبکه', path: paths.dashboard.analysis.network, icon: ICONS.dashboard },
+      {
+        title: 'شبکه',
+        path: paths.dashboard.analysis.network,
+        icon: ICONS.dashboard,
+        caption: 'وضعیت کنشگران — برخی ماژول‌ها نیاز به AI دارند',
+      },
       { title: 'میکرورسانه‌ها', path: paths.dashboard.analysis.microMedia.root, icon: ICONS.user },
-      { title: 'محتوا', path: paths.dashboard.analysis.content, icon: ICONS.analytics },
-      { title: 'سکو', path: paths.dashboard.analysis.platforms, icon: ICONS.folder },
+      {
+        title: 'محتوا',
+        path: paths.dashboard.analysis.content,
+        icon: ICONS.analytics,
+        caption: 'برخی ماژول‌ها نیاز به AI دارند',
+      },
+      {
+        title: 'سکو',
+        path: paths.dashboard.analysis.platforms,
+        icon: ICONS.folder,
+        caption: 'برخی ماژول‌ها نیاز به AI دارند',
+      },
     ],
   },
   {
     subheader: 'پایش محتوا',
     items: [
-      pending('میکرورسانه‌ها', ICONS.user),
-      pending('همه محتوا', ICONS.blog),
+      {
+        title: 'میکرورسانه‌ها',
+        path: paths.dashboard.monitor.microMedia.root,
+        icon: ICONS.user,
+        caption: 'محتوای هر میکرورسانه به تفکیک',
+      },
+      {
+        title: 'همه محتوا',
+        path: paths.dashboard.monitor.content,
+        icon: ICONS.blog,
+        caption: 'کل محتوای کراول‌شده با فیلتر پیشرفته',
+      },
     ],
   },
   {

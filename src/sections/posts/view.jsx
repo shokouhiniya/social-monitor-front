@@ -105,7 +105,7 @@ function mediaIdToShortcode(mediaId) {
 }
 
 
-export function PostsListView() {
+export function PostsListView({ fixedMicroMediaId, fixedTitle } = {}) {
   const [search, setSearch] = useState('');
   const [sentimentFilter, setSentimentFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -127,6 +127,8 @@ export function PostsListView() {
   const [countryFilter, setCountryFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [sortBy, setSortBy] = useState('published_at');
+  const [sortDir, setSortDir] = useState('DESC');
 
   const { data: clustersData } = useClusters();
 
@@ -145,6 +147,9 @@ export function PostsListView() {
     country: countryFilter || undefined,
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
+    micro_media_id: fixedMicroMediaId || undefined,
+    sort_by: sortBy !== 'published_at' ? sortBy : undefined,
+    sort_dir: sortDir !== 'DESC' ? sortDir : undefined,
     page,
     limit: POSTS_PER_PAGE,
   });
@@ -205,13 +210,38 @@ export function PostsListView() {
 
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>فید هوشمند رصد</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+            {fixedTitle || 'فید هوشمند رصد'}
+          </Typography>
           <Typography variant="body2" color="text.secondary">{total} پست • تحلیل لحظه‌ای محتوای شبکه</Typography>
         </Box>
-        <ToggleButtonGroup size="small" value={viewMode} exclusive onChange={(_, v) => { if (v) setViewMode(v); }}>
-          <ToggleButton value="feed"><Iconify icon="solar:list-bold" width={18} sx={{ mr: 0.5 }} />فید</ToggleButton>
-          <ToggleButton value="cluster"><Iconify icon="solar:atom-bold" width={18} sx={{ mr: 0.5 }} />خوشه‌ای</ToggleButton>
-        </ToggleButtonGroup>
+        <Stack direction="row" spacing={1} alignItems="center">
+          {/* Sort control */}
+          <TextField
+            select
+            size="small"
+            value={`${sortBy}:${sortDir}`}
+            onChange={(e) => {
+              const [sb, sd] = e.target.value.split(':');
+              setSortBy(sb);
+              setSortDir(sd);
+              resetFilters();
+            }}
+            sx={{ minWidth: 160 }}
+            label="مرتب‌سازی"
+          >
+            <MenuItem value="published_at:DESC">جدیدترین</MenuItem>
+            <MenuItem value="published_at:ASC">قدیمی‌ترین</MenuItem>
+            <MenuItem value="likes_count:DESC">بیشترین لایک</MenuItem>
+            <MenuItem value="views_count:DESC">بیشترین بازدید</MenuItem>
+            <MenuItem value="comments_count:DESC">بیشترین کامنت</MenuItem>
+            <MenuItem value="shares_count:DESC">بیشترین اشتراک‌گذاری</MenuItem>
+          </TextField>
+          <ToggleButtonGroup size="small" value={viewMode} exclusive onChange={(_, v) => { if (v) setViewMode(v); }}>
+            <ToggleButton value="feed"><Iconify icon="solar:list-bold" width={18} sx={{ mr: 0.5 }} />فید</ToggleButton>
+            <ToggleButton value="cluster"><Iconify icon="solar:atom-bold" width={18} sx={{ mr: 0.5 }} />خوشه‌ای</ToggleButton>
+          </ToggleButtonGroup>
+        </Stack>
       </Stack>
 
       {/* Spike Feed */}
