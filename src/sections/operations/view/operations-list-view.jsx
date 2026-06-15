@@ -33,6 +33,7 @@ import { useRouter } from 'src/routes/hooks';
 
 import { toJalaliDate } from 'src/utils/format-jalali';
 
+import { useClusters } from 'src/api/clusters';
 import { useMicroMediaList } from 'src/api/micro-media';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { useOperations, useCreateOperation, useUpdateOperation, useAddOperationMedia } from 'src/api/operations';
@@ -79,6 +80,7 @@ export function OperationsListView() {
     status: statusFilter || undefined,
   });
   const { data: allMedia } = useMicroMediaList({ pageSize: 200 });
+  const { data: clustersData } = useClusters();
   const createOp = useCreateOperation();
   const updateOp = useUpdateOperation();
   const addMedia = useAddOperationMedia();
@@ -95,7 +97,7 @@ export function OperationsListView() {
   const [selectedMedia, setSelectedMedia] = useState([]);
   const [ideas, setIdeas] = useState([]);
 
-  const addIdea = () => setIdeas((prev) => [...prev, { id: `idea_${Date.now()}`, title: '', description: '' }]);
+  const addIdea = () => setIdeas((prev) => [...prev, { id: `idea_${Date.now()}`, title: '', description: '', suggested_by: '', topics: [] }]);
   const removeIdea = (idx) => setIdeas((prev) => prev.filter((_, i) => i !== idx));
   const updateIdea = (idx, key, value) => setIdeas((prev) => prev.map((item, i) => (i === idx ? { ...item, [key]: value } : item)));
 
@@ -350,13 +352,28 @@ export function OperationsListView() {
               {ideas.map((idea, idx) => (
                 <Stack key={idea.id} direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                   <TextField
-                    size="small" sx={{ flex: 1 }}
-                    placeholder={`ایده ${idx + 1}`}
+                    size="small" sx={{ flex: 2 }}
+                    placeholder={`عنوان ایده ${idx + 1}`}
                     value={idea.title}
                     onChange={(e) => updateIdea(idx, 'title', e.target.value)}
                   />
+                  <Autocomplete
+                    multiple
+                    size="small"
+                    sx={{ flex: 2 }}
+                    options={(clustersData ?? []).map((c) => c.name)}
+                    value={idea.topics || []}
+                    onChange={(_, v) => updateIdea(idx, 'topics', v)}
+                    renderInput={(p) => <TextField {...p} label="خوشه‌ها" placeholder="انتخاب..." />}
+                  />
                   <TextField
                     size="small" sx={{ flex: 2 }}
+                    placeholder="پیشنهاد دهنده"
+                    value={idea.suggested_by || ''}
+                    onChange={(e) => updateIdea(idx, 'suggested_by', e.target.value)}
+                  />
+                  <TextField
+                    size="small" sx={{ flex: 3 }}
                     placeholder="توضیح (اختیاری)"
                     value={idea.description || ''}
                     onChange={(e) => updateIdea(idx, 'description', e.target.value)}

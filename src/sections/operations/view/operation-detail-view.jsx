@@ -26,6 +26,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 
 import { toJalaliDate } from 'src/utils/format-jalali';
 
+import { useClusters } from 'src/api/clusters';
 import { useMicroMediaList } from 'src/api/micro-media';
 import { DashboardContent } from 'src/layouts/dashboard';
 import {
@@ -204,18 +205,30 @@ function SummaryTab({ op }) {
 
 function IdeasTab({ op }) {
   const updateOp = useUpdateOperation();
+  const { data: clustersData } = useClusters();
   const [ideas, setIdeas] = useState(op.ideas ?? []);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [newSuggestedBy, setNewSuggestedBy] = useState('');
+  const [newTopic, setNewTopic] = useState([]);
 
   const handleAdd = async () => {
     if (!newTitle.trim()) return;
-    const newIdea = { id: `idea_${Date.now()}`, title: newTitle.trim(), description: newDesc.trim() || undefined };
+    const newIdea = {
+      id: `idea_${Date.now()}`,
+      title: newTitle.trim(),
+      description: newDesc.trim() || undefined,
+      suggested_by: newSuggestedBy.trim() || undefined,
+      topic: newTopic.length > 0 ? newTopic : undefined,
+      topics: newTopic.length > 0 ? newTopic : undefined,
+    };
     const updated = [...ideas, newIdea];
     await updateOp.mutateAsync({ id: op.id, data: { ideas: updated } });
     setIdeas(updated);
     setNewTitle('');
     setNewDesc('');
+    setNewSuggestedBy('');
+    setNewTopic([]);
     toast.success('ایده اضافه شد');
   };
 
@@ -231,20 +244,36 @@ function IdeasTab({ op }) {
       <Typography variant="subtitle1" sx={{ mb: 2 }}>ایده‌های عملیات</Typography>
 
       {/* فرم افزودن */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 3 }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
         <TextField
           size="small"
           label="عنوان ایده *"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          sx={{ flex: 2 }}
+          sx={{ flex: 2, minWidth: 160 }}
+        />
+        <Autocomplete
+          multiple
+          size="small"
+          options={(clustersData ?? []).map((c) => c.name)}
+          value={newTopic}
+          onChange={(_, v) => setNewTopic(v)}
+          sx={{ flex: 1.5, minWidth: 180 }}
+          renderInput={(p) => <TextField {...p} label="خوشه‌ها" placeholder="انتخاب..." />}
+        />
+        <TextField
+          size="small"
+          label="پیشنهاد دهنده"
+          value={newSuggestedBy}
+          onChange={(e) => setNewSuggestedBy(e.target.value)}
+          sx={{ flex: 1.5, minWidth: 130 }}
         />
         <TextField
           size="small"
           label="توضیح (اختیاری)"
           value={newDesc}
           onChange={(e) => setNewDesc(e.target.value)}
-          sx={{ flex: 3 }}
+          sx={{ flex: 3, minWidth: 180 }}
         />
         <Button
           variant="contained"
@@ -267,14 +296,29 @@ function IdeasTab({ op }) {
               key={idea.id}
               direction="row"
               alignItems="center"
-              spacing={2}
+              spacing={1.5}
               sx={{ p: 1.5, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
             >
               <Chip size="small" label={idx + 1} color="primary" variant="soft" />
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography variant="subtitle2">{idea.title}</Typography>
+                <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
+                  {(idea.topics || idea.topic ? [idea.topic] : []).length > 0 && (
+                    <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
+                      <Typography variant="caption" color="text.secondary">خوشه:</Typography>
+                      {(idea.topics || (idea.topic ? [idea.topic] : [])).map((t) => (
+                        <Chip key={t} size="small" label={t} variant="soft" color="warning" sx={{ height: 18, fontSize: 10 }} />
+                      ))}
+                    </Stack>
+                  )}
+                  {idea.suggested_by && (
+                    <Typography variant="caption" color="text.secondary">
+                      پیشنهاد: <b>{idea.suggested_by}</b>
+                    </Typography>
+                  )}
+                </Stack>
                 {idea.description && (
-                  <Typography variant="caption" color="text.secondary">{idea.description}</Typography>
+                  <Typography variant="caption" color="text.disabled">{idea.description}</Typography>
                 )}
               </Box>
               <IconButton size="small" color="error" onClick={() => handleRemove(idea.id)}>

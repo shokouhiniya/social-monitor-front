@@ -24,10 +24,10 @@ import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
 import { useTasks } from 'src/api/tasks';
-import { useOperations } from 'src/api/operations';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { useScoreIndicators } from 'src/api/media-score';
 import { usePlatformOptions } from 'src/api/definitions';
+import { useOperations, useAddOperationMedia } from 'src/api/operations';
 import {
   useAddScore,
   useMicroMedia,
@@ -380,21 +380,84 @@ function InteractionsTab({ id }) {
 function OperationsTab({ id }) {
   const router = useRouter();
   const { data, isLoading } = useOperations({ microMediaId: id });
+  const { data: allOps } = useOperations({});
+  const addMedia = useAddOperationMedia();
   const items = data?.items ?? [];
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [selectedOpId, setSelectedOpId] = useState('');
+
+  // عملیات‌هایی که این میکرورسانه در آنها نیست
+  const availableOps = (allOps?.items ?? []).filter(
+    (op) => !items.some((i) => i.id === op.id) && op.status !== 'cancelled',
+  );
+
+  const handleAddToOp = async () => {
+    if (!selectedOpId) return;
+    await addMedia.mutateAsync({ id: Number(selectedOpId), micro_media_ids: [id] });
+    setAddOpen(false);
+    setSelectedOpId('');
+    toast.success('میکرورسانه به عملیات اضافه شد');
+  };
 
   return (
     <Card sx={{ p: 3 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="subtitle1">عملیات‌های مرتبط</Typography>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<Iconify icon="mingcute:add-line" />}
-          onClick={() => router.push(`${paths.dashboard.operations.root}?microMediaId=${id}`)}
-        >
-          عملیات جدید
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<Iconify icon="solar:link-bold-duotone" />}
+            onClick={() => setAddOpen(true)}
+          >
+            افزودن به عملیات
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<Iconify icon="mingcute:add-line" />}
+            onClick={() => router.push(`${paths.dashboard.operations.root}?microMediaId=${id}`)}
+          >
+            عملیات جدید
+          </Button>
+        </Stack>
       </Stack>
+
+      {/* Dialog افزودن به عملیات موجود */}
+      {addOpen && (
+        <Card sx={{ p: 2, mb: 2, border: '1px dashed', borderColor: 'primary.main', bgcolor: 'primary.lighter' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center">
+            <TextField
+              select
+              size="small"
+              label="انتخاب عملیات"
+              value={selectedOpId}
+              onChange={(e) => setSelectedOpId(e.target.value)}
+              sx={{ minWidth: 250 }}
+            >
+              {availableOps.length === 0 ? (
+                <MenuItem value="" disabled>عملیات دیگری وجود ندارد</MenuItem>
+              ) : (
+                availableOps.map((op) => (
+                  <MenuItem key={op.id} value={op.id}>{op.title}</MenuItem>
+                ))
+              )}
+            </TextField>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleAddToOp}
+              disabled={!selectedOpId || addMedia.isPending}
+            >
+              افزودن
+            </Button>
+            <Button size="small" color="inherit" onClick={() => setAddOpen(false)}>
+              انصراف
+            </Button>
+          </Stack>
+        </Card>
+      )}
 
       {isLoading ? (
         <Box sx={{ p: 3, textAlign: 'center' }}><CircularProgress size={24} /></Box>
