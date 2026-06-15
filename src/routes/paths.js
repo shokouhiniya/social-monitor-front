@@ -54,6 +54,7 @@ export const paths = {
       clusters: `${ROOTS.DASHBOARD}/definitions/clusters`,
       identities: `${ROOTS.DASHBOARD}/definitions/identities`,
       platforms: `${ROOTS.DASHBOARD}/definitions/platforms`,
+      tags: `${ROOTS.DASHBOARD}/definitions/tags`,
     },
     // پایش محتوا
     monitor: {

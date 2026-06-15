@@ -27,6 +27,7 @@ import { AiSynthesizer } from './components/ai-synthesizer';
 import { PeriodicReport } from './components/periodic-report';
 import { CrisisCorridor } from './components/crisis-corridor';
 import { HighImpactFeed } from './components/high-impact-feed';
+import { AiRequiredBadge } from './components/ai-required-badge';
 import { ActorsSceneReport } from './components/actors-scene-report';
 import { CollapsibleSection } from './components/collapsible-section';
 import { TopInfluencersRank } from './components/top-influencers-rank';
@@ -34,7 +35,6 @@ import { IdentityRadialChart } from './components/identity-radial-chart';
 import { ProfileDistributions } from './components/profile-distributions';
 import { NarrativeHealthGauge } from './components/narrative-health-gauge';
 import { StrategicAlertsWidget } from './components/strategic-alerts-widget';
-import { AiRequiredBadge } from './components/ai-required-badge';
 
 // ----------------------------------------------------------------------
 

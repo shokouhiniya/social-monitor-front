@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -10,6 +11,8 @@ import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
+import Divider from '@mui/material/Divider';
+import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
 import TableRow from '@mui/material/TableRow';
 import TableBody from '@mui/material/TableBody';
@@ -17,6 +20,7 @@ import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
 import DialogTitle from '@mui/material/DialogTitle';
 import Autocomplete from '@mui/material/Autocomplete';
 import DialogContent from '@mui/material/DialogContent';
@@ -31,10 +35,11 @@ import { toJalaliDate } from 'src/utils/format-jalali';
 
 import { useMicroMediaList } from 'src/api/micro-media';
 import { DashboardContent } from 'src/layouts/dashboard';
-import { useOperations, useCreateOperation, useAddOperationMedia } from 'src/api/operations';
+import { useOperations, useCreateOperation, useUpdateOperation, useAddOperationMedia } from 'src/api/operations';
 
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
+import { JalaliDatePicker } from 'src/components/jalali-date-picker';
 
 import { PageInfoBox } from 'src/sections/dashboard/components/page-info-box';
 
@@ -63,9 +68,19 @@ const dateRange = (s, e) => {
 
 export function OperationsListView() {
   const router = useRouter();
-  const { data, isLoading } = useOperations();
+  const searchParams = useSearchParams();
+  const preselectedMediaId = searchParams.get('microMediaId');
+
+  const [searchQ, setSearchQ] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const { data, isLoading } = useOperations({
+    search: searchQ || undefined,
+    status: statusFilter || undefined,
+  });
   const { data: allMedia } = useMicroMediaList({ pageSize: 200 });
   const createOp = useCreateOperation();
+  const updateOp = useUpdateOperation();
   const addMedia = useAddOperationMedia();
 
   const [open, setOpen] = useState(false);
@@ -78,19 +93,44 @@ export function OperationsListView() {
     ends_at: '',
   });
   const [selectedMedia, setSelectedMedia] = useState([]);
+  const [ideas, setIdeas] = useState([]);
+
+  const addIdea = () => setIdeas((prev) => [...prev, { id: `idea_${Date.now()}`, title: '', description: '' }]);
+  const removeIdea = (idx) => setIdeas((prev) => prev.filter((_, i) => i !== idx));
+  const updateIdea = (idx, key, value) => setIdeas((prev) => prev.map((item, i) => (i === idx ? { ...item, [key]: value } : item)));
+
+  const handleDelete = async (op, e) => {
+    e?.stopPropagation();
+    if (!window.confirm(`عملیات «${op.title}» لغو شود؟`)) return;
+    await updateOp.mutateAsync({ id: op.id, data: { status: 'cancelled' } });
+    toast.success('عملیات لغو شد');
+  };
 
   const items = data?.items ?? [];
   const mediaOptions = allMedia?.items ?? [];
+
+  // اگر microMediaId در URL باشد → dialog باز شود و آن رسانه pre-select شود
+  useEffect(() => {
+    if (preselectedMediaId && mediaOptions.length > 0) {
+      const found = mediaOptions.find((m) => m.id === Number(preselectedMediaId));
+      if (found) {
+        setSelectedMedia((prev) => prev.some((m) => m.id === found.id) ? prev : [...prev, found]);
+        setOpen(true);
+      }
+    }
+  }, [preselectedMediaId, mediaOptions]);
 
   const setField = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const resetForm = () => {
     setForm({ title: '', goal: '', description: '', status: 'draft', starts_at: '', ends_at: '' });
     setSelectedMedia([]);
+    setIdeas([]);
   };
 
   const handleCreate = async () => {
     try {
+      const cleanIdeas = ideas.filter((i) => i.title.trim());
       const created = await createOp.mutateAsync({
         title: form.title,
         goal: form.goal || undefined,
@@ -98,6 +138,7 @@ export function OperationsListView() {
         status: form.status,
         starts_at: form.starts_at || undefined,
         ends_at: form.ends_at || undefined,
+        ideas: cleanIdeas.length > 0 ? cleanIdeas : undefined,
       });
       if (selectedMedia.length > 0) {
         await addMedia.mutateAsync({
@@ -115,7 +156,7 @@ export function OperationsListView() {
   };
 
   return (
-    <DashboardContent>
+    <DashboardContent maxWidth="xl">
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
         <Typography variant="h4">عملیات‌ها</Typography>
         <Button variant="contained" startIcon={<Iconify icon="mingcute:add-line" />} onClick={() => setOpen(true)}>
@@ -134,6 +175,35 @@ export function OperationsListView() {
           'تب «اثرسنجی» مجموع بازدید/تعامل، عملکرد هر رسانه و رسانه‌های بدون خروجی را نشان می‌دهد.',
         ]}
       />
+
+      {/* Search & Filter */}
+      <Card sx={{ p: 2, mb: 2 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="جستجوی عنوان یا هدف..."
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
+            InputProps={{
+              startAdornment: <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled', mr: 1 }} />,
+            }}
+          />
+          <TextField
+            select
+            size="small"
+            label="وضعیت"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            sx={{ minWidth: 150 }}
+          >
+            <MenuItem value="">همه</MenuItem>
+            {STATUS_OPTIONS.map((s) => (
+              <MenuItem key={s.value} value={s.value}>{s.label}</MenuItem>
+            ))}
+          </TextField>
+        </Stack>
+      </Card>
 
       <Card>
         {isLoading ? (
@@ -189,15 +259,25 @@ export function OperationsListView() {
                     <TableCell align="center">{fmtNum(o.totalViews)}</TableCell>
                     <TableCell align="center">{fmtNum(o.totalEngagement)}</TableCell>
                     <TableCell align="right">
-                      <Button
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(paths.dashboard.operations.detail(o.id));
-                        }}
-                      >
-                        مشاهده
-                      </Button>
+                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        <Tooltip title="مشاهده">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => { e.stopPropagation(); router.push(paths.dashboard.operations.detail(o.id)); }}
+                          >
+                            <Iconify icon="solar:eye-bold" width={16} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="لغو / حذف">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={(e) => handleDelete(o, e)}
+                          >
+                            <Iconify icon="solar:trash-bin-trash-bold" width={16} />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -228,23 +308,19 @@ export function OperationsListView() {
               <TextField label="توضیحات" value={form.description} onChange={setField('description')} fullWidth multiline rows={2} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
+              <JalaliDatePicker
                 label="تاریخ شروع"
-                type="date"
                 value={form.starts_at}
-                onChange={setField('starts_at')}
+                onChange={(v) => setForm((p) => ({ ...p, starts_at: v }))}
                 fullWidth
-                slotProps={{ inputLabel: { shrink: true } }}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
+              <JalaliDatePicker
                 label="تاریخ پایان"
-                type="date"
                 value={form.ends_at}
-                onChange={setField('ends_at')}
+                onChange={(v) => setForm((p) => ({ ...p, ends_at: v }))}
                 fullWidth
-                slotProps={{ inputLabel: { shrink: true } }}
               />
             </Grid>
             <Grid size={{ xs: 12 }}>
@@ -260,6 +336,36 @@ export function OperationsListView() {
                   <TextField {...p} label="میکرورسانه‌های هدف" placeholder="جستجو و انتخاب..." />
                 )}
               />
+            </Grid>
+
+            {/* ایده‌ها */}
+            <Grid size={{ xs: 12 }}>
+              <Divider sx={{ my: 1 }} />
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                <Typography variant="subtitle2">ایده‌ها (اختیاری)</Typography>
+                <Button size="small" startIcon={<Iconify icon="mingcute:add-line" />} onClick={addIdea}>
+                  افزودن ایده
+                </Button>
+              </Stack>
+              {ideas.map((idea, idx) => (
+                <Stack key={idea.id} direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                  <TextField
+                    size="small" sx={{ flex: 1 }}
+                    placeholder={`ایده ${idx + 1}`}
+                    value={idea.title}
+                    onChange={(e) => updateIdea(idx, 'title', e.target.value)}
+                  />
+                  <TextField
+                    size="small" sx={{ flex: 2 }}
+                    placeholder="توضیح (اختیاری)"
+                    value={idea.description || ''}
+                    onChange={(e) => updateIdea(idx, 'description', e.target.value)}
+                  />
+                  <IconButton size="small" color="error" onClick={() => removeIdea(idx)}>
+                    <Iconify icon="solar:trash-bin-trash-bold" width={16} />
+                  </IconButton>
+                </Stack>
+              ))}
             </Grid>
           </Grid>
         </DialogContent>

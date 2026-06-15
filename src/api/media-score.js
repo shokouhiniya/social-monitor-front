@@ -43,6 +43,18 @@ export function useUpdateIndicator() {
   });
 }
 
+export function useDeleteIndicator() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const res = await axiosInstance.delete(endpoints.mediaScore.indicator(id));
+      return unwrapEnvelope(res.data);
+    },
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['media-score-indicators'] }),
+  });
+}
+
 export function useUpsertScoreRecord() {
   const qc = useQueryClient();
   return useMutation({

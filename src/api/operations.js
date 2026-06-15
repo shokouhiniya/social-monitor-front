@@ -40,6 +40,20 @@ export function useCreateOperation() {
   });
 }
 
+export function useUpdateOperation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }) => {
+      const res = await axiosInstance.patch(endpoints.campaigns.update(id), data);
+      return unwrapEnvelope(res.data);
+    },
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['operations'] });
+      qc.invalidateQueries({ queryKey: ['operations', id] });
+    },
+  });
+}
+
 export function useOperationMedia(id) {
   return useQuery({
     queryKey: ['operations', id, 'media'],

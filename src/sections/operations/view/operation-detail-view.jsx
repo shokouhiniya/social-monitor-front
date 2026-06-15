@@ -18,6 +18,7 @@ import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TextField from '@mui/material/TextField';
+import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import Autocomplete from '@mui/material/Autocomplete';
 import TableContainer from '@mui/material/TableContainer';
@@ -31,6 +32,7 @@ import {
   useOperation,
   useOperationMedia,
   useOperationImpact,
+  useUpdateOperation,
   useOperationOutputs,
   useAddOperationMedia,
   useAddOperationOutput,
@@ -45,6 +47,7 @@ import { PageInfoBox } from 'src/sections/dashboard/components/page-info-box';
 
 const TABS = [
   { value: 'summary', label: 'خلاصه', icon: 'solar:document-text-bold-duotone' },
+  { value: 'ideas', label: 'ایده‌ها', icon: 'solar:lightbulb-bold-duotone' },
   { value: 'media', label: 'رسانه‌ها', icon: 'solar:users-group-rounded-bold-duotone' },
   { value: 'outputs', label: 'خروجی‌ها', icon: 'solar:upload-bold-duotone' },
   { value: 'impact', label: 'اثرسنجی', icon: 'solar:chart-2-bold-duotone' },
@@ -77,6 +80,7 @@ const fmtNum = (n) => new Intl.NumberFormat('fa-IR').format(n ?? 0);
 export function OperationDetailView({ id }) {
   const [tab, setTab] = useState('summary');
   const { data: op, isLoading } = useOperation(id);
+  const updateOp = useUpdateOperation();
 
   if (isLoading) {
     return (
@@ -94,13 +98,27 @@ export function OperationDetailView({ id }) {
   }
 
   return (
-    <DashboardContent>
+    <DashboardContent maxWidth="xl">
       <Stack direction="row" alignItems="flex-start" justifyContent="space-between" sx={{ mb: 1 }}>
         <Box>
           <Typography variant="h4">{op.title}</Typography>
           {op.goal && <Typography color="text.secondary" sx={{ mt: 0.5 }}>{op.goal}</Typography>}
         </Box>
-        <Chip label={STATUS[op.status]?.label ?? op.status} color={STATUS[op.status]?.color ?? 'default'} />
+        <Stack direction="row" spacing={1} alignItems="center">
+          <TextField
+            select
+            size="small"
+            value={op.status}
+            onChange={async (e) => {
+              await updateOp.mutateAsync({ id: op.id, data: { status: e.target.value } });
+            }}
+            sx={{ minWidth: 130 }}
+          >
+            {Object.entries(STATUS).map(([k, v]) => (
+              <MenuItem key={k} value={k}>{v.label}</MenuItem>
+            ))}
+          </TextField>
+        </Stack>
       </Stack>
 
       <Stack direction="row" spacing={3} flexWrap="wrap" sx={{ mb: 2, color: 'text.secondary' }}>
@@ -135,8 +153,9 @@ export function OperationDetailView({ id }) {
       </Tabs>
 
       {tab === 'summary' && <SummaryTab op={op} />}
+      {tab === 'ideas' && <IdeasTab op={op} />}
       {tab === 'media' && <MediaTab id={id} />}
-      {tab === 'outputs' && <OutputsTab id={id} />}
+      {tab === 'outputs' && <OutputsTab id={id} op={op} />}
       {tab === 'impact' && <ImpactTab id={id} />}
     </DashboardContent>
   );
@@ -178,6 +197,94 @@ function SummaryTab({ op }) {
         </Card>
       </Grid>
     </Grid>
+  );
+}
+
+// ----------------------------------------------------------------------
+
+function IdeasTab({ op }) {
+  const updateOp = useUpdateOperation();
+  const [ideas, setIdeas] = useState(op.ideas ?? []);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+
+  const handleAdd = async () => {
+    if (!newTitle.trim()) return;
+    const newIdea = { id: `idea_${Date.now()}`, title: newTitle.trim(), description: newDesc.trim() || undefined };
+    const updated = [...ideas, newIdea];
+    await updateOp.mutateAsync({ id: op.id, data: { ideas: updated } });
+    setIdeas(updated);
+    setNewTitle('');
+    setNewDesc('');
+    toast.success('ایده اضافه شد');
+  };
+
+  const handleRemove = async (ideaId) => {
+    const updated = ideas.filter((i) => i.id !== ideaId);
+    await updateOp.mutateAsync({ id: op.id, data: { ideas: updated } });
+    setIdeas(updated);
+    toast.success('ایده حذف شد');
+  };
+
+  return (
+    <Card sx={{ p: 3 }}>
+      <Typography variant="subtitle1" sx={{ mb: 2 }}>ایده‌های عملیات</Typography>
+
+      {/* فرم افزودن */}
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 3 }}>
+        <TextField
+          size="small"
+          label="عنوان ایده *"
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          sx={{ flex: 2 }}
+        />
+        <TextField
+          size="small"
+          label="توضیح (اختیاری)"
+          value={newDesc}
+          onChange={(e) => setNewDesc(e.target.value)}
+          sx={{ flex: 3 }}
+        />
+        <Button
+          variant="contained"
+          startIcon={<Iconify icon="mingcute:add-line" />}
+          onClick={handleAdd}
+          disabled={!newTitle.trim() || updateOp.isPending}
+          sx={{ flexShrink: 0 }}
+        >
+          افزودن
+        </Button>
+      </Stack>
+
+      {/* لیست ایده‌ها */}
+      {ideas.length === 0 ? (
+        <Typography color="text.secondary">ایده‌ای ثبت نشده — اولین ایده را اضافه کنید</Typography>
+      ) : (
+        <Stack spacing={1}>
+          {ideas.map((idea, idx) => (
+            <Stack
+              key={idea.id}
+              direction="row"
+              alignItems="center"
+              spacing={2}
+              sx={{ p: 1.5, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
+            >
+              <Chip size="small" label={idx + 1} color="primary" variant="soft" />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="subtitle2">{idea.title}</Typography>
+                {idea.description && (
+                  <Typography variant="caption" color="text.secondary">{idea.description}</Typography>
+                )}
+              </Box>
+              <IconButton size="small" color="error" onClick={() => handleRemove(idea.id)}>
+                <Iconify icon="solar:trash-bin-trash-bold" width={16} />
+              </IconButton>
+            </Stack>
+          ))}
+        </Stack>
+      )}
+    </Card>
   );
 }
 
@@ -267,12 +374,13 @@ function MediaTab({ id }) {
 
 // ----------------------------------------------------------------------
 
-function OutputsTab({ id }) {
+function OutputsTab({ id, op }) {
   const { data: outputs } = useOperationOutputs(id);
   const { data: media } = useOperationMedia(id);
   const addOutput = useAddOperationOutput();
   const [form, setForm] = useState({
     micro_media_id: '',
+    idea_id: '',
     output_type: 'post',
     output_url: '',
     views: '',
@@ -283,6 +391,7 @@ function OutputsTab({ id }) {
   });
 
   const mediaOptions = media ?? [];
+  const ideas = op?.ideas ?? [];
   const setField = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const handleAdd = async () => {
@@ -291,6 +400,7 @@ function OutputsTab({ id }) {
         id,
         data: {
           micro_media_id: form.micro_media_id ? Number(form.micro_media_id) : undefined,
+          idea_id: form.idea_id || undefined,
           output_type: form.output_type,
           output_url: form.output_url || undefined,
           views: form.views ? Number(form.views) : undefined,
@@ -300,7 +410,7 @@ function OutputsTab({ id }) {
           engagement: form.engagement ? Number(form.engagement) : undefined,
         },
       });
-      setForm({ micro_media_id: '', output_type: 'post', output_url: '', views: '', likes: '', comments: '', shares: '', engagement: '' });
+      setForm({ micro_media_id: '', idea_id: '', output_type: 'post', output_url: '', views: '', likes: '', comments: '', shares: '', engagement: '' });
       toast.success('خروجی ثبت شد');
     } catch (err) {
       toast.error(err?.message || 'ثبت خروجی با خطا مواجه شد');
@@ -327,6 +437,16 @@ function OutputsTab({ id }) {
               ))}
             </TextField>
           </Grid>
+          {ideas.length > 0 && (
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select fullWidth label="ناظر بر ایده (اختیاری)" value={form.idea_id} onChange={setField('idea_id')}>
+                <MenuItem value="">— بدون ایده —</MenuItem>
+                {ideas.map((i) => (
+                  <MenuItem key={i.id} value={i.id}>{i.title}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+          )}
           <Grid size={{ xs: 12 }}>
             <TextField fullWidth label="لینک خروجی" value={form.output_url} onChange={setField('output_url')} />
           </Grid>

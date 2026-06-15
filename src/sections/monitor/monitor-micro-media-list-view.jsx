@@ -15,7 +15,6 @@ import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import TableContainer from '@mui/material/TableContainer';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -25,8 +24,8 @@ import { useRouter } from 'src/routes/hooks';
 
 import { useClusters } from 'src/api/clusters';
 import { useDefinitions } from 'src/api/definitions';
-import { DashboardContent } from 'src/layouts/dashboard';
 import { useMicroMediaList } from 'src/api/micro-media';
+import { DashboardContent } from 'src/layouts/dashboard';
 
 import { Iconify } from 'src/components/iconify';
 

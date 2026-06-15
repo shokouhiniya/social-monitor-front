@@ -10,6 +10,7 @@ import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import Tooltip from '@mui/material/Tooltip';
+import Checkbox from '@mui/material/Checkbox';
 import TableRow from '@mui/material/TableRow';
 import MenuItem from '@mui/material/MenuItem';
 import TableBody from '@mui/material/TableBody';
@@ -17,6 +18,7 @@ import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
+import Pagination from '@mui/material/Pagination';
 import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -77,6 +79,12 @@ const TEMPLATE_HEADERS = [
   'account1_username',
   'account2_platform',
   'account2_username',
+  'account3_platform',
+  'account3_username',
+  'account4_platform',
+  'account4_username',
+  'account5_platform',
+  'account5_username',
 ];
 
 function parseCsvLine(line) {
@@ -105,7 +113,7 @@ function parseCsvLine(line) {
  */
 function rowToPayload(obj, clusterNameMap = {}) {
   const accounts = [];
-  for (const n of [1, 2, 3]) {
+  for (const n of [1, 2, 3, 4, 5]) {
     const username = obj[`account${n}_username`];
     const platform = obj[`account${n}_platform`];
     if (username || platform) {
@@ -147,13 +155,16 @@ export function MicroMediaListView() {
   const [search, setSearch] = useState('');
   const [hubId, setHubId] = useState('');
   const [recent, setRecent] = useState('');
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState([]);
 
   const [openImport, setOpenImport] = useState(false);
   const [importPreview, setImportPreview] = useState([]);
   const [importResult, setImportResult] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const params = {};
+  const PAGE_SIZE = 20;
+  const params = { page, limit: PAGE_SIZE, status: 'active' };
   if (search) params.search = search;
   if (hubId) params.hubId = hubId;
   if (recent === 'active') params.hasRecentInteraction = 'true';
@@ -167,6 +178,8 @@ export function MicroMediaListView() {
   const deleteMutation = useDeleteMicroMedia();
 
   const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   // نگاشت سریع id خوشه → نام (برای نمایش در ستون جدول)
   const clusterMap = Object.fromEntries((clusters ?? []).map((c) => [c.id, c.name]));
@@ -191,6 +204,12 @@ export function MicroMediaListView() {
       'sample_page',      // account1_username
       'telegram',         // account2_platform
       'sample_channel',   // account2_username
+      'bale',             // account3_platform
+      'sample_bale',      // account3_username
+      'eita',             // account4_platform
+      'sample_eita',      // account4_username
+      'rubika',           // account5_platform
+      'sample_rubika',    // account5_username
     ].join(',');
     const csv = `${header}\n${example}`;
     const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
@@ -249,8 +268,26 @@ export function MicroMediaListView() {
     });
   };
 
+  const handleBulkDelete = async () => {
+    if (!selected.length) return;
+    if (!window.confirm(`${selected.length} میکرورسانه بایگانی شوند؟`)) return;
+    for (const id of selected) {
+      await deleteMutation.mutateAsync(id);
+    }
+    setSelected([]);
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  };
+
+  const handleSelectAll = () => {
+    if (selected.length === items.length) setSelected([]);
+    else setSelected(items.map((m) => m.id));
+  };
+
   return (
-    <DashboardContent>
+    <DashboardContent maxWidth="xl">
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }} flexWrap="wrap" gap={1}>
         <Typography variant="h4">میکرورسانه‌ها</Typography>
         <Stack direction="row" spacing={1}>
@@ -343,10 +380,18 @@ export function MicroMediaListView() {
             <Typography sx={{ mt: 1 }}>میکرورسانه‌ای یافت نشد</Typography>
           </Box>
         ) : (
+          <>
           <TableContainer>
             <Table>
               <TableHead>
                 <TableRow>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={selected.length > 0 && selected.length === items.length}
+                      indeterminate={selected.length > 0 && selected.length < items.length}
+                      onChange={handleSelectAll}
+                    />
+                  </TableCell>
                   <TableCell>نام</TableCell>
                   <TableCell>هویت</TableCell>
                   <TableCell>خوشه</TableCell>
@@ -361,7 +406,13 @@ export function MicroMediaListView() {
               </TableHead>
               <TableBody>
                 {items.map((m) => (
-                  <TableRow key={m.id} hover>
+                  <TableRow key={m.id} hover selected={selected.includes(m.id)}>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selected.includes(m.id)}
+                        onChange={() => handleToggleSelect(m.id)}
+                      />
+                    </TableCell>
                     <TableCell>{m.name}</TableCell>
                     <TableCell>
                       {m.identity_title ? (
@@ -458,6 +509,38 @@ export function MicroMediaListView() {
               </TableBody>
             </Table>
           </TableContainer>
+
+          {/* Bulk action + pagination */}
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              {selected.length > 0 && (
+                <Button
+                  size="small"
+                  color="error"
+                  variant="outlined"
+                  startIcon={<Iconify icon="solar:trash-bin-trash-bold" />}
+                  onClick={handleBulkDelete}
+                  disabled={deleteMutation.isPending}
+                >
+                  حذف {selected.length} مورد
+                </Button>
+              )}
+              <Typography variant="caption" color="text.secondary">
+                {total} میکرورسانه
+              </Typography>
+            </Stack>
+            {totalPages > 1 && (
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={(_, p) => { setPage(p); setSelected([]); }}
+                color="primary"
+                shape="rounded"
+                size="small"
+              />
+            )}
+          </Stack>
+          </>
         )}
       </Card>
 

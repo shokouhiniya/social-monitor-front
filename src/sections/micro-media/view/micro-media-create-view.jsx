@@ -19,8 +19,8 @@ import { useRouter } from 'src/routes/hooks';
 
 import { useHubs } from 'src/api/hubs';
 import { useClusters } from 'src/api/clusters';
-import { useDefinitions, usePlatformOptions } from 'src/api/definitions';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { useDefinitions, usePlatformOptions } from 'src/api/definitions';
 import {
   useMicroMedia,
   useCreateMicroMedia,
@@ -48,7 +48,7 @@ const EMPTY = {
   tagsText: '',
 };
 
-const emptyAccount = (primary = false, firstPlatform = '') => ({ platform: firstPlatform, username: '', name: '', is_primary: primary });
+const emptyAccount = (primary = false, firstPlatform = '') => ({ platform: firstPlatform, username: '', name: '', profile_url: '', is_primary: primary });
 
 export function MicroMediaCreateView({ id }) {
   const router = useRouter();
@@ -123,6 +123,7 @@ export function MicroMediaCreateView({ id }) {
           platform: a.platform || undefined,
           username: a.username?.trim() || undefined,
           name: a.name?.trim() || undefined,
+          profile_url: a.profile_url?.trim() || undefined,
           is_primary: !!a.is_primary,
         }));
       const created = await createMutation.mutateAsync({
@@ -288,27 +289,37 @@ export function MicroMediaCreateView({ id }) {
                     ))}
                   </TextField>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 3 }}>
+                <Grid size={{ xs: 12, sm: 2.5 }}>
                   <TextField
                     label="یوزرنیم / آیدی" value={acc.username}
                     onChange={(e) => setAccount(idx, 'username', e.target.value)}
                     fullWidth size="small"
                   />
                 </Grid>
-                <Grid size={{ xs: 12, sm: 3 }}>
+                <Grid size={{ xs: 12, sm: 2.5 }}>
                   <TextField
-                    label="نام نمایشی (اختیاری)" value={acc.name}
+                    label="نام نمایشی" value={acc.name}
                     onChange={(e) => setAccount(idx, 'name', e.target.value)}
                     fullWidth size="small"
                   />
                 </Grid>
-                <Grid size={{ xs: 8, sm: 2 }}>
-                  <FormControlLabel
-                    control={<Switch checked={!!acc.is_primary} onChange={() => setPrimary(idx)} size="small" />}
-                    label="اصلی"
+                <Grid size={{ xs: 12, sm: 2.5 }}>
+                  <TextField
+                    label="لینک پروفایل" value={acc.profile_url}
+                    onChange={(e) => setAccount(idx, 'profile_url', e.target.value)}
+                    fullWidth size="small"
+                    placeholder="https://..."
+                    inputProps={{ dir: 'ltr' }}
                   />
                 </Grid>
-                <Grid size={{ xs: 4, sm: 1 }} sx={{ textAlign: 'right' }}>
+                <Grid size={{ xs: 6, sm: 0.75 }}>
+                  <FormControlLabel
+                    control={<Switch checked={!!acc.is_primary} onChange={() => setPrimary(idx)} size="small" />}
+                    label=""
+                    title="سکوی اصلی"
+                  />
+                </Grid>
+                <Grid size={{ xs: 6, sm: 0.75 }} sx={{ textAlign: 'right' }}>
                   <IconButton color="error" onClick={() => removeAccount(idx)} disabled={accounts.length === 1}>
                     <Iconify icon="solar:trash-bin-trash-bold" width={18} />
                   </IconButton>

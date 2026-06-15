@@ -12,11 +12,11 @@ import { PulseStrip } from 'src/sections/dashboard/components/pulse-strip';
 import { AiSynthesizer } from 'src/sections/dashboard/components/ai-synthesizer';
 import { CrisisCorridor } from 'src/sections/dashboard/components/crisis-corridor';
 import { HighImpactFeed } from 'src/sections/dashboard/components/high-impact-feed';
+import { AiRequiredBadge } from 'src/sections/dashboard/components/ai-required-badge';
 import { TopicGravityChart } from 'src/sections/dashboard/components/topic-gravity-chart';
 import { CollapsibleSection } from 'src/sections/dashboard/components/collapsible-section';
 import { NarrativeHealthGauge } from 'src/sections/dashboard/components/narrative-health-gauge';
 import { TrendingKeywordsCloud } from 'src/sections/dashboard/components/trending-keywords-cloud';
-import { AiRequiredBadge } from 'src/sections/dashboard/components/ai-required-badge';
 
 // ----------------------------------------------------------------------
 

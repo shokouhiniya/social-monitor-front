@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -71,8 +72,18 @@ function OverviewCards({ overview }) {
 }
 
 export function TasksListView() {
+  const searchParams = useSearchParams();
+  const preselectedMediaId = searchParams.get('microMediaId');
+
   const [filters, setFilters] = useState({ status: '', priority: '', search: '', overdue: false });
   const [dialog, setDialog] = useState({ open: false, task: null });
+
+  // اگر microMediaId در URL باشد → dialog ایجاد تسک باز شود
+  useEffect(() => {
+    if (preselectedMediaId) {
+      setDialog({ open: true, task: null });
+    }
+  }, [preselectedMediaId]);
 
   const params = {};
   if (filters.status) params.status = filters.status;
@@ -91,7 +102,7 @@ export function TasksListView() {
   const openEdit = (task) => setDialog({ open: true, task });
 
   return (
-    <DashboardContent>
+    <DashboardContent maxWidth="xl">
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
         <Typography variant="h4">تسک‌ها</Typography>
         <Button variant="contained" startIcon={<Iconify icon="mingcute:add-line" />} onClick={openCreate}>
@@ -263,6 +274,7 @@ export function TasksListView() {
       <TaskFormDialog
         open={dialog.open}
         task={dialog.task}
+        preselectedMediaId={preselectedMediaId}
         onClose={() => setDialog({ open: false, task: null })}
       />
     </DashboardContent>

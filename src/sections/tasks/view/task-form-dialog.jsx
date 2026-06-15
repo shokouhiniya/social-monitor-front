@@ -14,6 +14,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 
 import { useOperations } from 'src/api/operations';
+import { useDefinitions } from 'src/api/definitions';
 import { useMicroMediaList } from 'src/api/micro-media';
 import { useHubs, useAssignableUsers } from 'src/api/hubs';
 import {
@@ -24,6 +25,7 @@ import {
 } from 'src/api/tasks';
 
 import { toast } from 'src/components/snackbar';
+import { JalaliDatePicker } from 'src/components/jalali-date-picker';
 
 // ----------------------------------------------------------------------
 
@@ -43,12 +45,13 @@ export const STATUS_OPTIONS = [
 
 const toDateInput = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
 
-export function TaskFormDialog({ open, onClose, task }) {
+export function TaskFormDialog({ open, onClose, task, preselectedMediaId }) {
   const isEdit = !!task;
   const { data: hubs } = useHubs();
   const { data: users } = useAssignableUsers();
   const { data: mediaPage } = useMicroMediaList({ pageSize: 200 });
   const { data: opsPage } = useOperations();
+  const { data: tagDefinitions } = useDefinitions('tag');
 
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
@@ -61,6 +64,7 @@ export function TaskFormDialog({ open, onClose, task }) {
 
   const mediaOptions = mediaPage?.items ?? [];
   const opsOptions = opsPage?.items ?? [];
+  const tagOptions = (tagDefinitions ?? []).map((t) => t.title);
 
   useEffect(() => {
     if (!open) return;
@@ -75,12 +79,16 @@ export function TaskFormDialog({ open, onClose, task }) {
       due_date: toDateInput(task?.due_date),
     });
     setTagsState(task?.tags ?? []);
-    setMedia(
-      task?.micro_media_id
-        ? { id: task.micro_media_id, name: task.micro_media_name ?? `#${task.micro_media_id}` }
-        : null
-    );
-  }, [open, task]);
+    if (task?.micro_media_id) {
+      setMedia({ id: task.micro_media_id, name: task.micro_media_name ?? `#${task.micro_media_id}` });
+    } else if (preselectedMediaId && mediaOptions.length > 0) {
+      const found = mediaOptions.find((m) => m.id === Number(preselectedMediaId));
+      if (found) setMedia(found);
+      else setMedia(null);
+    } else {
+      setMedia(null);
+    }
+  }, [open, task, preselectedMediaId, mediaOptions]);
 
   if (!form) return null;
 
@@ -149,13 +157,11 @@ export function TaskFormDialog({ open, onClose, task }) {
             </TextField>
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
+            <JalaliDatePicker
               label="سررسید"
-              type="date"
               value={form.due_date}
-              onChange={setField('due_date')}
+              onChange={(v) => setForm((p) => ({ ...p, due_date: v }))}
               fullWidth
-              slotProps={{ inputLabel: { shrink: true } }}
             />
           </Grid>
 
@@ -205,11 +211,10 @@ export function TaskFormDialog({ open, onClose, task }) {
           <Grid size={{ xs: 12 }}>
             <Autocomplete
               multiple
-              freeSolo
-              options={[]}
+              options={tagOptions}
               value={tags}
               onChange={(_, v) => setTagsState(v)}
-              renderInput={(p) => <TextField {...p} label="برچسب‌ها" placeholder="برچسب بنویسید و Enter بزنید" />}
+              renderInput={(p) => <TextField {...p} label="برچسب‌ها" placeholder="انتخاب از لیست تعریف‌شده..." />}
             />
           </Grid>
         </Grid>

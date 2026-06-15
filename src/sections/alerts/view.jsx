@@ -27,9 +27,9 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import FormControlLabel from '@mui/material/FormControlLabel';
 
-import { useMicroMediaList } from 'src/api/micro-media';
 import { useClusters } from 'src/api/clusters';
 import { useGenerateAlerts } from 'src/api/analytics';
+import { useMicroMediaList } from 'src/api/micro-media';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { useCreateActionPlanFromAlert } from 'src/api/action-plans';
 import { useAlertStats, useGroupedAlerts, useUpdateAlertStatus, useCreateStrategicAlert } from 'src/api/strategic-alerts';

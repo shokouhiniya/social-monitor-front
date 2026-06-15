@@ -23,6 +23,8 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
+import { useTasks } from 'src/api/tasks';
+import { useOperations } from 'src/api/operations';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { useScoreIndicators } from 'src/api/media-score';
 import { usePlatformOptions } from 'src/api/definitions';
@@ -52,6 +54,8 @@ const TABS = [
   { value: 'accounts', label: 'سکوها' },
   { value: 'scores', label: 'امتیاز رسانه' },
   { value: 'interactions', label: 'تعاملات' },
+  { value: 'operations', label: 'عملیات‌ها' },
+  { value: 'tasks', label: 'تسک‌ها' },
   { value: 'content', label: 'پست‌ها و تحلیل محتوا' },
 ];
 
@@ -77,7 +81,7 @@ export function MicroMediaDetailView({ id }) {
   }
 
   return (
-    <DashboardContent>
+    <DashboardContent maxWidth="xl">
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Box>
           <Typography variant="h4">{media.name}</Typography>
@@ -115,6 +119,8 @@ export function MicroMediaDetailView({ id }) {
       {tab === 'accounts' && <AccountsTab id={id} />}
       {tab === 'scores' && <ScoresTab id={id} />}
       {tab === 'interactions' && <InteractionsTab id={id} />}
+      {tab === 'operations' && <OperationsTab id={id} />}
+      {tab === 'tasks' && <TasksTab id={id} />}
       {tab === 'content' && <ContentTab id={id} />}
     </DashboardContent>
   );
@@ -367,6 +373,121 @@ function InteractionsTab({ id }) {
           ))
         )}
       </Stack>
+    </Card>
+  );
+}
+
+function OperationsTab({ id }) {
+  const router = useRouter();
+  const { data, isLoading } = useOperations({ microMediaId: id });
+  const items = data?.items ?? [];
+
+  return (
+    <Card sx={{ p: 3 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Typography variant="subtitle1">عملیات‌های مرتبط</Typography>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<Iconify icon="mingcute:add-line" />}
+          onClick={() => router.push(`${paths.dashboard.operations.root}?microMediaId=${id}`)}
+        >
+          عملیات جدید
+        </Button>
+      </Stack>
+
+      {isLoading ? (
+        <Box sx={{ p: 3, textAlign: 'center' }}><CircularProgress size={24} /></Box>
+      ) : items.length === 0 ? (
+        <Typography color="text.secondary">عملیاتی برای این میکرورسانه ثبت نشده</Typography>
+      ) : (
+        <Stack spacing={1}>
+          {items.map((op) => (
+            <Stack
+              key={op.id}
+              direction="row"
+              alignItems="center"
+              spacing={2}
+              onClick={() => router.push(paths.dashboard.operations.detail(op.id))}
+              sx={{ p: 1.5, borderRadius: 1, border: '1px solid', borderColor: 'divider', cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+            >
+              <Iconify icon="solar:clipboard-bold-duotone" width={20} sx={{ color: 'primary.main', flexShrink: 0 }} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="subtitle2" noWrap>{op.title || `عملیات #${op.id}`}</Typography>
+                <Typography variant="caption" color="text.secondary" noWrap>{op.description || '—'}</Typography>
+              </Box>
+              <Chip size="small" label={op.status || 'draft'} color={op.status === 'active' ? 'success' : op.status === 'completed' ? 'info' : 'default'} />
+              {op.created_at && (
+                <Typography variant="caption" color="text.disabled">
+                  {new Date(op.created_at).toLocaleDateString('fa-IR')}
+                </Typography>
+              )}
+            </Stack>
+          ))}
+        </Stack>
+      )}
+    </Card>
+  );
+}
+
+function TasksTab({ id }) {
+  const router = useRouter();
+  const { data, isLoading } = useTasks({ microMediaId: id });
+  const items = data?.items ?? [];
+
+  const STATUS_COLORS = { todo: 'default', in_progress: 'warning', done: 'success', blocked: 'error' };
+  const STATUS_LABELS = { todo: 'در انتظار', in_progress: 'در حال انجام', done: 'انجام شده', blocked: 'مسدود' };
+
+  return (
+    <Card sx={{ p: 3 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Typography variant="subtitle1">تسک‌های مرتبط</Typography>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<Iconify icon="mingcute:add-line" />}
+          onClick={() => router.push(`${paths.dashboard.tasks.root}?microMediaId=${id}`)}
+        >
+          تسک جدید
+        </Button>
+      </Stack>
+
+      {isLoading ? (
+        <Box sx={{ p: 3, textAlign: 'center' }}><CircularProgress size={24} /></Box>
+      ) : items.length === 0 ? (
+        <Typography color="text.secondary">تسکی برای این میکرورسانه ثبت نشده</Typography>
+      ) : (
+        <Stack spacing={1}>
+          {items.map((task) => (
+            <Stack
+              key={task.id}
+              direction="row"
+              alignItems="center"
+              spacing={2}
+              onClick={() => router.push(paths.dashboard.tasks.detail(task.id))}
+              sx={{ p: 1.5, borderRadius: 1, border: '1px solid', borderColor: 'divider', cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+            >
+              <Iconify icon="solar:checklist-bold-duotone" width={20} sx={{ color: 'info.main', flexShrink: 0 }} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="subtitle2" noWrap>{task.title || `تسک #${task.id}`}</Typography>
+                {task.assignee_name && (
+                  <Typography variant="caption" color="text.secondary">مسئول: {task.assignee_name}</Typography>
+                )}
+              </Box>
+              <Chip
+                size="small"
+                label={STATUS_LABELS[task.status] || task.status}
+                color={STATUS_COLORS[task.status] || 'default'}
+              />
+              {task.due_date && (
+                <Typography variant="caption" color="text.disabled">
+                  {new Date(task.due_date).toLocaleDateString('fa-IR')}
+                </Typography>
+              )}
+            </Stack>
+          ))}
+        </Stack>
+      )}
     </Card>
   );
 }
